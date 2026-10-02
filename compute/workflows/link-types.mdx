@@ -142,7 +142,8 @@ getAll<T = any>(name: string): T[] | undefined;
 ```
 
 Receives an input query name. Returns an array of one or more matched
-items or undefined.
+items. Throws for an `optional` query without a match, so check
+[`getMatchedInputs`](#getmatchedinputs) first.
 
 #### `getFirst`
 
@@ -150,8 +151,8 @@ items or undefined.
 getFirst<T = any>(name: string): T | undefined;
 ```
 
-Receives an input query name. Returns the first matched item or
-undefined.
+Receives an input query name. Returns the first matched item. Throws
+like [`getAll`](#getall) for an `optional` query without a match.
 
 #### `getMatchedInputs`
 
@@ -510,7 +511,7 @@ Pipeline validators are reactive in two ways:
   might not capture.
 
 Routing is expressed via the standard `to` query — see the
-[LQL reference](./link-query-language-reference#grammar) for the full grammar. A
+[LQL reference](./link-query-language-reference#where-a-query-appears) for the forms it accepts. A
 zero-segment path targets the link-defining workflow node (self); a
 segmented path targets a descendant.
 
