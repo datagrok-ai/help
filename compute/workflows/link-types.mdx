@@ -782,8 +782,8 @@ plain JavaScript. Each alias becomes an expression variable next to the
 A source runs whenever an input in `from` changes, even while the rule is
 off. Keep `from` to what the sources read, and give a function that loads
 data a `meta.cache` annotation. A `file` and a `table` are loaded once,
-and so is a `func` or `query` whose `args` are given and read no alias. A
-`func` or `query` without `args` runs on every change. A source that fails
+and so is a `func` or `query` whose `args` read no alias or that has no
+`args`. A source that fails
 is reported, no effect is applied, and the next change tries again.
 
 ```
