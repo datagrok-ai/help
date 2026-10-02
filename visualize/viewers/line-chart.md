@@ -1,6 +1,7 @@
 ---
 mdx:
   format: mdx
+documents: [visualize/viewers/line-chart]
 title: "Line chart"
 ---
 
