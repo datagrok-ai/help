@@ -320,8 +320,8 @@ when its source changes, and tracks it for consistency.
   from: 'table:before(@base, load)/table',
   to: 't:same(@base)/rows',
   sources: {rows: {js: {args: ['table'], fn: (df) => df?.rowCount}}},
-  when: {'!': {missing: ['table']}},
-  effects: [{effect: 'set', targets: 't', value: {var: 'rows'}, restriction: 'restricted'}],
+  when: 'not(missing(table))',
+  effects: ['set(t, rows, restriction: "restricted")'],
 }
 ```
 
@@ -335,8 +335,8 @@ when its source changes, and tracks it for consistency.
   whenever `from` changes, even while its `when` is off, so `fn` is
   called even while the table is absent: the `?.` guard returns
   `undefined` and the `when` keeps the write off.
-- `restricted` records the written value, so a user edit is flagged
-  inconsistent and can be reset. `none` writes an untracked default.
+- `"restricted"` records the written value, so a user edit is flagged
+  inconsistent and can be reset. `"none"` writes an untracked default.
   See [Consistency](./link-types#consistency).
 - A default that needs a platform function returns its promise:
   `fn: (df) => grok.functions.call('Pkg:DefaultRows', {table: df})`. The
@@ -360,11 +360,8 @@ the annotation cannot: clearing a value that fell out of the list.
   to: 'c:same(@base)/column',
   sources: {columns: {js: {args: ['table'], fn: (df) => df ? df.columns.names() : []}}},
   effects: [
-    {effect: 'items', targets: 'c', items: {var: 'columns'}},
-    {
-      effect: 'clear', targets: 'c',
-      when: {and: [{'!': {missing: ['column']}}, {'!': {in: [{var: 'column'}, {var: 'columns'}]}}]},
-    },
+    'items(c, columns)',
+    'clear(c, when: and(not(missing(column)), not(in(column, columns))))',
   ],
 }
 ```
@@ -395,13 +392,10 @@ bare `solver` id is the first solver of the workflow:
   runOnInit: true,
   from: 'key:solver/preset',
   to: ['k:solver/preset', '_(template):solver/inputs(Pkg:Solver, preset|$nonscalar|$linked)'],
-  sources: {presets: {file: 'System:AppData/Pkg/presets.csv'}},
+  sources: {presets: 'file("System:AppData/Pkg/presets.csv")'},
   effects: [
-    {effect: 'items', targets: 'k', items: {column: [{var: 'presets'}, 'preset']}},
-    {
-      effect: 'assign', values: {row: [{var: 'presets'}, 'preset', {var: 'key'}]}, restriction: 'restricted',
-      when: {in: [{var: 'key'}, {column: [{var: 'presets'}, 'preset']}]},
-    },
+    'items(k, column(presets, "preset"))',
+    'assign(row(presets, "preset", key), restriction: "restricted", when: in(key, column(presets, "preset")))',
   ],
 }
 ```

@@ -173,8 +173,8 @@ no flag but `optional`:
   type: 'rule',
   from: 'threshold:clean/threshold',
   to: 'n:fit/iterations',
-  when: {'>': [{var: 'threshold'}, 0.5]},
-  effects: [{effect: 'warning', targets: 'n', message: 'Consider more iterations for a strict threshold'}],
+  when: 'gt(threshold, 0.5)',
+  effects: ['warning(n, "Consider more iterations for a strict threshold")'],
 }
 ```
 
