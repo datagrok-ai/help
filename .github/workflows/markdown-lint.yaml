@@ -1,0 +1,36 @@
+name: Markdown lint
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '**/*.md'
+      - '**/*.mdx'
+      - '**/_category_.yml'
+  pull_request:
+    paths:
+      - '**/*.md'
+      - '**/*.mdx'
+      - '**/_category_.yml'
+
+jobs:
+  common-check:
+    name: Common checks
+    uses: ./.github/workflows/common_check.yaml
+    with:
+      run_trigger: ${{ github.event_name }}
+
+  lint:
+    name: Lint
+    needs: common-check
+    runs-on: ubuntu-22.04
+    if: needs.common-check.outputs.continue == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DavidAnson/markdownlint-cli2-action@v16.0.0
+        with:
+          globs: |
+            **/*.md
+            **/*.mdx
+          fix: true

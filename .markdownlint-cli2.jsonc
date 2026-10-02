@@ -1,0 +1,16 @@
+{
+  "ignores": [
+    "**/markdown.md",
+    "**/release-history.md",
+    "**/video-lessons.md",
+    "_*/**/*.md",
+    "**/_*.md",
+    "**/node_modules",
+    "js-api/docs/**",
+    "js-api/help/**",
+    "LICENSE.md",
+    "develop/admin/releases/changelog-policy.md",
+    "packages/UsageAnalysis/files/**",
+    "**/CHANGELOG.md"
+  ]
+}
