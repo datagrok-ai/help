@@ -218,7 +218,7 @@ when one breaks:
 | Signal                          | Where                                                                                        |
 |---------------------------------|----------------------------------------------------------------------------------------------|
 | Test a connection now           | Right-click the connection > **Test connection**, or `grok s connections test <id>` from your monitoring job |
-| Grok Connect (the connector service) is up The [health endpoints](../develop/server-management.md#server-health) or `grok s healthcheck` |
+| Grok Connect (the connector service) is up | The [health endpoints](../develop/server-management.md#server-health) or `grok s healthcheck` |
 | Who ran which query, when, how long it took, and whether it failed | The query's **Activity** and **Usage** panes on the **Context Panel** ([audit](audit/audit.md#accessing-audit-logs)) |
 | Failing queries across the platform | **Usage Analysis** > **Errors** and **Functions** ([Usage Analysis](audit/usage-analysis.md)) |
 | Why a query is slow             | The **Debug** tab of the [query editor](../access/databases/databases.md#query-editor)       |
