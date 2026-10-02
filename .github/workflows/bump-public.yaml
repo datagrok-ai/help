@@ -1,0 +1,78 @@
+name: Bump help in public
+
+# Points public's `help` submodule at help master; that push deploys the site.
+# Pushes with WRITE_TOKEN, since a GITHUB_TOKEN push would not trigger public's workflows.
+
+on:
+  push:
+    branches: [master]
+  workflow_run:
+    workflows: ['Generate gif thumbnails', 'IaC']
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: bump-public
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: datagrok-ai/public
+          ref: master
+          token: ${{ secrets.WRITE_TOKEN }}
+          path: public
+          sparse-checkout: .github
+
+      - name: Bump submodule pointer
+        working-directory: public
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+          # Until the cutover commit lands, public/help is a plain folder: do nothing.
+          if [ "$(git ls-files -s help | awk 'NR==1 {print $1}')" != "160000" ]; then
+            echo "::notice::public/help is not a submodule yet, skipping"
+            exit 0
+          fi
+
+          NEW=$(gh api "repos/$REPO/commits/master" --jq .sha)
+          SUBJECT=$(gh api "repos/$REPO/commits/$NEW" --jq '.commit.message' | head -n1)
+
+          for attempt in 1 2 3 4 5; do
+            OLD=$(git ls-files -s help | awk '{print $2}')
+            if [ "$OLD" = "$NEW" ]; then
+              echo "public already points at $NEW"
+              exit 0
+            fi
+            # The latest non-bot commit's author: public's Slack action DMs one user.
+            AUTHOR=$(gh api "repos/$REPO/compare/$OLD...$NEW" \
+              --jq '[.commits[].author.login // empty | select(endswith("[bot]") | not)] | last // empty' || true)
+
+            git update-index --cacheinfo "160000,$NEW,help"
+            git commit -q -F - <<EOF
+          Help: bump to ${NEW:0:10}
+
+          $SUBJECT
+
+          Help-Author: $AUTHOR
+          EOF
+            git push origin HEAD:master && exit 0
+
+            echo "Push rejected, retrying on top of the new public master ($attempt/5)"
+            sleep $((attempt * 5))
+            git fetch -q --depth 1 origin master
+            git reset -q --hard origin/master
+          done
+          exit 1
