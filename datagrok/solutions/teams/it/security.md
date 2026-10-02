@@ -87,7 +87,7 @@ We continuously scan everything we ship for known vulnerabilities (CVEs), as par
   ([results](https://github.com/datagrok-ai/public/actions/workflows/security_scan_anchore.yaml)).
 * **Deployment templates** — the
   [CloudFormation template](../../../../deploy/aws/deploy-amazon-eks.mdx) is checked by
-  [Snyk](https://snyk.io/) ([results](https://github.com/datagrok-ai/public/actions/workflows/iaac.yaml)).
+  [Snyk](https://snyk.io/) ([results](https://github.com/datagrok-ai/help/actions/workflows/iaac.yaml)).
 
 We remediate critical vulnerabilities within two weeks, high within one month, and
 lower-severity ones within three months.
@@ -152,7 +152,7 @@ To simplify deployment with all security policies taken into consideration, we c
 an [EKS CloudFormation deployment template](../../../../deploy/aws/deploy-amazon-eks.mdx).
 
 CloudFormation Template is tested by [Snyk](https://snyk.io/) on every change. The results
-are [available publicly](https://github.com/datagrok-ai/public/actions/workflows/iaac.yaml).
+are [available publicly](https://github.com/datagrok-ai/help/actions/workflows/iaac.yaml).
 
 In the resulting deployment, [Security Groups](https://docs.aws.amazon.com/vpc/latest/userguide/VPC_SecurityGroups.html)
 restrict all communications. Services cannot be accessed directly — all requests
