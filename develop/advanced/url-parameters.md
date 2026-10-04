@@ -90,9 +90,10 @@ parameters passed as query parameters. The function name uses dots instead of co
 | --------- | ----------------- | ------- | --------------------------------------------------------------- |
 | `run`     | `true` \| `false` | `false` | Run the function on open and show only its results               |
 
-By default the URL opens the parameter form with a **Run** button. Add `run=true` to run
-the function immediately and show only the resulting view - this exposes any function as
-an app-like shareable link:
+By default the URL opens the parameter form with a **Run** button: a function that returns a
+single table opens as a table view, any other function opens as the function view with its
+results below the form. Add `run=true` to run the function immediately and show only the
+resulting view - this exposes any function as an app-like shareable link:
 
 ```
 /func/Chem.mutateMolecule?molecule=CCO&steps=2&run=true
@@ -109,7 +110,10 @@ characters that mean something in a URL, such as `#`, `&` and `+`: `?smiles=C%23
 
 To copy such a link for the parameters you currently see, click the **copy** icon next to
 the **Run** button. Once the function has run and the parameter form is gone, the same icon
-sits next to **Refresh** in the **Source** pane of the Toolbox.
+sits next to **Refresh** in the **Source** pane of the Toolbox. A table input goes into the
+link as the expression that produced the table - the file, query or function it was opened
+from. A table that cannot be reproduced that way (pasted, or changed after it was opened)
+gives no link; the icon says so when clicked.
 
 ### Stored runs
 
