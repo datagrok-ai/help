@@ -88,6 +88,12 @@ page reads as the form, the table it received, and what came out of it:
 
 If you close a viewer in the results, press <kbd>Ctrl+Z</kbd> to bring it back to the same place.
 
+The function view keeps the viewers as you arranged them: when you run the function again, a
+viewer you added, moved or closed stays that way, and the declared `viewer:` list is used only for
+the first run, or when the new result has different columns. Once you change an input, the results
+dim under "Inputs changed. Press RUN to update the results." until the next run, unless the
+function reruns on every input change (`runOnInput`).
+
 ## Customize viewers for dataframe
 
 Each viewer has a list of customizable properties.

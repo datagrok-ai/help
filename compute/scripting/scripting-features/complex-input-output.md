@@ -315,8 +315,10 @@ df.to_json(json_file)
 </Tabs>
 ```
 
-When you run this script, Datagrok will return the `FileInfo` object in the scalar variables panel.
-To save the file, right-click on the highlighted file link and choose the **Download** option.
+When you run this script from the **Run** dialog, Datagrok returns the `FileInfo` object in the
+scalar variables panel. To save the file, right-click on the highlighted file link and choose the
+**Download** option. In the function view (the preview of a script in **Browse**), a `file` or
+`blob` result shows as a link with the file name and size; click it to download.
 The file name *always* matches the output variable name.
 
 :::info
