@@ -161,7 +161,7 @@ exclusions. Each entry is an io name or an exclusion kind:
 `$linked` follows these rules:
 
 - Only data links take an io away: plain data links and the data part
-  of [rules](./link-types#rules). Validators, meta links and checks
+  of [rules](./rules-and-checks#rules). Validators, meta links and checks
   writing the same io do not.
 - Outputs of other `$linked` wildcards do not count, so two links with
   `$linked` over the same ios both keep them.

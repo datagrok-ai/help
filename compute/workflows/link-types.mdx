@@ -47,6 +47,8 @@ There are several types of links/actions:
 - `nodemeta`
 - `funccall`
 - `pipeline`
+- `rule`, see [Rules](#rules)
+- `check`, see [Checks](#checks)
 
 #### `from`
 
@@ -655,387 +657,42 @@ Sets description to an output query with the specified name.
 
 ## Rules
 
-Rules are a declarative shorthand for the most common form logic:
-hiding inputs, replacing dropdown items, emitting validation messages,
-and setting or clearing values depending on other inputs. A rule has type
-`rule`, an optional condition `when` and a list of effects. It works like
-a set of [meta](#metadata-links), [validator](#io-validators) and
-[data](#data-links) links.
+A rule has type `rule`. It reads inputs through `from`, and while its
+formula `when` holds, applies its `effects` to the `to` targets: hiding
+and showing inputs, replacing dropdown items, adding messages, and
+writing values. It works like a set of [meta](#metadata-links),
+[validator](#io-validators) and [data](#data-links) links without a
+handler:
 
 ```
 {
-  id: 'advancedParams',
+  id: 'oralOnly',
   type: 'rule',
-  from: ['mode:solver/mode', 'df:solver/table', 'amb:solver/ambTemp'],
-  to: ['tol:solver/tolerance', 'col:solver/column', 'init:solver/initTemp'],
-  when: 'eq(mode, "advanced")',
-  effects: [
-    'show([tol, col])',
-    'items(col, columns(df, "numerical"))',
-    'clear(col)',
-    'error(init, cat("Must exceed ambient ", amb))',
-  ],
+  from: 'route:model/route',
+  to: 'k:model/ka',
+  when: 'eq(route, "oral")',
+  effects: ['show(k)'],
 }
 ```
 
-`when`, each effect and each source are [formulas](#formulas). Each of
-them can also be written as an object, see [Object form](#object-form).
-`debounce` delays the rule's messages, and `runOnInit` applies its value
-effects at init. In TypeScript, `PipelineRuleConfiguration` and
-`RuleEffect` from `@datagrok-libraries/compute-api` type the config.
-
-### Formulas
-
-A formula is a string that holds a value or a call:
-
-- numbers, `true`, `false` and `null`; an alias with one of these names
-  is read as `var("null")`
-- text in double quotes, with the escapes `\"`, `\\`, `\n` and `\t`
-  (any other backslash is an error), or in backticks, taken as written:
-  `` `type == "ICE"` ``. Use backticks for text with quotes and for regex
-  patterns: `` regex(code, `^\d{4}$`) ``.
-- lists in square brackets: `["fast", "exact"]`
-- aliases: `<alias>` reads the first matched value of a `from` query or
-  the value of a [source](#sources), and `$all.<alias>` all matched values
-  of a `from` query. Paths walk into platform objects, so `col.name`,
-  `col.type` and `col.semType` are valid references.
-- calls, nested freely: `and(not(missing(column)), not(in(column, columns)))`
-
-There are no operators: `m > 0` is written `gt(m, 0)`. Operations take
-their arguments in order. Effects and sources also take named options
-after them: `set(t, m, restriction: "restricted")`. Inside `map`,
-`filter`, `all`, `some` and `none`, the current element is `$it`, and its
-fields are read by name: `map(verdicts, message)`,
-`filter(list, gt($it, 0))`. That argument sees only the element: a name
-there is a field of the element, so reading a rule alias there, as in
-`filter(list, gt($it, limit))`, is an error, and `var("limit")` reads an
-element field that shares an alias's name. `obj(name: value, ...)` builds
-an object from constant values: `meta(t, cfg: obj(units: "K"))`. In
-JavaScript, put a formula in single quotes so the double quotes inside
-need no escaping; a backslash is still doubled there: `` 'regex(code, `^\\d{4}$`)' ``.
-
-A string is a formula in a `when` and in each element of `effects` and
-`sources`. In the value fields of an effect or check written as an
-object (`items`, `meta` values, `message`, `value`, `values`, and the
-`args` of a `func` or `query` source), a string is plain text, and a
-string that starts with `=` is a formula: `message: '=cat("bad ", n)'`.
-Without the `=`, `message: 'cat("bad ", n)'` shows that text.
-
-| Operation | Result |
-|---|---|
-| `eq(a, b)`, `ne(a, b)` | Loose equality and inequality, as JavaScript `==` and `!=`. |
-| `same(a, b)`, `notSame(a, b)` | Strict equality and inequality, `===` and `!==`. |
-| `gt`, `gte`, `lt`, `lte` | Comparisons. `lt(a, b, c)` and `lte(a, b, c)` are `true` when `b` lies between `a` and `c`. |
-| `add`, `sub`, `mul`, `div`, `mod` | Arithmetic. `sub(a)` negates. |
-| `not(x)`, `bool(x)` | Negation and truthiness. |
-| `and(...)`, `or(...)` | The first falsy, or the first truthy, argument. |
-| `if(c1, v1, c2, v2, ..., otherwise)` | The value after the first condition that holds. |
-| `in(x, list)` | `true` when the list, or the string, contains `x`. |
-| `cat(...)`, `substr(s, start, length)` | Joined text, and part of a text. |
-| `min(...)`, `max(...)`, `merge(...)` | The smallest and the largest number, and the lists joined into one. |
-| `map(list, f)`, `filter(list, f)`, `all(list, f)`, `some(list, f)`, `none(list, f)` | List operations, with `f` evaluated for each element. |
-| `reduce(list, f, initial)` | `f` folded over the list, reading `current` and `accumulator`. |
-| `missing(a, ...)`, `missing_some(n, [a, ...])` | The aliases that are absent, `null` or `""`, so `not(missing(table))` holds once `table` is there. |
-| `var(a, default)` | The alias, or the default while it is absent. |
-| `columns(df, kind)` | Names of the columns, or of the columns of that kind. |
-| `columnsMissing(df, [[name, kind], name, ...])` | A description of every entry with no matching column, such as `smiles (Molecule)`. Names match ignoring case. Empty when the table fits, so `bool(columnsMissing(...))` is a schema check, and the same call in `cat` names the offending columns. |
-| `columnIs(column, kind)` | `true` when the column has the kind. |
-| `nulls(column)` | Its number of missing values, `0` for anything else. |
-| `column(df, name)` | The column's values as a list, empty when either is absent. |
-| `row(df, keyColumn, key)` | The first row whose key cell equals the key, as an object keyed by column name, or `null`. A number column matches a text key. |
-| `len(x)` | The length of a string or list, or the row count of a dataframe. |
-| `regex(text, pattern, flags)` | `true` when the text matches; `flags` is optional. Write the pattern in backticks. |
-| `script(expression)` | The value of a GrokScript expression, with every alias as a variable. `undefined` when it fails. |
-| `scriptVerdict(expression)` | The message when the expression fails the way a `validator:` annotation does, else `null`. |
-| `obj(name: value, ...)` | An object with constant values. |
-
-`script` and `scriptVerdict` need platform 1.28.0 or later. A kind is a
-platform column kind (`numerical`, `numerical_no_datetime`,
-`categorical`, `datetime`, `categorical_or_datetime`), a column type such
-as `int`, or a semantic type such as `Molecule`.
-
-`when` follows JSON Logic truthiness, where an empty list is false, and a
-`when` that is omitted or `null` is always on. An effect with its own
-`when` is on only while both conditions hold.
-
-### Effects
-
-Each effect writes to its targets, `t` below: a `to` alias or a list
-`[a, b]` of them. Every effect takes `when:`, its own condition:
-`set(u, m, when: gt(m, 1))`.
-
-| Effect | On | Off |
-|---|---|---|
-| `hide(t)`, `show(t)` | Hides or shows the targets. | The opposite. |
-| `items(t, list)` | Replaces the dropdown items. | Items removed. |
-| `meta(t, key: value, ...)` | Sets each key, as in [UI metadata](#ui-metadata). | Keys removed. |
-| `error(t, message)`, `warning(t, message)`, `notification(t, message)` | Adds the message with that severity. | No message. |
-| `verdicts(t, source)` | Adds each verdict of a `validators` [source](#sources), failures as errors, the rest as warnings. | No message. |
-| `set(t, value, restriction:)` | Writes the value. | Keeps the value, no longer marked. |
-| `clear(t, restriction:)` | Writes `null`. | Nothing. |
-| `assign(values, targets:, restriction:, ignoreCase:)` | Writes each field of an object to the input of the same name. | Keeps the values, no longer marked. |
-
-`restriction: "restricted"` marks a written value as set by the rule, so
-an edit by hand is flagged, see [Consistency](#consistency). The default
-is `"none"`. A `message` that evaluates to a list adds one message per
-element and an empty list adds none, so `map` and `filter` can build the
-list. `assign` matches field names ignoring case with `ignoreCase: true`,
-skips fields that name no input, and keeps the value of an input with no
-field, no longer marked. Without `targets:`, every `to` alias is a target,
-which pairs with a `(template)` query whose aliases are the io names, as
-in the [lookup table](./link-query-language-advanced#lookup-table)
-example.
-
-### Sources
-
-`sources` maps aliases to values that need a function call, a table or
-plain JavaScript. Each alias can be read in formulas next to the `from`
-aliases.
-
-- `validators(input, names: [...])`. Each function is called
-  with the value of `input` as its single argument, following the
-  [validator contract](../../datagrok/concepts/functions/func-params-annotation.md#validation):
-  `null` or `true` pass, a string is the message, `false` fails with a
-  message naming the function, and a thrown error becomes a warning.
-  Without `names`, the validators the io's annotation declares run
-  (platform 1.28.0 or later).
-- `choices(input)`. The value is `{items, inList}`: the list
-  the io's `choices` annotation evaluates to, and whether the current value
-  is in it (platform 1.28.0 or later).
-- `func("Pkg:Function", param: <formula>, ...)`. Calls a
-  platform function or package query with each parameter set to its
-  formula. The core `OpenFile` function with a literal `fullPath` loads
-  a file-share table this way: `func("OpenFile", fullPath: "System:AppData/Pkg/presets.csv")`.
-- ``query("Pkg:Conn", `select ...`, name: <formula>, ...)``.
-  Runs the SQL on the connection, and the dataframe becomes the alias.
-  `@name` binds the argument of that name, so values never enter the text.
-  An argument the SQL does not declare with `--input:` gets its type from
-  the value (`int`, `double`, `bool`, `dataframe`, `datetime`, otherwise
-  `string`). Declare the ones that need another type.
-- `file("System:AppData/Pkg/presets.csv")`: a file-share path or a URL.
-  Loads the table.
-- `table("name,value\n...", delimiter: ";")`: CSV text, with optional
-  `DG.CsvImportOptions` such as `delimiter` or `decimalSeparator`.
-- `{js: {args: [...], fn: (...values) => any}}` has no formula, since it
-  holds code. `fn` is called with the values of the `args` input aliases,
-  even absent ones, and its result, or the value of the promise it
-  returns, becomes the alias.
-- `{table: df}` with a `DG.DataFrame` has no formula either. The dataframe
-  is used as it is, not copied, so every rule that reads it shares the
-  object.
-
-A source runs whenever an input in `from` changes, even while the rule is
-off. Keep `from` to what the sources read, and give a function that loads
-data a `meta.cache` annotation. A `file` and a `table` are loaded once,
-and so is a `func` or `query` whose arguments read no alias or that has
-none. A source that fails
-is reported, no effect is applied, and the next change tries again.
-
-```
-{
-  id: 'tolerance',
-  type: 'rule',
-  from: ['mode:solver/mode', 'tol:solver/tolerance', 'amb:solver/ambTemp'],
-  to: ['t:solver/tolerance', 'init:solver/initTemp'],
-  sources: {v: 'validators(tol, names: ["Pkg:checkTolerance"])'},
-  when: 'eq(mode, "advanced")',
-  effects: [
-    'show(t)',
-    'verdicts(t, v)',
-    'warning(t, "Custom tolerance is slower")',
-    'error(init, cat("Must exceed ambient ", amb))',
-    'set(init, amb, restriction: "restricted")',
-  ],
-}
-```
-
-Sources are read like any input, so `not(v)` holds while the
-validators pass.
-
-### Object form
-
-A formula is translated into an object, and the driver runs the object.
-Configs built in code can use the objects directly, and one rule can mix
-both forms.
-
-- An expression is [JSON Logic](https://jsonlogic.com/). Operations keep
-  their names except the symbolic ones: `not` is `!`, `bool` `!!`, `eq`
-  `==`, `ne` `!=`, `same` `===`, `notSame` `!==`, `gt` `>`, `gte` `>=`,
-  `lt` `<`, `lte` `<=`, `add` `+`, `sub` `-`, `mul` `*`, `div` `/` and
-  `mod` `%`. An alias is `{var: 'path'}` and `$it` is `{var: ''}`. The
-  aliases in `missing`, `missing_some` and `var` are strings, so
-  `missing(table)` is `{missing: ['table']}`. `obj(a: 1)` is
-  `{literal: {a: 1}}`: `literal` keeps an object from being read as an
-  operation.
-- An effect is `{effect, targets, ...}` with the call's arguments as the
-  fields `items`, `meta`, `message`, `source`, `value` or `values`, and
-  its options as fields of the same names.
-- A source is `{validators: {input, names}}`, `{choices: {input}}`,
-  `{func: {name, args}}`, `{query: {connection, sql, args}}`,
-  `{file: path}`, `{table: csv}` or `{table: {csv, options}}`, with
-  `args` mapping each parameter to an expression.
-
-The first rule on this page, in object form:
-
-```
-{
-  id: 'advancedParams',
-  type: 'rule',
-  from: ['mode:solver/mode', 'df:solver/table', 'amb:solver/ambTemp'],
-  to: ['tol:solver/tolerance', 'col:solver/column', 'init:solver/initTemp'],
-  when: {'==': [{var: 'mode'}, 'advanced']},
-  effects: [
-    {effect: 'show', targets: ['tol', 'col']},
-    {effect: 'items', targets: 'col', items: {columns: [{var: 'df'}, 'numerical']}},
-    {effect: 'clear', targets: 'col'},
-    {effect: 'error', targets: 'init', message: {cat: ['Must exceed ambient ', {var: 'amb'}]}},
-  ],
-}
-```
-
-### Rule errors
-
-Config processing rejects a rule when, for example:
-
-- the rule has a `handler`: rules always use their built-in behaviour
-- a query uses a flag other than `optional` and `template`
-- a formula does not parse (the message gives the column), calls an
-  unknown operation, has an effect where a source is expected or the
-  other way round, or misses an argument or has an unknown option
-- `effects` is empty, or an effect is unknown, targets an unknown `to`
-  alias, or has no targets and is not `assign`
-- a `to` alias is targeted by no effect, or by `hide`/`show` twice
-- a formula reads an unknown alias, at any nesting depth, or reads an
-  alias inside `map`, `filter`, `all`, `some`, `none` or `reduce`, where
-  names are fields of the element
-- a source alias repeats a `from` alias, a `js` source reads an alias
-  that is not in `from`, or `verdicts` names a source that is not
-  `validators`
-- a source is of an unknown kind, misses what its kind needs (`fn`,
-  `name`, a path, a table, or `connection` and `sql`), or names an
-  unknown input
-- an alias or a source name starts with `$`, which is reserved for the
-  names the driver adds
-
-Two rules that write the same effect to the same input conflict. For
-value effects (`set`, `clear`, `assign`) the driver logs a duplicate
-target warning when the workflow is built; other conflicts are not
-detected, and which value wins is unspecified. In the debug log, a rule `r` shows as
-`r::meta`, `r::validator` and `r::data`.
+See [Rules and checks](./rules-and-checks#rules) for every effect, the
+formula language, sources and worked cases.
 
 ## Checks
 
-Checks are the driver's version of the validation a function annotation
-declares. The driver applies the annotation options of every step's
-inputs, so the checks hold in every run, including runs with no form on
-screen. The same options can be written in a workflow config as a `check`
-link, for a script that does not declare them or to tighten what it
-declares. An annotation and a `check` with the same options behave the
-same.
+A check has type `check` and validates one input with the options a
+function annotation declares, such as `min`, `max`, `validator` and
+column `type`, plus a `choices` list. The driver also applies the
+validation annotations of every step's inputs as checks, in every run. A
+`choices` annotation only fills the dropdown, and a column's `table`
+annotation only binds the column picker:
 
 ```
-//input: int    v    = 5 {min: 0; max: 10}
-//input: string code     {validator: /^[0-9]{4}$/i}
-//input: string mode     {choices: ["fast", "exact"]}
-//input: column col      {type: numerical; table: df; allowNulls: false}
-//input: double a        {nullable: true}
+{id: 'weightRange', type: 'check', io: 'model/weight', check: {min: 1, max: 300}}
 ```
 
-```
-{id: 'v',    type: 'check', io: 'solver/v',    check: {min: 0, max: 10}},
-{id: 'code', type: 'check', io: 'solver/code', check: {validator: '/^[0-9]{4}$/i'}},
-{id: 'mode', type: 'check', io: 'solver/mode', check: {choices: ['fast', 'exact']}, severity: 'warning'},
-{id: 'col',  type: 'check', io: 'solver/col',  check: {type: 'numerical', table: 'solver/df', allowNulls: false}},
-```
-
-| Option | Holds when | Message | Notes |
-|---|---|---|---|
-| `nullable: false` | the value is present | Missing value | The default for every input, and `optional` is a synonym. As an annotation, `nullable: true` or `optional: true` removes it. A `check` cannot relax it. |
-| `min`, `max` | the value is within the bound | Must be at least / at most N | Numeric inputs. |
-| `validator` (regex literal) | the string matches `/pattern/flags` | Must match /pattern/flags | |
-| `validator` (expression) | the GrokScript expression is not `false` and not a string | the expression text, or the string it returned. "Error during validation" when it fails. | Sees `value` and the step's inputs by name. |
-| `visible` | the GrokScript expression is not `false` | none | Hides the input. A hidden input is not required. Sees the same variables as the expression validator. |
-| `enabled` (annotation) | the GrokScript expression is not `false` | none | In a workflow the input is hidden, as with `visible`, where the function form disables it instead. With both annotations the input is hidden when either is `false`. |
-| `choices` | the value is in the list | Must be one of: ... | A literal list. Choices the platform evaluates get a warning instead, see [Annotation values](#annotation-values). |
-| `type`, `semType` | the column has the kind | Column must be ... | Kinds as in [`columnIs`](#formulas). |
-| `table` | the column's name is among the table's columns | Column does not belong to the table | An annotation names a parameter, defaulting to the first dataframe input. A `check` names the table io with a query. |
-| `allowNulls: false` | the column has no missing values | Column has missing values | |
-| `validators` | every named validator function passes | the validators' own messages | Called as a `validators` [source](#sources). |
-
-Expression checks (`validator` expressions and `visible`) and the
-`validators` an annotation declares need platform 1.28.0 or later, and are
-skipped on older clients.
-
-An absent value satisfies every check except `nullable: false`, so the
-required check is the only one that reports a missing input. Checks on an
-input hidden via meta are suppressed like every other validator, including
-by a `visible` check on the same input.
-
-Annotation-derived expression checks see every input of the step under its
-parameter name plus `value`, the checked input. As in the function form,
-`value` wins over an input named `value`. A `check` link names the inputs
-its expression reads in `vars`:
-
-```
-{id: 'foo', type: 'check', io: 'solver/foo', check: {validator: 'bar > 3'}, vars: {bar: 'solver/bar'}}
-{id: 'cyl', type: 'check', io: 'solver/cyl', check: {visible: 'bar > 3'}, vars: {bar: 'solver/bar'}}
-```
-
-A `check` link takes `io` (the checked io, a query without an alias),
-`check` (the options above), and `vars` (variable name to io query for
-expressions). It optionally takes `message`, `severity` (`error` by
-default), `when` (a [formula](#formulas) over `value` and, for a column
-check, `$table` that turns every option of the link on or off),
-`debounce` (`0` by default), and the [common options](#common-options)
-`not`, `base` and `nodePriority`. `message`, `severity` and `debounce` do
-not apply to `visible`. A `message` is plain text, or a formula when it
-starts with `=`:
-
-```
-{id: 'tol', type: 'check', io: 'solver/tol', check: {max: 10},
-  when: 'gt(value, 0)', message: '=cat("At most 10, got ", value)'}
-```
-
-The options `validator` and `visible` stay GrokScript, as in annotations,
-and read `vars` by name (`bar > 3`). `when` and `message` are formulas
-over `value` and `$table` only (`gt(value, 3)`).
-
-### Annotation values
-
-A step uses the parameter annotations of its function the way the
-function's form does: [defaults](../../datagrok/concepts/functions/func-params-annotation.md#initial-values-and-optional-parameters),
-[choices](../../datagrok/concepts/functions/func-params-annotation.md#choices)
-and [lookup tables](../../datagrok/concepts/functions/func-params-annotation.md#lookup-tables)
-work without any links in the config, also in runs with no form on screen.
-Validation options are covered by [Checks](#checks). Computed defaults,
-evaluated choices and lookups need platform 1.28.0 or later.
-
-The driver differs from the form in a few cases.
-
-#### Defaults and choices
-
-| Case | Function form | Driver |
-|---|---|---|
-| Empty choice input | The first item | Stays empty, and the required check reports it |
-| Value not in a list the platform evaluates (a function, a query or a file) | Replaced by the first item | Kept, with a warning |
-| Value not in a literal list such as `["slow", "fast"]` | Replaced by the first item | Kept, with an error that blocks the run, see [Checks](#checks) |
-| Clearing an optional choice (`nullable: true` or `optional: true`) | Not possible | The dropdown has an empty option; an `emptyChoice` meta can turn it off |
-
-#### Lookup tables
-
-With `propagateChoice: all`, the value of the key input selects a row of
-the lookup table, and the row fills the step's other number, string,
-boolean and date inputs whose names match its columns. The filled inputs
-are handled differently:
-
-| Case | Function form | Driver |
-|---|---|---|
-| When the inputs are filled | Only when a key is picked in the dropdown | Whenever the key changes, including a change made by a link, and when the step is created or a run is loaded |
-| Editing a filled input by hand | Nothing marks it | Flagged as inconsistent with the lookup, see [Consistency](#consistency) |
-| An input that a data link of the workflow writes, from another step or the same one | Not applicable, a form has no links | Keeps the value the link writes: the lookup skips it, even before the link has a value |
-| A cell that does not fit its input's type | The input is emptied | The input keeps its value, and the key shows a warning |
-| A date input | Not filled | Filled from a date cell, or from text or a timestamp that reads as a date; any other cell is handled as one that does not fit |
-| A second key with `propagateChoice: all` | Each key fills the inputs, the last pick wins | Only the first key fills inputs, the option on later keys is ignored with a warning |
+See [Rules and checks](./rules-and-checks#checks) for every option and
+for how a workflow uses annotation defaults, choices and lookup tables.
 
 ## Actions
 

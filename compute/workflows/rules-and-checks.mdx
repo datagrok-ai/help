@@ -1,0 +1,968 @@
+---
+title: "Rules and checks"
+sidebar_position: 2.5
+sidebar_label: "Rules and checks"
+description: Validate workflow inputs with checks, and show inputs, fill dropdowns, write defaults, and look up presets with rules, explained on a pharmacokinetic model.
+keywords:
+  - workflow rules
+  - check links
+  - input validation
+  - formulas
+  - computed defaults
+  - lookup table
+  - dynamic dropdown
+---
+
+Two [link types](./link-types) cover most of the logic a scientific form
+needs without code:
+
+- A **check** validates one input: a range, a format, a list of allowed
+  values, or a column of the right type.
+- A **rule** reacts to other inputs: it shows or hides inputs, narrows a
+  dropdown, adds messages that compare inputs, and writes values such as
+  defaults and presets.
+
+The workflow engine, called the driver below, applies both in every run,
+with or without a form on screen, so a workflow that runs in batch is
+validated the same way as one filled in by hand. Each example on this page
+runs as an automated test of the driver, so the configurations stay valid.
+
+## Rule or check
+
+| You need | Use |
+|---|---|
+| A bound, a format, or a column type on one input | A check, or the same option as a script annotation |
+| A fixed list of allowed values, or a column that must belong to a table | A check link. The `choices` and `table` annotations check nothing. |
+| A condition on another input or on another step | A rule, or an [expression check](#expression-checks) with `vars` |
+| To show or hide an input | A rule, or a `visible` check for a single input |
+| To change dropdown items, write a value, or fill inputs from a table | A rule |
+
+## The example workflow
+
+Every example uses one workflow. `data` loads a concentration-time
+profile, and `model` fits a one-compartment pharmacokinetic (PK) model to
+it and reports the area under the curve (AUC):
+
+```js
+{
+  id: 'pk',
+  type: 'static',
+  steps: [
+    {id: 'data', nqName: 'Pkg:LoadProfile'},   // out: profile
+    {id: 'model', nqName: 'Pkg:PkModel'},      // inputs below; out: auc
+  ],
+  links: [
+    {id: 'profile', from: 'in:data/profile', to: 'out:model/profile'},
+    // the checks and rules of this page
+  ],
+}
+```
+
+The model declares its inputs with these annotations:
+
+```js
+//name: PkModel
+//language: javascript
+//input: dataframe profile
+//input: column time {type: numerical; table: profile}
+//input: string subject {choices: []; nullable: true}
+//input: string route = "iv" {choices: ["iv", "oral"]}
+//input: double dose {min: 0}
+//input: string doseUnit = "mg" {choices: ["mg", "mg/kg"]}
+//input: double weight {nullable: true}
+//input: double ka {nullable: true}
+//input: string compound {nullable: true}
+//input: double clearance
+//input: double volume
+//input: double duration
+//input: string method = "LSODA" {choices: ["LSODA", "RK45"]}
+//input: double tolerance {nullable: true}
+//output: double auc
+```
+
+The profile has a `subject` column, a `time` column in hours, and one
+concentration column per analyte. `subject` picks one subject to fit, and
+an empty subject fits all of them. `ka` (1/h) is the absorption rate
+constant of an oral dose. `clearance` (L/h) and `volume` (L, the volume of
+distribution) set the elimination rate constant `clearance / volume`.
+`ka`, `clearance`, and `volume` are the starting estimates of the fit.
+`duration` is the time span of the AUC, and `method` and `tolerance`
+configure the ODE solver.
+
+Each example is meant to be added on its own. Some show different ways to
+do the same thing, such as showing `ka` only for an oral dose, and would
+conflict in one workflow.
+
+Queries such as `model/dose` name a step and one of its inputs, see the
+[LQL tutorial](./link-query-language). In TypeScript,
+`PipelineRuleConfiguration`, `PipelineCheckConfiguration`, and
+`RuleEffect` from `@datagrok-libraries/compute-api` type the
+configurations.
+
+## Checks
+
+### Check links
+
+The validation options of the annotations above are already checks. The
+workflow applies `{min: 0}` to `dose` in every run, and a dose of `-1`
+shows *Must be at least 0* and blocks the run. Two annotations are not
+checks: `choices` fills a dropdown, and a column's `table` binds the
+column picker to a table, and neither rejects a value. A `check` link adds
+validation options from the workflow config, for a script you can't
+change or to tighten it for one workflow:
+
+```js
+{id: 'doseMin', type: 'check', io: 'model/dose', check: {min: 0}},
+{id: 'weightRange', type: 'check', io: 'model/weight', check: {min: 1, max: 300}},
+{id: 'compoundId', type: 'check', io: 'model/compound', check: {validator: '/^CMP-[0-9]{4}$/'}},
+{id: 'validatedMethods', type: 'check', io: 'model/method', check: {choices: ['LSODA']}, severity: 'warning'},
+{id: 'timeColumn', type: 'check', io: 'model/time',
+  check: {table: 'model/profile', allowNulls: false}},
+```
+
+| Input | Value | Message |
+|---|---|---|
+| `dose` | `-1` | Must be at least 0 |
+| `weight` | `0.5` | Must be at least 1 |
+| `compound` | `C-1` | Must match /^CMP-[0-9]\{4\}$/ |
+| `method` | `RK45` | Must be one of: LSODA (a warning, the run is allowed) |
+| `time` | a column with an empty cell | Column has missing values |
+| `time` | a column of another table | Column does not belong to the table |
+
+`doseMin` repeats what the annotation does and is shown only to compare
+the two forms. Don't add it to a workflow: the annotation and the link
+would each report the message. `validatedMethods` accepts only the solver
+your lab has validated, out of the two the script offers. It is a
+warning, so the user can still run with `RK45`. Without it, any method
+passes. In the same way,
+`table: profile` on `time` only makes the picker list the profile's
+columns, and `timeColumn` adds the check that the column belongs to it.
+It leaves out `type: numerical`, which the annotation already checks.
+
+An absent value passes every check except the required one, so the
+optional `weight` and `compound` are checked only once they are filled.
+
+### Expression checks
+
+The `validator` and `visible` options also take a
+[GrokScript expression](../../datagrok/concepts/functions/func-params-annotation.md#validation),
+as in annotations. The expression reads the checked input as `value` and
+every input it names in `vars`:
+
+```js
+{
+  id: 'flipFlop',
+  type: 'check',
+  io: 'model/ka',
+  check: {validator: 'value > clearance / volume'},
+  vars: {clearance: 'model/clearance', volume: 'model/volume'},
+  severity: 'warning',
+  message: 'Absorption is slower than elimination (flip-flop kinetics)',
+},
+{
+  id: 'kaOral',
+  type: 'check',
+  io: 'model/ka',
+  check: {visible: 'route == "oral"'},
+  vars: {route: 'model/route'},
+},
+```
+
+- `flipFlop` warns when `ka` is below the elimination rate constant
+  `clearance / volume`. With a clearance of 5 L/h and a volume of 40 L, a
+  `ka` of 0.1 1/h gets the warning and 1 1/h passes.
+- `kaOral` hides `ka` unless the route is oral. A hidden input is not
+  required, and every message on it is suppressed, so the `flipFlop`
+  warning disappears for an intravenous dose.
+
+In a script annotation, an expression reads the step's inputs by
+parameter name without `vars`.
+
+### Messages and conditions
+
+`message` replaces the built-in text. It is plain text, or a
+[formula](#formulas) when it starts with `=`, see
+[Formula or text](#formula-or-text). `severity` is `error` (the
+default), `warning`, or `notification`:
+
+```js
+{
+  id: 'doseCap',
+  type: 'check',
+  io: 'model/dose',
+  check: {max: 2000},
+  severity: 'warning',
+  message: '=cat("Above the usual maximum of 2000 mg, got ", value)',
+}
+```
+
+A dose of 2500 shows *Above the usual maximum of 2000 mg, got 2500*.
+
+`when` is a formula that turns every option of the link on or off. It
+reads only `value`, and `$table` for the `table` option. A condition on
+another input, such as applying the cap only to doses in mg, needs a
+[rule](#rules).
+
+### Check options
+
+| Option | Holds when | Message | Notes |
+|---|---|---|---|
+| `nullable: false` | the value is present | Missing value | The default for every input, and `optional` is a synonym. As an annotation, `nullable: true` or `optional: true` removes it. A `check` cannot relax it. |
+| `min`, `max` | the value is within the bound | Must be at least / at most N | Numeric inputs. |
+| `validator` (regex literal) | the string matches `/pattern/flags` | Must match /pattern/flags | |
+| `validator` (expression) | the GrokScript expression is not `false` and not a string | the expression text, or the string it returned. "Error during validation" when it fails. | Sees `value` and the `vars`. |
+| `visible` | the GrokScript expression is not `false` | none | Hides the input. A hidden input is not required. Sees the same variables as the expression validator. |
+| `enabled` (annotation) | the GrokScript expression is not `false` | none | In a workflow the input is hidden, as with `visible`, where the function form disables it instead. With both annotations the input is hidden when either is `false`. |
+| `choices` | the value is in the list | Must be one of: ... | A literal list, in a `check` link only. A `choices` annotation fills the dropdown and checks nothing. |
+| `type`, `semType` | the column has the kind | Column must be numerical, or Column must have semantic type Molecule | A platform column kind (`numerical`, `numerical_no_datetime`, `categorical`, `datetime`, `categorical_or_datetime`), a column type such as `int`, or a semantic type such as `Molecule`. |
+| `table` | the column's name is among the table's columns | Column does not belong to the table | In a `check` link only, naming the table io with a query. A `table` annotation binds the column picker and checks nothing. |
+| `allowNulls: false` | the column has no missing values | Column has missing values | |
+| `validators` | every named validator function passes | the validators' own messages | Called as a `validators` [source](#source-kinds). |
+
+A `check` link takes these fields:
+
+| Field | Value |
+|---|---|
+| `io` | The checked input, a query without an alias |
+| `check` | The options above |
+| `vars` | Variable name to query, for the expression options |
+| `message`, `severity`, `debounce` | Text or a formula, `error`/`warning`/`notification`, and milliseconds (`0` by default). They don't apply to `visible`. |
+| `when` | A formula over `value`, and `$table` for the `table` option |
+| `not`, `base`, `nodePriority` | The [common options](./link-types#common-options) |
+
+Expression checks (`validator` expressions and `visible`) and the
+`validators` an annotation declares need platform 1.28.0 or later, and are
+skipped on older clients.
+
+## Rules
+
+### Anatomy
+
+A rule reads inputs through the aliases of `from`, writes through the
+aliases of `to`, and applies its `effects` while its `when` holds. This
+rule shows the absorption rate only for an oral dose:
+
+```js
+{
+  id: 'oralOnly',
+  type: 'rule',
+  from: 'route:model/route',
+  to: 'k:model/ka',
+  when: 'eq(route, "oral")',
+  effects: ['show(k)'],
+}
+```
+
+- An alias is the name before the colon of a query. `route` reads the
+  route, and `k` names the `ka` input as a target. A rule that reads and
+  writes the same input gives it different aliases in `from` and `to`, as
+  [Route-dependent inputs](#route-dependent-inputs) does.
+- `when` is a [formula](#formulas). While it holds, the rule is on and
+  `ka` is shown. While it doesn't, the rule is off and `ka` is hidden.
+  Each effect defines what it does in both states, see [Effects](#effects).
+  A rule without `when` is always on.
+- The rule runs whenever an input in `from` changes.
+
+The `kaOral` check above does the same with a GrokScript expression. A
+rule pays off once one condition drives several effects.
+
+### Formulas
+
+`when`, each effect and each source are formulas: strings with values,
+aliases and calls. There are no operators, so `dose > 0` is written
+`gt(dose, 0)`. With `dose` 10, `route` "oral", `ka` 1, `doseUnit` "mg/kg",
+`weight` 70, `compound` "CMP-0001" and the five-sample profile:
+
+| Formula | Value |
+|---|---|
+| `gt(dose, 0)` | `true` |
+| `and(eq(route, "oral"), not(missing(ka)))` | `true` |
+| `if(eq(doseUnit, "mg/kg"), mul(dose, weight), dose)` | `700`, the total dose in mg |
+| `cat("Dose ", dose, " ", doseUnit)` | `"Dose 10 mg/kg"` |
+| `` regex(compound, `^CMP-\d{4}$`) `` | `true` |
+| `in(subject, column(profile, "subject"))` | `true` when the profile has the subject |
+| `map(filter(column(profile, "time"), lt($it, 1)), cat("Early sample at ", $it))` | `["Early sample at 0.5"]` |
+
+- Text goes in double quotes, or in backticks when it holds quotes or
+  backslashes, as regex patterns do.
+- In `map`, `filter`, `all`, `some`, and `none`, `$it` is the current
+  element, and a name in that argument is a field of the element, not a
+  rule alias.
+- In JavaScript, put a formula in single quotes so the double quotes need
+  no escaping. A backslash is still doubled there:
+  `` 'regex(compound, `^CMP-\\d{4}$`)' ``.
+
+[Operations](#operations) lists every call.
+
+### Formula or text
+
+Where a string appears decides whether it is a formula or plain text:
+
+| Where the string is | Read as | `=` prefix |
+|---|---|---|
+| The `when` of a rule, an effect, or a check | A formula | Not needed |
+| Each string in `effects` and `sources`, such as `'error(w, cat("Dose ", dose))'` | A formula, with every argument inside it | Not needed |
+| A field of an effect written as an object: `items`, `message`, `value`, `values`, and each `meta` key | Plain text | Makes it a formula |
+| An `args` value of a `func` or `query` source written as an object | Plain text | Makes it a formula |
+| The `message` of a check link | Plain text | Makes it a formula |
+
+These fields usually hold text, such as a message, which should show as
+written. So they are text by default, and `=` asks for a formula:
+
+```js
+{effect: 'error', targets: 'w', message: 'Body weight is required'},                 // the text
+{effect: 'error', targets: 'w', message: '=cat("Weight ", weight, " kg is too low")'}, // a formula
+{effect: 'error', targets: 'w', message: 'cat("Weight ", weight)'},                  // the text cat("Weight ", weight)
+```
+
+Inside a formula string `=` is never needed: in
+`'error(w, cat("Dose ", dose))'` the message is already a formula, and
+text goes in double quotes. A field value that isn't a string is an
+[object-form](#object-form) expression: a number or a list is that
+constant, and `{var: 'weight'}` reads an alias.
+
+### Messages
+
+`error`, `warning` and `notification` add a message to their targets
+while the rule is on. An error blocks the run, the other two don't:
+
+```js
+{
+  id: 'weightNeeded',
+  type: 'rule',
+  from: ['unit:model/doseUnit', 'weight:model/weight'],
+  to: 'w:model/weight',
+  when: 'and(eq(unit, "mg/kg"), missing(weight))',
+  effects: ['error(w, "Body weight is required for a dose in mg/kg")'],
+}
+```
+
+`missing(weight)` lists the aliases that are absent, and an empty list is
+false, so the rule is on only for a weighted dose without a weight.
+
+A message that evaluates to a list adds one message per element, and an
+empty list adds none. This rule lists every negative sampling time:
+
+```js
+{
+  id: 'sampleTimes',
+  type: 'rule',
+  from: 'profile:model/profile',
+  to: 'p:model/profile',
+  effects: ['error(p, map(filter(column(profile, "time"), lt($it, 0)), cat("Negative sampling time ", $it)))'],
+}
+```
+
+Rule messages appear 250 ms after the last change. Set `debounce` on the
+rule to change the delay.
+
+### Dropdown items
+
+`items` replaces the items of a dropdown. An input is a dropdown when its
+annotation declares `choices`, and `subject` declares an empty list, so a
+rule fills it. This rule offers the subjects of the loaded profile and
+reports a pick that isn't one of them:
+
+```js
+{
+  id: 'subjects',
+  type: 'rule',
+  from: ['profile:model/profile', 'subject:model/subject'],
+  to: 's:model/subject',
+  sources: {ids: {js: {args: ['profile'], fn: (df) => df?.col('subject')?.categories ?? []}}},
+  when: 'not(missing(profile))',
+  effects: [
+    'items(s, ids)',
+    'error(s, "Not a subject of the profile", when: and(not(missing(subject)), not(in(subject, ids))))',
+  ],
+}
+```
+
+- The `js` source lists the distinct values of the `subject` column. A
+  profile of subjects S1 and S2 offers both, and a subject `S3`, loaded
+  from a saved run or written by a link, shows *Not a subject of the
+  profile* and blocks the run.
+- The `error` is the rule's own validation. It also covers runs without a
+  form, where items have no effect. Its `when:` is a condition of the
+  effect alone, see [Effect conditions](#effect-conditions).
+- Before a profile is loaded, the rule is off, its items are removed, and
+  the dropdown shows the annotation's list, here an empty one.
+
+To drop a stale pick instead of reporting it, replace the `error` with
+`clear(s, when: and(not(missing(subject)), not(in(subject, ids))))`. After
+a new profile without S2 loads, a picked S2 is cleared. The `clear`
+changes `subject`, which the rule reads, so the rule runs again. The
+subject is now absent, the effect's condition is off, and the loop ends.
+
+### Display metadata
+
+`meta` sets metadata keys of the input, such as the
+[UI metadata](./link-types#ui-metadata) keys or the
+[feature integration](./link-types#feature-integrations-sensitivity-analysis-optimization)
+keys. This rule sets `rangeSA`, the dose range that
+[sensitivity analysis](../compute.md#sensitivity-analysis) scans, which
+depends on the dose unit:
+
+```js
+{
+  id: 'doseRange',
+  type: 'rule',
+  from: 'unit:model/doseUnit',
+  to: 'd:model/dose',
+  effects: ['meta(d, rangeSA: if(eq(unit, "mg/kg"), obj(min: 1, max: 20), obj(min: 50, max: 2000)))'],
+}
+```
+
+`obj(min: 1, max: 20)` builds an object from constant values. The
+function needs the `//meta.features: {"sens-analysis": true}` annotation
+for the range to apply.
+
+### Writing values
+
+`set` writes a value, and `clear` writes an empty one. This rule picks a
+solver tolerance for the method:
+
+```js
+{
+  id: 'methodTolerance',
+  type: 'rule',
+  from: 'method:model/method',
+  to: 't:model/tolerance',
+  effects: ['set(t, if(eq(method, "LSODA"), 0.000001, 0.0001))'],
+}
+```
+
+The written value is an untracked default: the driver doesn't remember
+it. The user can change it, and the next change of the method overwrites
+the edit. The `restriction` option sets how the driver tracks a written
+value. With `restriction: "restricted"`, it records the value it wrote:
+
+```js
+effects: ['set(t, if(eq(method, "LSODA"), 0.000001, 0.0001), restriction: "restricted")'],
+```
+
+Now a tolerance edited by hand is marked inconsistent, and the user can
+reset it to the rule's value. See [Consistency](./link-types#consistency).
+
+While the model's results are current, a rule doesn't change its inputs,
+the same as any data link. A `"restricted"` value is recorded instead,
+and the difference shows as an inconsistency to review before the next
+run. A `"none"` value is dropped. Editing any input of the model makes
+its results outdated, and from then on rules write directly again.
+
+`assign` writes several inputs at once from an object, such as a table
+row that `row` returns, see [Compound presets](#compound-presets).
+
+### Effect conditions
+
+Every effect takes its own `when:`, and is on only while both its own
+condition and the rule's hold. One rule then covers a weighted dose:
+
+```js
+{
+  id: 'doseChecks',
+  type: 'rule',
+  from: ['dose:model/dose', 'unit:model/doseUnit', 'weight:model/weight'],
+  to: ['d:model/dose', 'w:model/weight'],
+  when: 'eq(unit, "mg/kg")',
+  effects: [
+    'show(w)',
+    'error(w, "Body weight is required for a dose in mg/kg", when: missing(weight))',
+    'warning(d, cat("Total dose ", mul(dose, weight), " mg is above the usual maximum of 2000 mg"), when: gt(mul(dose, weight), 2000))',
+  ],
+}
+```
+
+- A dose in mg hides `weight`, which then needs no value and shows no
+  message.
+- A dose in mg/kg shows `weight`, requires it, and warns when the total
+  dose exceeds 2000 mg: 30 mg/kg for 80 kg shows *Total dose 2400 mg is
+  above the usual maximum of 2000 mg*.
+
+### Defaults at init
+
+A rule runs when an input it reads changes. `runOnInit: true` also runs
+its value effects once when the workflow is created or loaded:
+
+```js
+{
+  id: 'methodTolerance',
+  type: 'rule',
+  runOnInit: true,
+  from: 'method:model/method',
+  to: 't:model/tolerance',
+  effects: ['set(t, if(eq(method, "LSODA"), 0.000001, 0.0001))'],
+}
+```
+
+A new model starts with the annotation's default method, `LSODA`, so the
+tolerance starts at 0.000001. On a load from history, the rule refreshes
+the inputs of steps that have not run yet. See
+[Init hook](./link-types#init-hook) for the order of init.
+
+### Sources
+
+`sources` adds aliases whose values come from a function, a query, a
+file, a table, or code. Formulas read them next to the `from` aliases. A
+function annotated with
+[`meta.cache`](../../develop/how-to/functions/cache-function-results.md) avoids repeated calls.
+
+A `func` source calls a platform function. This rule scales clearance to
+body weight with an allometric exponent of 0.75:
+
+```js
+{
+  id: 'allometric',
+  type: 'rule',
+  from: 'weight:model/weight',
+  to: 'cl:model/clearance',
+  sources: {scaled: 'func("Pkg:AllometricClearance", weight: weight)'},
+  when: 'not(missing(weight))',
+  effects: ['set(cl, scaled, restriction: "restricted")'],
+}
+```
+
+```js
+//input: double weight {nullable: true}
+//output: double clearance
+export function AllometricClearance(weight: number | null): number | null {
+  return weight == null ? null : 5 * (weight / 70) ** 0.75;
+}
+```
+
+A source runs whenever an input in `from` changes, even while the rule is
+off, so `AllometricClearance` also runs without a weight. Keep `from` to
+what the sources need, and make the function accept an absent value, as
+the `nullable` annotation and the `null` check do here.
+
+A `validators` source runs
+[validator functions](../../datagrok/concepts/functions/func-params-annotation.md#validation)
+on an input, and `verdicts` turns their results into messages. Unlike a
+check with `validators`, the rule can add a condition:
+
+```js
+{
+  id: 'toleranceAdvice',
+  type: 'rule',
+  from: ['tol:model/tolerance', 'method:model/method'],
+  to: 't:model/tolerance',
+  sources: {advice: 'validators(tol, names: ["Pkg:CheckTolerance"])'},
+  when: 'eq(method, "LSODA")',
+  effects: ['verdicts(t, advice)'],
+}
+```
+
+```js
+//input: double tolerance
+//output: string res
+export function CheckTolerance(tolerance: number): string | null {
+  return tolerance > 0.001 ? 'A tolerance above 0.001 can miss the absorption peak' : null;
+}
+```
+
+The other kinds appear elsewhere on this page: `js` in
+[Dropdown items](#dropdown-items) and [Upstream defaults](#upstream-defaults),
+and `file`, `table`, and `query` in [Compound presets](#compound-presets). [Source kinds](#source-kinds)
+lists them all.
+
+### Object form
+
+The driver translates every formula into an object and runs the object.
+Configurations built in code can use the objects directly, and one rule
+can mix both forms. The first rule of this section, in object form:
+
+```js
+{
+  id: 'oralOnly',
+  type: 'rule',
+  from: 'route:model/route',
+  to: 'k:model/ka',
+  when: {'==': [{var: 'route'}, 'oral']},
+  effects: [{effect: 'show', targets: 'k'}],
+}
+```
+
+- An expression is [JSON Logic](https://jsonlogic.com/). Operations keep
+  their names except the symbolic ones: `not` is `!`, `bool` `!!`, `eq`
+  `==`, `ne` `!=`, `same` `===`, `notSame` `!==`, `gt` `>`, `gte` `>=`,
+  `lt` `<`, `lte` `<=`, `add` `+`, `sub` `-`, `mul` `*`, `div` `/`, and
+  `mod` `%`. An alias is `{var: 'path'}` and `$it` is `{var: ''}`. The
+  aliases in `missing`, `missing_some`, and `var` are strings, so
+  `missing(weight)` is `{missing: ['weight']}`. `obj(a: 1)` is
+  `{literal: {a: 1}}`: `literal` keeps an object from being read as an
+  operation.
+- An effect is `{effect, targets, ...}` with the call's arguments as the
+  fields `items`, `meta`, `message`, `source`, `value`, or `values`, and
+  its options as fields of the same names.
+- A source is `{validators: {input, names}}`, `{choices: {input}}`,
+  `{func: {name, args}}`, `{query: {connection, sql, args}}`,
+  `{file: path}`, `{table: csv}`, or `{table: {csv, options}}`, with
+  `args` mapping each parameter to an expression.
+
+## Annotation values
+
+A step uses the parameter annotations of its function the way the
+function's form does: [defaults](../../datagrok/concepts/functions/func-params-annotation.md#initial-values-and-optional-parameters),
+[choices](../../datagrok/concepts/functions/func-params-annotation.md#choices)
+and [lookup tables](../../datagrok/concepts/functions/func-params-annotation.md#lookup-tables)
+work without any links in the config, also in runs with no form on screen.
+Validation options are covered by [Checks](#checks). Computed defaults,
+evaluated choices and lookups need platform 1.28.0 or later.
+
+A `choices` annotation, a literal list or one the platform evaluates from
+a function, a query or a file, makes the input a dropdown and gives its
+items. It doesn't validate the value: a workflow may replace the items,
+see [Dropdown items](#dropdown-items). To report a value outside a list,
+add a `check` with `choices` or a rule.
+
+The driver differs from the form in a few cases.
+
+### Defaults and choices
+
+| Case | Function form | Driver |
+|---|---|---|
+| Empty choice input | The first item | Stays empty, and the required check reports it |
+| Value not in the list | Replaced by the first item | Kept, with no message. A [check](#check-links) or a rule reports it. |
+| Clearing an optional choice (`nullable: true` or `optional: true`) | Not possible | The dropdown has an empty option. An `emptyChoice` meta can turn it off. |
+
+### Lookup tables
+
+With `propagateChoice: all`, the value of the key input selects a row of
+the lookup table, and the row fills the step's other number, string,
+boolean, and date inputs whose names match its columns. The filled inputs
+are handled differently:
+
+| Case | Function form | Driver |
+|---|---|---|
+| When the inputs are filled | Only when a key is picked in the dropdown | Whenever the key changes, including a change made by a link, and when the step is created or a run is loaded |
+| Editing a filled input by hand | Nothing marks it | Flagged as inconsistent with the lookup, see [Consistency](./link-types#consistency) |
+| An input that a data link of the workflow writes, from another step or the same one | Not applicable, a form has no links | Keeps the value the link writes: the lookup skips it, even before the link has a value |
+| A cell that does not fit its input's type | The input is emptied | The input keeps its value, and the key shows a warning |
+| A date input | Not filled | Filled from a date cell, or from text or a timestamp that reads as a date. Any other cell is handled as one that does not fit. |
+| A second key with `propagateChoice: all` | Each key fills the inputs, the last pick wins | Only the first key fills inputs, the option on later keys is ignored with a warning |
+
+## Worked cases
+
+### Profile validation
+
+A rule can check the schema and the content of an uploaded table before
+anything runs:
+
+```js
+{
+  id: 'profileQuality',
+  type: 'rule',
+  from: 'profile:model/profile',
+  to: 'p:model/profile',
+  when: 'not(missing(profile))',
+  effects: [
+    'error(p, map(columnsMissing(profile, [["subject", "string"], ["time", "numerical"]]), cat("Missing column ", $it)))',
+    'warning(p, map(filter(column(profile, "time"), lt($it, 0)), cat("Negative sampling time ", $it)))',
+    'warning(p, "At least three samples are needed for a fit", when: lt(len(profile), 3))',
+  ],
+}
+```
+
+- `columnsMissing` describes every expected column that is absent or of
+  the wrong kind, so a table with `id` and `t` columns shows *Missing
+  column subject (string)* and *Missing column time (numerical)*. Names
+  match ignoring case.
+- The second effect lists negative sampling times, one message each.
+- `len` of a table is its row count, across all subjects.
+- Combine the rule with the `timeColumn` [check](#check-links), which
+  covers empty cells in the column the user picks.
+
+### Compound presets
+
+A compound ID fills `clearance` and `volume` from a table of known
+compounds, kept as a CSV file on a file share:
+
+```
+compound,clearance,volume
+CMP-0001,5.2,40
+CMP-0002,1.3,12
+```
+
+```js
+{
+  id: 'compoundPresets',
+  type: 'rule',
+  runOnInit: true,
+  from: 'key:model/compound',
+  to: ['k:model/compound', '_(template):model/inputs(Pkg:PkModel, compound|$nonscalar|$linked)'],
+  sources: {presets: 'file("System:AppData/Pkg/compounds.csv")'},
+  effects: [
+    'warning(k, "Not in the compound table", when: and(not(missing(key)), not(in(key, column(presets, "compound")))))',
+    'assign(row(presets, "compound", key), restriction: "restricted", when: in(key, column(presets, "compound")))',
+  ],
+}
+```
+
+- The [`(template)` query](./link-query-language-advanced#wildcard-selectors)
+  lists every input of the model except the key, and the `_` prefix makes
+  the aliases the input names.
+  [`$nonscalar`](./link-query-language-reference#wildcard-exclusions) leaves out inputs that
+  are not numbers, strings, booleans, or dates, such as the profile, and
+  `$linked` leaves out inputs that another data link writes. The value
+  effects of other rules count as data links, so with the `allometric`
+  rule in the same workflow, the presets no longer fill `clearance`.
+- `row` returns the compound's row as an object keyed by column name.
+  `assign` writes each field to the input of the same name: `CMP-0002`
+  sets a clearance of 1.3 and a volume of 12. Inputs with no column, such
+  as `dose`, keep their values. A column added to the script and the
+  file needs no rule change.
+- `"restricted"` marks the filled values, so a clearance edited by hand is
+  flagged inconsistent with the preset.
+- An unknown ID turns the `assign` off. An `assign` that is off keeps the
+  values and drops their marks, so the inputs become free to edit, and
+  the warning names the problem.
+- The `file` source reads no input, so the table is loaded once for each
+  link the rule expands to, see [Rule fields](#rule-fields), and reused. For a small table, write it inline. In JavaScript the `\n`
+  line breaks of the CSV text are doubled like any backslash:
+  `sources: {presets: 'table("compound,clearance,volume\\nCMP-0001,5.2,40\\nCMP-0002,1.3,12")'}`.
+- To read the presets from a database, replace the source with a query.
+  `@key` binds the argument, so the value never enters the SQL text:
+
+  ```js
+  sources: {presets: 'query("Pkg:Compounds", `select compound, clearance, volume from compounds where compound = @key`, key: key)'},
+  ```
+
+A form can also show the compounds as a dropdown. That needs no rule: an
+annotation with a [lookup table](#lookup-tables) does the same fill.
+
+```js
+//input: string compound {choices: OpenFile("System:AppData/Pkg/compounds.csv"); propagateChoice: all}
+```
+
+### Upstream defaults
+
+A function annotation can compute a default, but that function runs once
+and sees no other step. A rule computes the simulation duration from the
+last sampling time of the `data` step, and updates it when the profile
+changes:
+
+```js
+{
+  id: 'durationDefault',
+  type: 'rule',
+  runOnInit: true,
+  from: 'profile:data/profile',
+  to: 'd:model/duration',
+  sources: {last: {js: {args: ['profile'], fn: (df) => df?.col('time')?.stats.max}}},
+  when: 'not(missing(last))',
+  effects: ['set(d, last, restriction: "restricted")'],
+}
+```
+
+- A `js` source calls `fn` with the values of its `args`. It runs even
+  while the profile is absent, so the `?.` guard returns `undefined` and
+  the `when` keeps the write off.
+- A default that needs a platform function returns its promise, and the
+  rule waits for it:
+  `fn: (df) => df ? grok.functions.call('Pkg:DefaultDuration', {profile: df}) : undefined`.
+- The same default without code:
+  `set(d, reduce(column(profile, "time"), max(current, accumulator), 0), restriction: "restricted")`
+  with `when: 'not(missing(profile))'`.
+
+### Route-dependent inputs
+
+The absorption rate exists only for an oral dose. This rule shows it,
+requires it, and clears it when the route switches to intravenous:
+
+```js
+{
+  id: 'absorption',
+  type: 'rule',
+  from: ['route:model/route', 'ka:model/ka'],
+  to: 'k:model/ka',
+  effects: [
+    'show(k, when: eq(route, "oral"))',
+    'error(k, "Absorption rate is required for oral dosing", when: and(eq(route, "oral"), missing(ka)))',
+    'clear(k, when: and(eq(route, "iv"), not(missing(ka))))',
+  ],
+}
+```
+
+- The rule reads `ka` through `ka` and writes it through `k`. Distinct
+  aliases keep reading and writing apart.
+- `clear` has no off state: it writes only while its condition holds. So
+  it needs its own condition rather than the rule's `when`, which is why
+  every effect here has one.
+- Clearing is a choice. Without the `clear`, a hidden `ka` keeps its
+  value, needs no validation, and comes back when the user switches to an
+  oral dose again.
+
+### Dynamic workflows
+
+A [dynamic workflow](./configuration#dynamic-workflows) can hold several
+model steps, for example one per dosing scenario, each after the `data`
+step it simulates. `expand` creates one rule per model step, present and
+future:
+
+```js
+{
+  id: 'durationDefault',
+  type: 'rule',
+  runOnInit: true,
+  base: 'base:expand(model)',
+  from: 'profile:before(@base, data)/profile',
+  to: 'd:same(@base)/duration',
+  sources: {last: {js: {args: ['profile'], fn: (df) => df?.col('time')?.stats.max}}},
+  when: 'not(missing(last))',
+  effects: ['set(d, last, restriction: "restricted")'],
+}
+```
+
+In the sequence `data, model, model, data, model`, the first two models
+read the first profile and the third model reads the second.
+`before(@base, data)` finds the nearest `data` step before each model, and
+`same(@base)` is the model itself. See
+[LQL advanced](./link-query-language-advanced) for these selectors.
+
+### Pitfalls
+
+- **Two rules writing the same input.** For `set`, `clear`, and `assign`
+  the driver logs a duplicate target warning when the workflow is built.
+  Other conflicts are not detected, and which value wins is unspecified.
+  Give each input one writer.
+- **Two lists for one dropdown.** An input whose `choices` annotation names
+  a function gets its items from the platform. A rule that also sets
+  `items` on it competes with that list, and which one shows is
+  unspecified. Give a rule-filled input a literal list, such as
+  `choices: []`.
+- **A rule that writes what it reads.** The write reruns the rule, so the
+  effect needs a condition that turns off after the write, as in the
+  `clear` of [Dropdown items](#dropdown-items).
+- **Sources run while the rule is off.** Guard code against absent
+  inputs, and keep `from` small.
+- **Items don't constrain a run.** Neither `items` nor a `choices`
+  annotation rejects a value. Add a rule message, a `clear` or a check.
+- **Messages on hidden inputs don't show.** A hidden input is not
+  required, and its messages are suppressed.
+
+## Reference
+
+### Operations
+
+| Operation | Result |
+|---|---|
+| `eq(a, b)`, `ne(a, b)` | Loose equality and inequality, as JavaScript `==` and `!=`. |
+| `same(a, b)`, `notSame(a, b)` | Strict equality and inequality, `===` and `!==`. |
+| `gt`, `gte`, `lt`, `lte` | Comparisons. `lt(a, b, c)` and `lte(a, b, c)` are `true` when `b` lies between `a` and `c`. |
+| `add`, `sub`, `mul`, `div`, `mod` | Arithmetic. `sub(a)` negates. |
+| `not(x)`, `bool(x)` | Negation and truthiness. |
+| `and(...)`, `or(...)` | The first falsy, or the first truthy, argument, else the last one. |
+| `if(c1, v1, c2, v2, ..., otherwise)` | The value after the first condition that holds. |
+| `in(x, list)` | `true` when the list, or the string, contains `x`. |
+| `cat(...)`, `substr(s, start, length)` | Joined text, and part of a text. |
+| `min(...)`, `max(...)`, `merge(...)` | The smallest and the largest number, and the lists joined into one. |
+| `map(list, f)`, `filter(list, f)`, `all(list, f)`, `some(list, f)`, `none(list, f)` | List operations, with `f` evaluated for each element. |
+| `reduce(list, f, initial)` | `f` folded over the list, reading `current` and `accumulator`. |
+| `missing(a, ...)`, `missing_some(n, [a, ...])` | The aliases that are absent, `null` or `""`, so `not(missing(table))` holds once `table` is there. |
+| `var(a, default)` | The alias, or the default while it is absent. |
+| `columns(df, kind)` | Names of the columns, or of the columns of that kind. |
+| `columnsMissing(df, [[name, kind], name, ...])` | A description of every entry with no matching column, such as `smiles (Molecule)`. Names match ignoring case. Empty when the table fits. |
+| `columnIs(column, kind)` | `true` when the column has the kind. |
+| `nulls(column)` | Its number of missing values, `0` for anything else. |
+| `column(df, name)` | The column's values as a list, empty when either is absent. |
+| `row(df, keyColumn, key)` | The first row whose key cell equals the key, as an object keyed by column name, or `null`. A number column matches a text key. |
+| `len(x)` | The length of a string or list, or the row count of a dataframe. |
+| `regex(text, pattern, flags)` | `true` when the text matches. `flags` is optional. Write the pattern in backticks. |
+| `script(expression)` | The value of a GrokScript expression, with every alias as a variable. `undefined` when it fails. |
+| `scriptVerdict(expression)` | The message when the expression fails the way a `validator:` annotation does, else `null`. |
+| `obj(name: value, ...)` | An object with constant values. |
+| `log(x)` | `x`, also printed to the browser console. |
+
+Values are numbers, `true`, `false`, `null`, text in double quotes (with
+the escapes `\"`, `\\`, `\n` and `\t`) or backticks (taken as written),
+and lists in square brackets. An alias reads the first matched value of a
+`from` query or the value of a source, and `$all.<alias>` reads all
+matched values of a `from` query. Paths walk into platform objects, so
+`col.name`, `col.type` and `col.semType` are valid. An alias named `true`,
+`false` or `null` is read as `var("null")`. A kind is a platform column
+kind, a column type or a semantic type, as in the `type` check option.
+`script` and `scriptVerdict` need platform 1.28.0 or later.
+
+`when` follows JSON Logic truthiness, where an empty list is false, and a
+`when` that is omitted or `null` is always on.
+
+### Effects
+
+Each effect writes to its targets, `t` below: a `to` alias or a list
+`[a, b]` of them. Every effect takes `when:`, its own condition.
+
+| Effect | On | Off |
+|---|---|---|
+| `hide(t)`, `show(t)` | Hides or shows the targets. | The opposite. |
+| `items(t, list)` | Replaces the dropdown items. | Items removed. |
+| `meta(t, key: value, ...)` | Sets each key, as in [UI metadata](./link-types#ui-metadata). | Keys removed. |
+| `error(t, message)`, `warning(t, message)`, `notification(t, message)` | Adds the message with that severity. | No message. |
+| `verdicts(t, source)` | Adds each verdict of a `validators` source, failures as errors, the rest as warnings. | No message. |
+| `set(t, value, restriction:)` | Writes the value. | Keeps the value, no longer marked. |
+| `clear(t, restriction:)` | Writes `null`. | Nothing. |
+| `assign(values, targets:, restriction:, ignoreCase:)` | Writes each field of an object to the input of the same name. | Keeps the values, no longer marked. |
+
+`restriction` is `"none"` (the default), `"restricted"`, `"info"`, or
+`"disabled"`, see [Writing values](#writing-values) and
+[Consistency](./link-types#consistency). `assign` matches field names ignoring
+case with `ignoreCase: true`, skips fields that name no input, and keeps
+the value of an input with no field, no longer marked. Without
+`targets:`, every `to` alias is a target.
+
+### Source kinds
+
+| Source | Value |
+|---|---|
+| `validators(input, names: [...])` | The verdicts of the validator functions, each called with the value of `input` as its single argument, following the [validator contract](../../datagrok/concepts/functions/func-params-annotation.md#validation): `null` or `true` pass, a string is the message, `false` fails with a message naming the function, and a thrown error becomes a warning. Without `names`, the validators the input's annotation declares run (platform 1.28.0 or later). |
+| `choices(input)` | `{items, values, inList, row, rowErrors}`: the list the input's `choices` annotation evaluates to, the value of each item, whether the current value is in the list, the lookup row of the current value converted to the input types, and the cells that don't fit (platform 1.28.0 or later). |
+| `func("Pkg:Function", param: <formula>, ...)` | The result of a platform function or package query, with each parameter set to its formula. The core `OpenFile` function with a literal `fullPath` loads a file-share table: `func("OpenFile", fullPath: "System:AppData/Pkg/presets.csv")`. |
+| ``query("Pkg:Conn", `select ...`, name: <formula>, ...)`` | The dataframe the SQL returns on the connection. `@name` binds the argument of that name. An argument the SQL does not declare with `--input:` gets its type from the value (`int`, `double`, `bool`, `dataframe`, `datetime`, otherwise `string`). Declare the ones that need another type. |
+| `file("System:AppData/Pkg/presets.csv")` | The table at a file-share path or a URL. |
+| `table("name;value\n...", delimiter: ";")` | The table from CSV text, with optional `DG.CsvImportOptions` such as `delimiter` or `decimalSeparator`. |
+| `{js: {args: [...], fn: (...values) => any}}` | The result of `fn`, or the value of the promise it returns. `fn` is called with the values of the `args` input aliases, even absent ones. It has no formula, since it holds code. |
+| `{table: df}` | A `DG.DataFrame`, used as it is, not copied, so every rule that reads it shares the object. It has no formula either. |
+
+A `file` and a `table` are loaded once, and so is a `func` or `query`
+whose arguments read no alias or that has none. Once means once for each
+link the rule expands to, see [Rule fields](#rule-fields). A source whose
+arguments read an alias runs on every change, also once for each link. A
+source that fails is reported, no effect is applied, and the next change
+tries again.
+
+### Rule fields
+
+A `rule` takes `id`, `from`, `to`, `effects`, and optionally `when`,
+`sources`, `debounce` (delays its messages), `runOnInit` (applies its value
+effects at init), and the [common options](./link-types#common-options)
+`not`, `base`, `nodePriority`, and `dataFrameMutations`. Rule queries take
+no flag but `optional` and `template`.
+
+The driver splits a rule into up to three links, one per kind of effect.
+In the driver's log messages and config errors, a rule `r` shows as
+`r::meta`, `r::validator`, and `r::data`, and a check `c` as `c::min`,
+`c::max`, and so on.
+
+### Rule errors
+
+Config processing rejects a rule when, for example:
+
+- the rule has a `handler`: rules always use their built-in behavior
+- a query uses a flag other than `optional` and `template`
+- a formula does not parse (the message gives the column), calls an
+  unknown operation, has an effect where a source is expected or the
+  other way round, or misses an argument or has an unknown option
+- `effects` is empty, or an effect is unknown, targets an unknown `to`
+  alias, or has no targets and is not `assign`
+- a `to` alias is targeted by no effect, or by `hide`/`show` twice
+- a formula reads an unknown alias, at any nesting depth, or reads an
+  alias inside `map`, `filter`, `all`, `some`, `none`, or `reduce`, where
+  names are fields of the element. `var("name")` reads an element field
+  that shares an alias's name.
+- a source alias repeats a `from` alias, a `js` source reads an alias
+  that is not in `from`, or `verdicts` names a source that is not
+  `validators`
+- a source is of an unknown kind, misses what its kind needs (`fn`,
+  `name`, a path, a table, or `connection` and `sql`), or names an
+  unknown input
+- an alias or a source name starts with `$`, which is reserved for the
+  names the driver adds
