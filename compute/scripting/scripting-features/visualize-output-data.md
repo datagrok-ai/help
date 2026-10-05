@@ -77,9 +77,9 @@ The viewers appear wherever the result opens:
 * In the table view that opens for the result, for example when you run a script from the
   **Scripts** browser.
 * In the workspace, when you add a result table with **Add to workspace** (**+**) in the function
-  view. **Save** there offers the result tables, with the viewers as you arranged them, and the
-  input tables as a new project; the saved project reruns the function with the same inputs when
-  you open it.
+  view: the copy shows the viewers as you arranged them in the view. **Save** there offers the
+  result tables, arranged the same way, and the input tables as a new project; the saved project
+  reruns the function with the same inputs when you open it.
 
 Input dataframes can have viewers too. In the function view, they appear above the results, so the
 page reads as the form, the table it received, and what came out of it:
