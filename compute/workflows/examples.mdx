@@ -24,7 +24,7 @@ Our workflow will perform the following tasks:
 3. Combine: Highlight which clusters have best average quality.
 
 You can find the complete code for this package in the
-[GitHub repository](https://github.com/GennadiyZakharov/winequalitywf).
+[GitHub repository](https://github.com/GennadiyZakharov/datagrok-plugins/tree/main/packages/winequalitywf).
 
 ## Development setup and minimal workflow
 
@@ -561,19 +561,13 @@ Its advanced tools help maintain data consistency throughout the analysis proces
 
 ## More worked examples
 
-The walkthrough above covers a static workflow with plain data links. The
+The walkthrough above covers a static workflow with plain data links.
+[Configuration and links](./configuration-and-links) continues on the
+complete
 [`Bioreactorworkflowdemo`](https://github.com/datagrok-ai/public/tree/master/packages/Bioreactorworkflowdemo)
-package in the Datagrok repository is a complete workflow that simulates
-daily bacterial growth in a bioreactor. It shows:
-
-- a configuration step, a nested [dynamic workflow](./configuration-and-links#the-configuration-tree)
-  of cultivation days, and a summary step
-- one link per day, made with `expand`, that passes each day's final state to
-  the next day as `disabled` inputs, see [LQL advanced](./link-query-language-advanced)
-- links that write the configuration values to every day with `all()`, see the
-  [LQL tutorial](./link-query-language)
-- a summary link that collects the outputs of every day with a `(template)` query
-  and a handler
+package, which simulates daily bacterial growth in a bioreactor: a
+dynamic workflow of cultivation days, handlers, restrictions, validators
+and step titles.
 
 For form logic built from [rules](./rules-and-checks#rules), such as a
 computed default and a lookup table, see

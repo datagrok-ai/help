@@ -2,7 +2,7 @@
 title: "Configuration and links"
 sidebar_position: 2
 sidebar_label: "Configuration and links"
-description: Tutorial-style introduction to the workflow configuration tree, link types, link handlers, consistency and validators, built on the wine quality workflow.
+description: Tutorial-style introduction to the workflow configuration tree, link types, link handlers, consistency, validators and node meta links, built on the bioreactor demo package.
 keywords:
   - workflow configuration
   - dynamic workflow
@@ -10,13 +10,21 @@ keywords:
   - link controller
   - consistency restrictions
   - validator link
+  - pipeline validator
+  - node meta link
 ---
 
 The [tutorial](./examples) builds a static workflow whose steps pass
-data with plain data links. This page extends the same wine quality
-workflow and introduces the parts of the configuration and the kinds of
-links that the rest of these docs build on. Each section ends with a
-pointer to the reference that covers the topic in full.
+data with plain data links. This page introduces the rest of the
+configuration and the other kinds of links on a complete workflow: the
+[`Bioreactorworkflowdemo`](https://github.com/datagrok-ai/public/tree/master/packages/Bioreactorworkflowdemo)
+package simulates daily bacterial growth in a fed-batch bioreactor. Every
+snippet below is an excerpt of its
+[`src/package.ts`](https://github.com/datagrok-ai/public/tree/master/packages/Bioreactorworkflowdemo/src/package.ts).
+
+To try it, run the `BioreactorWorkflow` model from **ModelHub** in
+**Apps > Compute**. Each section ends with a pointer to the reference that
+covers the topic in full.
 
 ## The configuration tree
 
@@ -33,36 +41,35 @@ A workflow has one of two types:
   `stepTypes`, and the steps it starts with in `initialSteps`. The user
   adds, removes and reorders steps while working.
 
-To compare clusterings with different settings, nest a dynamic workflow
-that holds clustering runs:
+The bioreactor workflow is static, and nests a dynamic workflow of
+cultivation days between the configuration and the summary:
 
 ```js
 {
-  id: 'winequalitywf',
-  nqName: 'winequalitywf:WineQualityWf',
+  id: 'bioreactorWorkflow',
+  nqName: 'BioreactorWorkflowDemo:BioreactorWorkflow',
   version: '1.0',
   type: 'static',
   steps: [
-    {id: 'fetchdata', friendlyName: 'Fetch data', nqName: 'winequalitywf:fetchwinedata'},
+    {id: 'bioreactorConfiguration', nqName: 'BioreactorWorkflowDemo:BioreactorConfiguration'},
     {
-      id: 'clusterings',
-      friendlyName: 'Clustering runs',
+      id: 'dailyCultivation',
       type: 'dynamic',
-      stepTypes: [{id: 'clusterwinedata', friendlyName: 'Clustering', nqName: 'winequalitywf:clusterwinedata'}],
-      initialSteps: ['clusterwinedata'],
+      stepTypes: [{id: 'dayCalculation', nqName: 'BioreactorWorkflowDemo:DayCalculation'}],
+      initialSteps: [{id: 'dayCalculation'}],
     },
+    {id: 'summary', nqName: 'BioreactorWorkflowDemo:Summary'},
   ],
 }
 ```
 
-The workflow starts with one clustering run, and the user can add more
-from the step tree. All runs share the id `clusterwinedata`, so a link
-that feeds them needs a way to say "every run" or "the run after this
-one". The [LQL tutorial](./link-query-language) covers every run, and
-[LQL advanced](./link-query-language-advanced) covers one link per run.
+The workflow starts with one day. Add days from the step tree, reorder
+them, or remove one. All days share the id `dayCalculation`, so a link
+that feeds them needs a way to say "the first day", "every day" or "the
+day after this one". The sections below use the first two, and
+[Node meta links](#node-meta-links) the third.
 
-The rest of this page uses the static workflow of the tutorial. See
-[Workflow types](./configuration#workflow-types) for every field.
+See [Workflow types](./configuration#workflow-types) for every field.
 
 ## Links
 
@@ -77,8 +84,9 @@ The `type` of a link decides what it writes:
 |---|---|---|
 | `data` (the default) | Input values | Pass a result to the next step, compute an input from others |
 | `validator` | Messages on an input | Errors that block the run, warnings and notifications that don't |
-| `meta` | Display settings of an input | Hide an input, replace dropdown items |
 | `pipelineValidator` | Messages on a workflow | Check the workflow as a whole, such as a missing step |
+| `nodemeta` | Titles and descriptions of steps | Day numbers in the step tree |
+| `meta` | Display settings of an input | Hide an input, replace dropdown items |
 | `check` | Messages on an input, or hides it | Validation without code, see [Rules and checks](./rules-and-checks) |
 | `rule` | Messages, display settings and values | Form logic without code, see [Rules and checks](./rules-and-checks) |
 
@@ -87,34 +95,64 @@ value changes. See [Actions](./link-types#actions).
 
 ## Data links and handlers
 
-The tutorial's links have no `handler`, so the default handler copies
-each `from` value to the `to` entry at the same position. A handler
-computes what to write. This link starts the clustering with one cluster
-per wine type:
+The configuration step outputs the initial reactor state and the growth
+kinetics. Two links pass them on:
 
 ```js
 {
-  id: 'clustersFromTypes',
-  from: 'wine:fetchdata/df_wine',
-  to: 'clusters:clusterwinedata/n_clusters',
-  handler: ({controller}) => {
-    const wine = controller.getFirst('wine');
-    controller.setAll('clusters', wine.col('wine_type').categories.length);
-  },
+  id: 'initial-volume',
+  from: 'source:bioreactorConfiguration/volume',
+  to: 'target:dailyCultivation/first(dayCalculation)/incomingVolume',
+  defaultRestrictions: {target: 'disabled'},
+},
+{
+  id: 'maximum-growth-rate',
+  from: 'source:bioreactorConfiguration/maximumGrowthRate',
+  to: 'target:dailyCultivation/all(dayCalculation)/maximumGrowthRate',
+  defaultRestrictions: {target: 'disabled'},
+},
+```
+
+- `first(dayCalculation)` matches the first day only. The initial state
+  feeds day 1, and every later day starts from the day before it.
+- `all(dayCalculation)` matches every day, including days the user adds
+  later. The kinetics are the same for the whole cultivation.
+- Neither link has a `handler`, so the default handler copies each
+  `from` value to the `to` entry at the same position. A link without
+  `type` is a data link.
+
+A handler computes what to write. The summary link collects every day
+into one table:
+
+```js
+function populateDailySummary({controller}) {
+  const summary = makeDailySummary((field) => controller.getAll(`day_${field}`) ?? []);
+  controller.setAll('summary', summary, 'restricted');
+}
+
+{
+  id: 'daily-summary',
+  from: 'day_(template):dailyCultivation/all(dayCalculation)/ solutionAdded | substrateAdded | finalBiomass',
+  to: 'summary:summary/summaryInput',
+  handler: populateDailySummary,
 }
 ```
 
+- `day_(template)` gives one alias per listed io, `day_solutionAdded`,
+  `day_substrateAdded` and so on. The package lists every daily input and
+  output; the excerpt keeps three.
 - A handler reads and writes only through the `controller`, by alias.
-  `getFirst` reads the first matched value, `getAll` all of them, and
-  `setAll` writes to every matched input.
+  `getFirst` reads the first matched value, `getAll` all of them, here
+  one per day in step order, and `setAll` writes to every matched input.
+  `makeDailySummary` is a plain function of the package that builds a
+  dataframe with one column per field.
 - The writes apply when the handler finishes. A handler can be `async`,
   and a newer run of the same link cancels an unfinished one.
-- A link without `type` is a data link, so `type: 'data'` in the
-  tutorial is optional.
 
 See [Data links](./link-types#data-links) and
 [Common controller methods](./link-types#common-controller-methods) for
-every method.
+every method, and the [LQL tutorial](./link-query-language) for `first`,
+`all` and `(template)`.
 
 ## Consistency
 
@@ -125,8 +163,7 @@ link set. Two things follow:
   and the user can reset it to the link's value.
 - While a step's results are current, a link doesn't overwrite its
   inputs. A new upstream value marks the step inconsistent instead, and
-  **Rerun with consistent** applies the new values and reruns it, as the
-  tutorial's last section shows.
+  **Rerun with consistent** applies the new values and reruns it.
 
 The restriction of the write sets how strict this is:
 
@@ -138,36 +175,36 @@ The restriction of the write sets how strict this is:
 | `none` | Yes | No, nothing is tracked |
 
 A handler passes the restriction as the third argument of `setAll`. A
-link with the default handler sets it with `defaultRestrictions`. This
-link locks the clustering input to the fetched table:
+link with the default handler sets it per alias with
+`defaultRestrictions`. Every link into the days uses `disabled`: a day's
+incoming state is what the reactor holds, and the kinetics belong to the
+organism, so the user edits them on the configuration step only. The
+only inputs left editable on a day are the daily feeds, `solutionAdded`
+and `substrateAdded`.
 
-```js
-{
-  id: 'winedatatoclustering',
-  from: 'value_in:fetchdata/df_wine',
-  to: 'value_out:clusterwinedata/df_wine',
-  defaultRestrictions: 'disabled',
-}
-```
+Try it: run the configuration and the first day, change the maximum
+growth rate on the configuration step and rerun it. The day is marked
+inconsistent, and **Rerun with consistent** reruns it with the new rate.
 
 See [Consistency](./link-types#consistency).
 
 ## Validators
 
 A validator link adds messages to an input. An error blocks the run of
-the step, and warnings and notifications don't. This link warns that the
-clustering plot needs two PCA components:
+the step, and warnings and notifications don't. The reactor must have
+room for the liquid it starts with:
 
 ```js
 {
-  id: 'pcaForPlot',
+  id: 'volume-limit',
   type: 'validator',
-  from: 'pca:clusterwinedata/n_pca',
-  to: 'target:clusterwinedata/n_pca',
+  from: ['initial:bioreactorConfiguration/initialVolume', 'max:bioreactorConfiguration/maxVolume'],
+  to: 'target:bioreactorConfiguration/maxVolume',
   handler: ({controller}) => {
-    const pca = controller.getFirst('pca');
+    const initial = controller.getFirst<number>('initial')!;
+    const max = controller.getFirst<number>('max')!;
     controller.setValidation('target',
-      pca < 2 ? {warnings: ['The scatter plot needs at least two PCA components']} : undefined);
+      max <= initial ? {errors: ['The maximum volume must exceed the initial volume']} : undefined);
   },
 }
 ```
@@ -176,11 +213,126 @@ clustering plot needs two PCA components:
 expensive validator, `debounce` on the link waits that many milliseconds
 after the last change before it runs.
 
-A similar warning needs no code as a check,
-`{id: 'pcaForPlot', type: 'check', io: 'clusterwinedata/n_pca', check: {min: 2}, severity: 'warning'}`,
-or as a rule. See [Rules and checks](./rules-and-checks) for both, and
-[Validators](./link-types#validators) for messages with actions and for
-pipeline validators.
+The same error needs no code as an expression check:
+
+```js
+{
+  id: 'volume-limit',
+  type: 'check',
+  io: 'bioreactorConfiguration/maxVolume',
+  check: {validator: 'value > initialVolume'},
+  vars: {initialVolume: 'bioreactorConfiguration/initialVolume'},
+  message: 'The maximum volume must exceed the initial volume',
+}
+```
+
+See [Rules and checks](./rules-and-checks) for checks and rules, and
+[Validators](./link-types#validators) for messages with actions.
+
+### Pipeline validators
+
+A pipeline validator puts messages on a workflow instead of an input,
+and also runs again when steps are added, removed or moved. A
+cultivation without days has nothing to simulate:
+
+```js
+{
+  id: 'days-required',
+  type: 'pipelineValidator',
+  from: [],
+  to: 'days',
+  handler: ({controller}) => {
+    const outline = controller.getOutline();
+    const dayCount = 'steps' in outline ? outline.steps.length : 0;
+    controller.setValidation('days',
+      dayCount === 0 ? {errors: ['Add at least one cultivation day']} : undefined);
+  },
+}
+```
+
+- The link is defined in the `links` of `dailyCultivation`. A `to` query
+  without a path, `days`, targets the workflow the link is defined on.
+- It reads no values, `from: []`, so only changes of the steps run it.
+  `getOutline` returns the steps of that workflow.
+
+A pipeline validator can also compare values across steps. Every feed
+adds liquid, and a feeding plan that overfills the reactor gets a
+warning before anything runs:
+
+```js
+{
+  id: 'volume-plan',
+  type: 'pipelineValidator',
+  from: [
+    'initial:bioreactorConfiguration/initialVolume',
+    'max:bioreactorConfiguration/maxVolume',
+    'added:dailyCultivation/all(dayCalculation)/solutionAdded',
+  ],
+  to: 'days:dailyCultivation',
+  handler: ({controller}) => {
+    const max = controller.getFirst<number>('max')!;
+    const added = controller.getAll<number>('added') ?? [];
+    let volume = controller.getFirst<number>('initial')!;
+    const day = added.findIndex((v) => (volume += v) > max);
+    controller.setValidation('days', day < 0 ? undefined :
+      {warnings: [`Day ${day + 1}: volume reaches ${volume.toFixed(1)} L, above the ${max} L limit`]});
+  },
+}
+```
+
+Try it: with an initial volume of 1 L and a limit of 5 L, add three days
+and set the solution added to 1, 2 and 2 L. The workflow warns that day
+3 reaches 6.0 L. Reorder or remove a day and the message follows.
+
+See [Pipeline validators](./link-types#pipeline-validators).
+
+## Node meta links
+
+A node meta link writes the title or description of a step instead of a
+value. Each day's title shows its number, and its final biomass once the
+day has run, such as *Day 2 - Biomass 3.4 g/L*:
+
+```js
+{
+  id: 'day-title',
+  type: 'nodemeta',
+  base: 'base:expand(dayCalculation)',
+  from: 'biomass:same(@base, dayCalculation)/finalBiomass',
+  to: 'title:same(@base, dayCalculation)/title',
+  handler: ({controller}) => {
+    const day = controller.getBasePosition()!.position + 1;
+    const biomass = controller.getFirst<number>('biomass');
+    controller.setDescriptionItem('title',
+      biomass == null ? `Day ${day}` : `Day ${day} - Biomass ${biomass.toFixed(1)} g/L`);
+  },
+}
+```
+
+- `base: 'base:expand(dayCalculation)'` makes one copy of the link per
+  day, and `same(@base, dayCalculation)` is that day. The copies are made
+  again when days are added, removed or moved, so the numbers follow the
+  order.
+- `getBasePosition` returns the position of the day among the steps of
+  `dailyCultivation`.
+- `from` reads an output, so the title changes when the day runs.
+
+The same pattern carries the reactor state from one day to the next.
+`after+(@base, dayCalculation)` is the day right after the base day, and
+the last day has none, so its copy of the link writes nothing:
+
+```js
+{
+  id: 'chain-biomass',
+  base: 'base:expand(dayCalculation)',
+  from: 'previous:same(@base, dayCalculation)/finalBiomass',
+  to: 'next:after+(@base, dayCalculation)/incomingBiomass',
+  defaultRestrictions: {next: 'disabled'},
+}
+```
+
+See [Node meta links](./link-types#node-meta-links) for the descriptions a
+link can write, and [LQL advanced](./link-query-language-advanced) for
+`expand` and the position functions.
 
 ## Where to go next
 
