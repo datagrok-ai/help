@@ -96,6 +96,29 @@ the first run, or when the new result has different columns. Once you change an 
 dim under "Inputs changed. Press RUN to update the results." until the next run, unless the
 function reruns on every input change (`runOnInput`).
 
+## Run history
+
+Every run you make in the function view is recorded on the server: who ran it, when, with which
+inputs, and its scalar results. The result header shows the run's number (`Run #12`), and the
+**history** icon on the ribbon opens the run history: the function's runs, newest first, with a
+search over titles, inputs and authors, and filters for your own and starred runs.
+
+* Click a run to bring its inputs back into the form and its results below, at the run's own
+  address (`/func/Name/runs/N`, see
+  [stored runs](../../../develop/advanced/url-parameters.md#stored-runs)).
+* Star a run to keep it whole: its result tables and table inputs are uploaded, so the run reopens
+  with its tables for anyone, from the history or from its link. An unstarred run keeps its inputs
+  and scalar outputs; opening it offers **RUN** to recompute the tables.
+* The pencil next to the run number, or **Edit...** in the run's context menu, gives it a title,
+  description and tags; this keeps the run's tables as well.
+* Check two or more runs and press **Compare** for a table with one row per run: number, time,
+  author, inputs and scalar outputs.
+* You can delete your own runs from the context menu. Runs never expire otherwise.
+
+Runs of queries, scripts and server functions are recorded by the server wherever they start.
+Runs of client-side functions, such as JavaScript package functions, are recorded when started
+from the function view or a `/func/` link, not from code.
+
 ## Customize viewers for dataframe
 
 Each viewer has a list of customizable properties.
