@@ -91,6 +91,28 @@ corresponding sections of the help system:
 - [Text functions](functions/text-functions.md)
 - [TimeSpan functions](functions/timespan-functions.md)
 
+## How calculated columns behave
+
+* **They stay up to date.** The formula is kept with the column. When a value in a column it uses changes,
+  only the affected rows are recomputed; when a referenced column is renamed, the formula is rewritten.
+  A formula can use other calculated columns; they are recalculated in dependency order.
+* **They travel with layouts and projects.** Applying a layout to a table that has the same source columns
+  re-creates the calculated columns from their formulas, in the right order. Projects keep both the values
+  and the formula.
+* **The result does not depend on the table size.** Built-in functions are evaluated row by row on small
+  tables and column by column on large ones; both give the same values, types and empty cells. The column
+  type is detected from the results unless you set it explicitly.
+* **Scripts run once per table.** A Python, R, Julia, Octave or Node.js function in a formula runs on the
+  server once over the whole column, not once per row, so one such call costs one round trip. Failed rows
+  are reported the same way as for built-in functions (see below).
+* **Whole-column functions are computed once.** `$[col]` aggregates such as `Avg($[Weight])` and
+  [vector functions](formula-syntax.md#tables-and-columns-by-name) such as `CumSum(${amount})` are
+  evaluated once for the column, and the rest of the formula reads their result per row.
+
+A few things keep formulas fast: prefer built-in functions to scripts for simple arithmetic and text, guard
+rows that would fail (`if(IsEmpty(${x}), null, DateParse(${x}))`) rather than letting every row fail,
+and avoid formulas that produce a different text for almost every row when a number or a date would do.
+
 ## Rows that fail
 
 A formula can fail on some rows, for example when `DateParse(${Sample Date})` meets "n/a". Such rows stay

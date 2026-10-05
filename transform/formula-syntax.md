@@ -277,7 +277,7 @@ UserName:Len(${ColumnName})
 
 ## Calculated columns
 
-Calculated columns generate new columns based on formulas. They can reference other calculated columns and update automatically when the source data changes.
+Calculated columns generate new columns based on formulas. They can reference other calculated columns and update automatically when the source data changes: an edit recomputes only the affected rows, a rename of a referenced column rewrites the formula, and a layout re-creates the columns from their formulas on another table with the same source columns. See [How calculated columns behave](add-new-column.md#how-calculated-columns-behave).
 
 The **Add New Column** dialog supports creating calculated columns with real-time preview, autocomplete, and formula validation, including checks for syntax errors, missing columns, and type mismatches.   
 See [Add New Column](add-new-column.md) for details.
