@@ -1,6 +1,6 @@
 ---
 title: "Link types"
-sidebar_position: 2
+sidebar_position: 7
 description: Reference for data links, validators, metadata links, and actions used to connect steps in low-code workflows.
 keywords:
   - data links
@@ -554,7 +554,8 @@ and stable across re-fires. The full type lives in
 
 #### `debounce` (pipeline validator)
 
-Same semantics as for regular `validator` links. Default is 250ms.
+Same semantics as for regular `validator` links. When omitted, the
+validator runs without delay.
 
 
 ## Metadata
@@ -757,8 +758,10 @@ Because `from`/`to` resolve independently, a pipeline mutation action can
 read from a step _inside_ its own target workflow. For example, an action
 with `to: 'out1:targetPipeline'` can also use
 `from: 'in1:targetPipeline/step1/result'` to read a child step's output and
-decide which step type to add. This works because the forward-only constraint
-only applies to reference selectors (`@ref`), not to independent path specs.
+decide which step type to add. This works because `from` and `to` resolve
+independently, and an action runs only when the user triggers it, so the
+forward-only rule for [data links](./configuration#constraints-and-review-checklist)
+does not apply to it.
 
 ### Visibility
 

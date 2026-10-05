@@ -1,6 +1,6 @@
 ---
 title: "Rules and checks"
-sidebar_position: 2.5
+sidebar_position: 4
 sidebar_label: "Rules and checks"
 description: Validate workflow inputs with checks, and show inputs, fill dropdowns, write defaults, and look up presets with rules, explained on a pharmacokinetic model.
 keywords:
@@ -353,8 +353,9 @@ empty list adds none. This rule lists every negative sampling time:
 }
 ```
 
-Rule messages appear 250 ms after the last change. Set `debounce` on the
-rule to change the delay.
+Rule messages appear as soon as an input changes. For an expensive
+source, `debounce` on the rule waits that many milliseconds after the last
+change before the messages update.
 
 ### Dropdown items
 

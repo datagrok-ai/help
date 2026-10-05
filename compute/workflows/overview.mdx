@@ -54,7 +54,9 @@ Links live alongside steps inside a workflow and propagate data between
 IOs. Data flow is forward-only, in depth-first order through the tree.
 Some link roles target virtual outputs rather than script IOs —
 `validator` for per-IO validation, `pipelineValidator` for workflow-level
-checks, `meta` for UI hints, plus the user-triggered `action`. See
+checks, `meta` for UI hints, `nodemeta` for step titles and descriptions,
+plus the user-triggered `action`. The `check` and `rule` links do the same
+jobs without code, see [Rules and checks](./rules-and-checks). See
 [Link types](./link-types) for the catalogue and
 [Link Query Language](./link-query-language) for how `from`/`to` paths
 are written.

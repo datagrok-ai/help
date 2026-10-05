@@ -1,6 +1,6 @@
 ---
 title: "Tutorial and examples"
-sidebar_position: 5
+sidebar_position: 1
 description: Step-by-step tutorial building a multi-step low-code workflow with data fetch, clustering, and regression steps.
 keywords:
   - low-code workflow tutorial
@@ -99,11 +99,12 @@ export function MyAddScript(a: number, b: number) {
 }
 ```
 
-The imports of `utc`, `timezone` and `daysjs` are required for the `TreeWizardEditor` to work.
+The imports of `utc`, `timezone` and `dayjs` are required for the `TreeWizardEditor` to work.
 
 In the main part of the script, we define the `WineQualityWf` function that creates and returns
 a JSON object with the `PipelineConfiguration` type that defines our workflow.
-The `nqName:` key of the configuration should always contain the name of the main function and main script.
+The `nqName:` key of the configuration holds the full name of this provider function:
+the package name and the function name, separated by `:`.
 In our case this is `winequalitywf:WineQualityWf`
 
 The `steps` array defines steps of our workflow.
@@ -121,7 +122,7 @@ npm i && npm run build && grok publish local --release
 Note that publish `--release` flag is mandatory for workflow.
 
 Reload Datagrok page, open the **ModelHub** in the **Apps->Compute** sections,
-and run the `MyWorkflow` model.
+and run the `WineQualityWf` model.
 You will see the following interface:
 
 ![Minumal workflow example](pics/example-workflow.png)
@@ -292,10 +293,10 @@ different input bindings.
 Inputs and outputs are described using the **Link Query Language**. The links
 system of the low-code workflow is very flexible and allows dynamic matching of
 step inputs and outputs for dynamically added steps, and even between different
-workflows. For the full grammar see the
-[LQL reference](./link-query-language-reference) and the advanced examples in
-[LQL advanced](./link-query-language-advanced); for the catalog of link types
-and what each controller method does, see [Link types](./link-types).
+workflows. The next pages build on this:
+[Configuration and links](./configuration-and-links) introduces the other link
+types and link handlers, and the [LQL tutorial](./link-query-language) covers
+queries. The full grammar is in the [LQL reference](./link-query-language-reference).
 
 
 Publish the package:
@@ -543,9 +544,9 @@ automated UI construction and blaze-fast interactive viewers.
 The Datagrok workflow engine also applies an extended set of validations,
 ensuring reproducibility of your workflow.
 For example, try to run the data merging step,
-then change number of clusters and rerun the clustering step.
+then change the number of clusters to 3 and rerun the clustering step.
 
-
+![Data merging step marked inconsistent](pics/wineQ_full_workflow_consistency_check.png)
 
 As you can see, now we have only three clusters,
 and the final data merging step was immediately marked by a red circle.
@@ -560,19 +561,19 @@ Its advanced tools help maintain data consistency throughout the analysis proces
 
 ## More worked examples
 
-The walkthrough above covers a static workflow with plain data links. For
-runnable TypeScript examples of the patterns that this tutorial does _not_
-cover, see the example files bundled with the `create-workflow` agent skill:
+The walkthrough above covers a static workflow with plain data links. The
+[`Bioreactorworkflowdemo`](https://github.com/datagrok-ai/public/tree/master/packages/Bioreactorworkflowdemo)
+package in the Datagrok repository is a complete workflow that simulates
+daily bacterial growth in a bioreactor. It shows:
 
-| File | Demonstrates |
-|------|--------------|
-| [`minimal-static.ts`](https://github.com/datagrok-ai/public/blob/master/.claude/skills/create-workflow/examples/minimal-static.ts) | A static workflow with no links — the smallest configuration that works. |
-| [`dynamic-with-links.ts`](https://github.com/datagrok-ai/public/blob/master/.claude/skills/create-workflow/examples/dynamic-with-links.ts) | A [dynamic workflow](./configuration#dynamic-workflows) with `stepTypes`, `initialSteps`, an `all()` selector, and a link handler that propagates outputs to every downstream instance. |
-| [`validators-and-meta.ts`](https://github.com/datagrok-ai/public/blob/master/.claude/skills/create-workflow/examples/validators-and-meta.ts) | Cross-field [validators](./link-types#validators), [meta links](./link-types#metadata-links) that hide/show advanced inputs, and a user-triggered reset [action](./link-types#data-actions). |
-
-Each file is a self-contained provider function you can adapt to a real
-workflow. They reference the same types described in this documentation
-(resolvable via `@datagrok-libraries/compute-api`).
+- a configuration step, a nested [dynamic workflow](./configuration-and-links#the-configuration-tree)
+  of cultivation days, and a summary step
+- one link per day, made with `expand`, that passes each day's final state to
+  the next day as `disabled` inputs, see [LQL advanced](./link-query-language-advanced)
+- links that write the configuration values to every day with `all()`, see the
+  [LQL tutorial](./link-query-language)
+- a summary link that collects the outputs of every day with a `(template)` query
+  and a handler
 
 For form logic built from [rules](./rules-and-checks#rules), such as a
 computed default and a lookup table, see

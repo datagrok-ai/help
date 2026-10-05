@@ -1,0 +1,195 @@
+---
+title: "Configuration and links"
+sidebar_position: 2
+sidebar_label: "Configuration and links"
+description: Tutorial-style introduction to the workflow configuration tree, link types, link handlers, consistency and validators, built on the wine quality workflow.
+keywords:
+  - workflow configuration
+  - dynamic workflow
+  - data link handler
+  - link controller
+  - consistency restrictions
+  - validator link
+---
+
+The [tutorial](./examples) builds a static workflow whose steps pass
+data with plain data links. This page extends the same wine quality
+workflow and introduces the parts of the configuration and the kinds of
+links that the rest of these docs build on. Each section ends with a
+pointer to the reference that covers the topic in full.
+
+## The configuration tree
+
+A configuration is a tree. The provider returns the root workflow, a
+workflow holds steps, and a step is a script or a nested workflow. Every
+node has an `id`, unique among its siblings, and links address nodes by
+these ids.
+
+A workflow has one of two types:
+
+- A **static** workflow lists its steps in `steps`. The user can't add or
+  remove them. The tutorial's workflow is static.
+- A **dynamic** workflow lists the kinds of steps it can hold in
+  `stepTypes`, and the steps it starts with in `initialSteps`. The user
+  adds, removes and reorders steps while working.
+
+To compare clusterings with different settings, nest a dynamic workflow
+that holds clustering runs:
+
+```js
+{
+  id: 'winequalitywf',
+  nqName: 'winequalitywf:WineQualityWf',
+  version: '1.0',
+  type: 'static',
+  steps: [
+    {id: 'fetchdata', friendlyName: 'Fetch data', nqName: 'winequalitywf:fetchwinedata'},
+    {
+      id: 'clusterings',
+      friendlyName: 'Clustering runs',
+      type: 'dynamic',
+      stepTypes: [{id: 'clusterwinedata', friendlyName: 'Clustering', nqName: 'winequalitywf:clusterwinedata'}],
+      initialSteps: ['clusterwinedata'],
+    },
+  ],
+}
+```
+
+The workflow starts with one clustering run, and the user can add more
+from the step tree. All runs share the id `clusterwinedata`, so a link
+that feeds them needs a way to say "every run" or "the run after this
+one". The [LQL tutorial](./link-query-language) covers every run, and
+[LQL advanced](./link-query-language-advanced) covers one link per run.
+
+The rest of this page uses the static workflow of the tutorial. See
+[Workflow types](./configuration#workflow-types) for every field.
+
+## Links
+
+A link reads values through its `from` queries, writes through its `to`
+queries, and runs whenever a value it reads changes. A query has the
+form `alias:step/io`: the path names a step and one of its inputs or
+outputs, and the alias is the name the link uses for that value.
+
+The `type` of a link decides what it writes:
+
+| Type | Writes | Typical use |
+|---|---|---|
+| `data` (the default) | Input values | Pass a result to the next step, compute an input from others |
+| `validator` | Messages on an input | Errors that block the run, warnings and notifications that don't |
+| `meta` | Display settings of an input | Hide an input, replace dropdown items |
+| `pipelineValidator` | Messages on a workflow | Check the workflow as a whole, such as a missing step |
+| `check` | Messages on an input, or hides it | Validation without code, see [Rules and checks](./rules-and-checks) |
+| `rule` | Messages, display settings and values | Form logic without code, see [Rules and checks](./rules-and-checks) |
+
+Actions are separate: they run when the user clicks them, not when a
+value changes. See [Actions](./link-types#actions).
+
+## Data links and handlers
+
+The tutorial's links have no `handler`, so the default handler copies
+each `from` value to the `to` entry at the same position. A handler
+computes what to write. This link starts the clustering with one cluster
+per wine type:
+
+```js
+{
+  id: 'clustersFromTypes',
+  from: 'wine:fetchdata/df_wine',
+  to: 'clusters:clusterwinedata/n_clusters',
+  handler: ({controller}) => {
+    const wine = controller.getFirst('wine');
+    controller.setAll('clusters', wine.col('wine_type').categories.length);
+  },
+}
+```
+
+- A handler reads and writes only through the `controller`, by alias.
+  `getFirst` reads the first matched value, `getAll` all of them, and
+  `setAll` writes to every matched input.
+- The writes apply when the handler finishes. A handler can be `async`,
+  and a newer run of the same link cancels an unfinished one.
+- A link without `type` is a data link, so `type: 'data'` in the
+  tutorial is optional.
+
+See [Data links](./link-types#data-links) and
+[Common controller methods](./link-types#common-controller-methods) for
+every method.
+
+## Consistency
+
+A value a data link writes is tracked: the input remembers the value the
+link set. Two things follow:
+
+- When the user edits a linked input, the input is marked inconsistent,
+  and the user can reset it to the link's value.
+- While a step's results are current, a link doesn't overwrite its
+  inputs. A new upstream value marks the step inconsistent instead, and
+  **Rerun with consistent** applies the new values and reruns it, as the
+  tutorial's last section shows.
+
+The restriction of the write sets how strict this is:
+
+| Restriction | The user can edit the input | An edit is marked inconsistent |
+|---|---|---|
+| `restricted` (the default) | Yes | Yes |
+| `disabled` | No | Not applicable |
+| `info` | Yes | No, the link value is still tracked |
+| `none` | Yes | No, nothing is tracked |
+
+A handler passes the restriction as the third argument of `setAll`. A
+link with the default handler sets it with `defaultRestrictions`. This
+link locks the clustering input to the fetched table:
+
+```js
+{
+  id: 'winedatatoclustering',
+  from: 'value_in:fetchdata/df_wine',
+  to: 'value_out:clusterwinedata/df_wine',
+  defaultRestrictions: 'disabled',
+}
+```
+
+See [Consistency](./link-types#consistency).
+
+## Validators
+
+A validator link adds messages to an input. An error blocks the run of
+the step, and warnings and notifications don't. This link warns that the
+clustering plot needs two PCA components:
+
+```js
+{
+  id: 'pcaForPlot',
+  type: 'validator',
+  from: 'pca:clusterwinedata/n_pca',
+  to: 'target:clusterwinedata/n_pca',
+  handler: ({controller}) => {
+    const pca = controller.getFirst('pca');
+    controller.setValidation('target',
+      pca < 2 ? {warnings: ['The scatter plot needs at least two PCA components']} : undefined);
+  },
+}
+```
+
+`setValidation` with `undefined` removes the link's messages. For an
+expensive validator, `debounce` on the link waits that many milliseconds
+after the last change before it runs.
+
+A similar warning needs no code as a check,
+`{id: 'pcaForPlot', type: 'check', io: 'clusterwinedata/n_pca', check: {min: 2}, severity: 'warning'}`,
+or as a rule. See [Rules and checks](./rules-and-checks) for both, and
+[Validators](./link-types#validators) for messages with actions and for
+pipeline validators.
+
+## Where to go next
+
+- [LQL tutorial](./link-query-language): queries for nested and dynamic
+  workflows, several values in one link, and steps that may be absent.
+- [Rules and checks](./rules-and-checks): validation and form logic
+  without handlers.
+- [LQL advanced](./link-query-language-advanced): one link per step of a
+  dynamic workflow, tags and wildcard selectors.
+- The references: [Configuration](./configuration),
+  [Link types](./link-types) and the
+  [LQL reference](./link-query-language-reference).

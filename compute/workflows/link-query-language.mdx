@@ -165,7 +165,7 @@ same paths. A check names one io and has no alias:
 ```
 
 A rule reads and writes through aliases like any link. Rule queries take
-no flag but `optional`:
+no flags but `optional` and `template`:
 
 ```
 {
@@ -181,14 +181,16 @@ no flag but `optional`:
 ### A step that may be absent
 
 A link whose query matches nothing is not created. The `optional` flag
-creates it anyway, and the alias reads as absent:
+creates it anyway. Reading an alias that matched nothing throws, so the
+handler checks `getMatchedInputs` first:
 
 ```
 {
   id: 'carryNotes',
   from: 'notes(optional):reviews/review/notes',
   to: 'target:summary/notes',
-  handler: ({controller}) => controller.setAll('target', controller.getFirst('notes') ?? ''),
+  handler: ({controller}) => controller.setAll('target',
+    controller.getMatchedInputs().has('notes') ? controller.getFirst('notes') : ''),
 }
 ```
 
@@ -238,5 +240,6 @@ with `expand`, which turns one link definition into one link per
 matching step, and the reference selectors `same`, `before` and `after`
 that anchor `from` and `to` to each of those steps. It also covers tags,
 which match across nesting levels, and the wildcard io selectors, with
-one example per topic on a single workflow, including a computed
-default, a dynamic option list and a lookup table built from rules.
+one example per topic on a single workflow. Form logic built from rules,
+such as a computed default and a lookup table, is in
+[Rules and checks](./rules-and-checks#worked-cases).

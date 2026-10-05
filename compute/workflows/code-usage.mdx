@@ -1,6 +1,6 @@
 ---
 title: "Programmatic usage"
-sidebar_position: 4
+sidebar_position: 9
 description: Start a low-code workflow from code and receive a return value via the onReturn hook.
 keywords:
   - startWorkflow
@@ -32,8 +32,10 @@ const result = await startWorkflow<MyReturnShape>('SomePackage:SomeWorkflow', '1
 
 `nqName` (first argument) is the workflow
 [provider's](./configuration#workflow-providers) `package:function` identifier.
-`version` must match a value listed in the provider's `meta.versions`
-annotation. The third argument is the initial
+`version` is passed to the provider in its `params`, and selects the
+configuration version the provider returns. It is usually the configuration's
+[`version`](./configuration#version), or one of the versions the provider's
+[`meta.versions`](./configuration#workflow-versioning) annotation lists. The third argument is the initial
 [`PipelineInstanceConfig`](#with-initial-configuration); pass `{}` to start
 with the provider's defaults.
 

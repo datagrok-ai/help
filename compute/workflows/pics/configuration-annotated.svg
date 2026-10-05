@@ -11,7 +11,7 @@
   </style>
 
   <!-- code body -->
-  <text x="10" y="25"  class="cm"   xml:space="preserve">//tags: model</text>
+  <text x="10" y="25"  class="cm"   xml:space="preserve">//meta.role: model</text>
   <text x="10" y="40"  class="cm"   xml:space="preserve">//editor: Compute2:TreeWizardEditor</text>
   <text x="10" y="55"  class="cm"   xml:space="preserve">//input: object params</text>
   <text x="10" y="70"  class="cm"   xml:space="preserve">//output: object result</text>
