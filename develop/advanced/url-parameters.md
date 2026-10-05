@@ -111,9 +111,10 @@ characters that mean something in a URL, such as `#`, `&` and `+`: `?smiles=C%23
 To copy such a link for the parameters you currently see, click the **copy** icon next to
 the **Run** button. Once the function has run and the parameter form is gone, the same icon
 sits next to **Refresh** in the **Source** pane of the Toolbox. A table input goes into the
-link as the expression that produced the table - the file, query or function it was opened
-from. A table that cannot be reproduced that way (pasted, or changed after it was opened)
-gives no link; the icon says so when clicked.
+link as the expression that produced it - the file, query or function it was opened from - or,
+for a table saved in a project with its data, as `OpenTable("<id>")`. A table that cannot be
+reproduced either way (pasted, or changed after it was opened) gives no link; the icon says so
+when clicked.
 
 ### Stored runs
 
