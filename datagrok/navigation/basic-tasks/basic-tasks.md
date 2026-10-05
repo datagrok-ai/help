@@ -205,33 +205,65 @@ right-click the file and select the download option from its **Context Menu**.
 
 ## Add to favorites
 
-To add an entity to favorites, do any of the following:
+Favorites are shortcuts to the things you use most. They come in two kinds:
 
-* Drag-and-drop in the [Browse](../views/browse.md) tree:
-  * Drag and drop the entity on the **Favorites** directory under **My stuff**.
-  * Click the **Favorites** directory under **My stuff**. This opens the
-  **Favorites** view. Drag and drop the entity on the view.
-* Use the **Context Panel**
-  1. In the **Browse** tree, click the entity you want. The **Context Panel** shows entity-specific information and actions.
-  1. On the **Context Panel** next to the entity's name, click the **Add to
-     favorites (<FAIcon icon="fa-regular fa-star"/>) icon**. The color of the
-     icon changes to orange, and the entity is added to your favorites.
+* **Your own favorites** that only you see.
+* **Group favorites** that every member of a group or role sees. Group admins choose them;
+  favorites of the **All users** group are set by users with the **Edit All Users Favorites**
+  [permission](../../../govern/access-control/access-control.md).
 
-You can later access favorites either from the **Browse** tree or by clicking
-the **Favorites (<FAIcon icon="fa-regular fa-star"/>) icon**:
-* On the **Sidebar**, or
-* On top of the **Context Panel**. 
+### What you can favorite
 
-To remove an entity from favorites, use the context menu. Alternatively, on the
-**Context Panel** next to the entity's name, click the orange **Add to favorites
-(<FAIcon icon="fa-regular fa-star"/>) icon**. The color changes to neutral, and
-the entity is removed from your favorites.
+* Any Datagrok [entity](../../concepts/objects.md), such as a data connection, query, script,
+  project, or user.
+* Database catalogs, schemas, and tables.
+* Files and folders in file shares.
+* Data sources, such as **Databases > Postgres**.
+* Any node of the [Browse](../views/browse.md) tree, including sections such as
+  **Platform > Plugins** and grouping nodes such as a connection's **Schemas**.
+
+You can't favorite a specific value within a cell.
+
+### Add or remove a favorite
+
+Do any of the following:
+
+* **Context menu.** Right-click the object in **Browse** (or select several objects and right-click the
+  selection):
+  * If you don't administer any groups, check **Add to favorites**. Uncheck it to remove the favorite.
+  * If you administer groups or roles, **Add to favorites** is a submenu. Check **Only for me** to add
+    the object to your own favorites, and check any group to add it to that group's favorites.
+    Unchecking removes it again.
+* **Context Panel.** Click the object, then click the star
+  (<FAIcon icon="fa-regular fa-star"/>) on the right of its name. Clicking the star adds or removes your
+  own favorite. To add the object to a group's favorites, click the arrow next to the star and check the
+  group. The star is filled when the object is a favorite of yours or of any of your groups.
+* **Drag and drop.** Drag the object to the **Favorites** panel, or to **My stuff > Favorites** in
+  **Browse**.
 
 ![](img/add-to-favorites.gif)
 
+### Find your favorites
+
+* **Browse tree.** Favorites are marked with a star in front of their icon and are moved to the top of
+  their folder. Only the favorite itself moves up: a folder that merely contains a favorite stays in
+  place.
+* **Favorites panel.** Click the **Favorites** (<FAIcon icon="fa-regular fa-star"/>) icon on the
+  **Sidebar**. The panel lists your own favorites together with the favorites of all your groups. Each
+  favorite expands as it does in **Browse**: a connection shows its queries and schemas, a schema its
+  tables, a folder its files, a data source its connections. Clicking a favorite **Browse** node opens
+  that node in **Browse**.
+* **My stuff > Favorites** in **Browse**, and the **Favorites** icon on top of the **Context Panel**.
+
+### Who sees what
+
+* A group favorite is visible to every member of the group.
+* A favorite database object, file, or folder is visible only to users who can access its connection.
+  If access to the connection is revoked, the favorite disappears for that user.
+
 :::note
 
-You can favorite any Datagrok [entity](../../concepts/objects.md) like a data connection, query, or a project.
-You can't favorite an individual file or a specific value within a cell. <!--This can be solved with sticky meta.Suggestion submitted-->
+When a file or folder is moved, renamed, or deleted in Datagrok, or its connection is deleted, its
+favorites are removed.
 
 :::
