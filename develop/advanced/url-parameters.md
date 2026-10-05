@@ -106,7 +106,11 @@ A value is evaluated, so a parameter can take a function's result:
 function, and a date parameter takes a date as written (`?date=2024-01-01`). Quote text that
 looks like a function call, such as a column named `avg(AGE)`: `?column="avg(AGE)"`. Encode
 characters that mean something in a URL, such as `#`, `&` and `+`: `?smiles=C%23N` passes
-`C#N`.
+`C#N`. A value may call functions, but not ones that run code (`Js`, `Eval`, `Script`).
+
+Built-in functions open the same way, by their bare name: `/func/Sin?x=1&run=true`,
+`/func/DateDiff?dt1=2024-01-01&dt2=2024-03-01&run=true`. Internal functions, menu commands and
+code runners are not addressable.
 
 To copy such a link for the parameters you currently see, click the **copy** icon next to
 the **Run** button. Once the function has run and the parameter form is gone, the same icon
