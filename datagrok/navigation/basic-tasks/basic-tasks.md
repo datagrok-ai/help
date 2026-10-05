@@ -217,12 +217,13 @@ To add an entity to favorites, do any of the following:
      favorites (<FAIcon icon="fa-regular fa-star"/>) icon**. The icon fills, and the entity is added to your favorites.
   1. To add it to the favorites of a group or role you administer, click the arrow next to the star
      and check the group.
-* Right-click the entity (or a selection of several) and use **Favorites**: check **My favorites** or
-  any group you administer. Unchecking removes the entity from those favorites.
+* Right-click the entity (or a selection of several) and check **Add to favorites**. If you administer
+  groups or roles, **Add to favorites** is a submenu: check **Only for me** and any of those groups.
+  Unchecking removes the entity from those favorites.
 
 Besides entities, you can favorite database catalogs, schemas and tables, files and folders, data
 sources, and any node of the **Browse** tree, including sections such as **Platform > Plugins** and
-grouping nodes such as a connection's **Schemas**. Right-click a node in **Browse** and use **Favorites**.
+grouping nodes such as a connection's **Schemas**. Right-click a node in **Browse** and use **Add to favorites**.
 
 In the **Browse** tree, favorites (yours and those of your groups) are marked with a star and shown
 first among their siblings. A node moves up only when it is a favorite itself, not when something inside it is.
@@ -235,7 +236,7 @@ the **Favorites (<FAIcon icon="fa-regular fa-star"/>) icon**:
 The **Favorites** panel is a tree: a favorite connection, schema, folder or data source expands there
 the same way it does in **Browse**. A favorite **Browse** node opens that node in **Browse**.
 
-To remove an entity from favorites, use the **Favorites** menu in its context menu. Alternatively, on the
+To remove an entity from favorites, uncheck **Add to favorites** in its context menu. Alternatively, on the
 **Context Panel** next to the entity's name, click the filled **Add to favorites
 (<FAIcon icon="fa-regular fa-star"/>) icon**. The icon empties, and
 the entity is removed from your favorites.
