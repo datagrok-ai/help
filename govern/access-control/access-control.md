@@ -240,6 +240,7 @@ General permissions:
 | **Invite User**         | Invite a new user by email, explicitly or by sharing something           |
 | **Share With Everyone** | Share something with someone the user has no common groups or roles with |
 | **Send Email**          | Send email to any user using group emails                                |
+| **Edit All Users Favorites** | Add to and remove from the favorites every user sees (the All users group) |
 
 Permissions to show or hide nodes in Browse Panel:
 
