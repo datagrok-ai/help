@@ -214,24 +214,37 @@ To add an entity to favorites, do any of the following:
 * Use the **Context Panel**
   1. In the **Browse** tree, click the entity you want. The **Context Panel** shows entity-specific information and actions.
   1. On the **Context Panel** next to the entity's name, click the **Add to
-     favorites (<FAIcon icon="fa-regular fa-star"/>) icon**. The color of the
-     icon changes to orange, and the entity is added to your favorites.
+     favorites (<FAIcon icon="fa-regular fa-star"/>) icon**. The icon fills, and the entity is added to your favorites.
+  1. To add it to the favorites of a group or role you administer, click the arrow next to the star
+     and check the group.
+* Right-click the entity (or a selection of several) and use **Favorites**: check **My favorites** or
+  any group you administer. Unchecking removes the entity from those favorites.
+
+Besides entities, you can favorite database catalogs, schemas and tables, files and folders, data
+sources, and any node of the **Browse** tree, including sections such as **Platform > Plugins** and
+grouping nodes such as a connection's **Schemas**. Right-click a node in **Browse** and use **Favorites**.
+
+In the **Browse** tree, favorites (yours and those of your groups) are marked with a star and shown
+first among their siblings. A node moves up only when it is a favorite itself, not when something inside it is.
 
 You can later access favorites either from the **Browse** tree or by clicking
 the **Favorites (<FAIcon icon="fa-regular fa-star"/>) icon**:
 * On the **Sidebar**, or
-* On top of the **Context Panel**. 
+* On top of the **Context Panel**.
 
-To remove an entity from favorites, use the context menu. Alternatively, on the
-**Context Panel** next to the entity's name, click the orange **Add to favorites
-(<FAIcon icon="fa-regular fa-star"/>) icon**. The color changes to neutral, and
+The **Favorites** panel is a tree: a favorite connection, schema, folder or data source expands there
+the same way it does in **Browse**. A favorite **Browse** node opens that node in **Browse**.
+
+To remove an entity from favorites, use the **Favorites** menu in its context menu. Alternatively, on the
+**Context Panel** next to the entity's name, click the filled **Add to favorites
+(<FAIcon icon="fa-regular fa-star"/>) icon**. The icon empties, and
 the entity is removed from your favorites.
 
 ![](img/add-to-favorites.gif)
 
 :::note
 
-You can favorite any Datagrok [entity](../../concepts/objects.md) like a data connection, query, or a project.
-You can't favorite an individual file or a specific value within a cell. <!--This can be solved with sticky meta.Suggestion submitted-->
+When a file or folder is moved, renamed or deleted in Datagrok, or its connection is deleted, its
+favorites are removed. You can't favorite a specific value within a cell.
 
 :::
