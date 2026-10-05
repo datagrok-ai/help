@@ -93,8 +93,8 @@ Each example is meant to be added on its own. Some show different ways to
 do the same thing, such as showing `ka` only for an oral dose, and would
 conflict in one workflow.
 
-Queries such as `model/dose` name a step and one of its inputs, see the
-[LQL tutorial](./link-query-language). In TypeScript,
+Queries such as `model/dose` name a step and one of its inputs, see
+[Link queries](./link-query-language). In TypeScript,
 `PipelineRuleConfiguration`, `PipelineCheckConfiguration`, and
 `RuleEffect` from `@datagrok-libraries/compute-api` type the
 configurations.
@@ -818,7 +818,7 @@ In the sequence `data, model, model, data, model`, the first two models
 read the first profile and the third model reads the second.
 `before(@base, data)` finds the nearest `data` step before each model, and
 `same(@base)` is the model itself. See
-[LQL advanced](./link-query-language-advanced) for these selectors.
+[Advanced link queries](./link-query-language-advanced) for these selectors.
 
 ### Pitfalls
 

@@ -47,8 +47,8 @@ the `Pipeline*` prefix; throughout these docs the prose calls it a
 are either script nodes, nested workflows, or references to other
 workflows. Every node has an `id`. The `type` field discriminates
 workflows (`static`, `dynamic`, `action`, `ref`); leaves are scripts
-(`type: 'step'`, or omitted). See [Configuration](./configuration) for
-the full field-by-field reference.
+(`type: 'step'`, or omitted). See the [Configuration reference](./configuration)
+for every field.
 
 Links live alongside steps inside a workflow and propagate data between
 IOs. Data flow is forward-only, in depth-first order through the tree.
@@ -56,9 +56,9 @@ Some link roles target virtual outputs rather than script IOs —
 `validator` for per-IO validation, `pipelineValidator` for workflow-level
 checks, `meta` for UI hints, `nodemeta` for step titles and descriptions,
 plus the user-triggered `action`. The `check` and `rule` links do the same
-jobs without code, see [Rules and checks](./rules-and-checks). See
-[Link types](./link-types) for the catalogue and
-[Link Query Language](./link-query-language) for how `from`/`to` paths
+jobs without code, see [Rules and checks](./rules-and-checks). See the
+[Link reference](./link-types) for the catalogue and
+[Link queries](./link-query-language) for how `from`/`to` paths
 are written.
 
 
