@@ -505,6 +505,9 @@ the inputs of steps that have not run yet. See
 
 `sources` adds aliases whose values come from a function, a query, a
 file, a table, or code. Formulas read them next to the `from` aliases. A
+`file` or `table` is loaded once, and so is a `func` or `query` whose
+arguments read no alias. The other sources run again on every change,
+see [Source kinds](#source-kinds) for the caching of each kind. A
 function annotated with
 [`meta.cache`](../../develop/how-to/functions/cache-function-results.md) avoids repeated calls.
 
@@ -531,8 +534,8 @@ export function AllometricClearance(weight: number | null): number | null {
 }
 ```
 
-A source runs whenever an input in `from` changes, even while the rule is
-off, so `AllometricClearance` also runs without a weight. Keep `from` to
+An uncached source runs whenever an input in `from` changes, even while
+the rule is off, so `AllometricClearance` also runs without a weight. Keep `from` to
 what the sources need, and make the function accept an absent value, as
 the `nullable` annotation and the `null` check do here.
 
@@ -912,23 +915,27 @@ the value of an input with no field, no longer marked. Without
 
 ### Source kinds
 
-| Source | Value |
-|---|---|
-| `validators(input, names: [...])` | The verdicts of the validator functions, each called with the value of `input` as its single argument, following the [validator contract](../../datagrok/concepts/functions/func-params-annotation.md#validation): `null` or `true` pass, a string is the message, `false` fails with a message naming the function, and a thrown error becomes a warning. Without `names`, the validators the input's annotation declares run (platform 1.28.0 or later). |
-| `choices(input)` | `{items, values, inList, row, rowErrors}`: the list the input's `choices` annotation evaluates to, the value of each item, whether the current value is in the list, the lookup row of the current value converted to the input types, and the cells that don't fit (platform 1.28.0 or later). |
-| `func("Pkg:Function", param: <formula>, ...)` | The result of a platform function or package query, with each parameter set to its formula. The core `OpenFile` function with a literal `fullPath` loads a file-share table: `func("OpenFile", fullPath: "System:AppData/Pkg/presets.csv")`. |
-| ``query("Pkg:Conn", `select ...`, name: <formula>, ...)`` | The dataframe the SQL returns on the connection. `@name` binds the argument of that name. An argument the SQL does not declare with `--input:` gets its type from the value (`int`, `double`, `bool`, `dataframe`, `datetime`, otherwise `string`). Declare the ones that need another type. |
-| `file("System:AppData/Pkg/presets.csv")` | The table at a file-share path or a URL. |
-| `table("name;value\n...", delimiter: ";")` | The table from CSV text, with optional `DG.CsvImportOptions` such as `delimiter` or `decimalSeparator`. |
-| `{js: {args: [...], fn: (...values) => any}}` | The result of `fn`, or the value of the promise it returns. `fn` is called with the values of the `args` input aliases, even absent ones. It has no formula, since it holds code. |
-| `{table: df}` | A `DG.DataFrame`, used as it is, not copied, so every rule that reads it shares the object. It has no formula either. |
+| Source | Caching | Value |
+|---|---|---|
+| `validators` | None | The verdicts of the validator functions, each called with the value of `input` as its single argument, following the [validator contract](../../datagrok/concepts/functions/func-params-annotation.md#validation): `null` or `true` pass, a string is the message, `false` fails with a message naming the function, and a thrown error becomes a warning. Without `names`, the validators the input's annotation declares run (platform 1.28.0 or later).<br/>*e.g.* `validators(input, names: [...])` |
+| `choices` | Until an `@` parameter changes | `{items, values, inList, row, rowErrors}`: the list the input's `choices` annotation evaluates to, the value of each item, whether the current value is in the list, the lookup row of the current value converted to the input types, and the cells that don't fit (platform 1.28.0 or later).<br/>*e.g.* `choices(input)` |
+| `func` | Once if no argument reads an alias | The result of a platform function or package query, with each parameter set to its formula. The core `OpenFile` function with a literal `fullPath` loads a file-share table: `func("OpenFile", fullPath: "System:AppData/Pkg/presets.csv")`.<br/>*e.g.* `func("Pkg:Function", param: <formula>, ...)` |
+| `query` | Once if no argument reads an alias | The dataframe the SQL returns on the connection. `@name` binds the argument of that name. An argument the SQL does not declare with `--input:` gets its type from the value (`int`, `double`, `bool`, `dataframe`, `datetime`, otherwise `string`). Declare the ones that need another type.<br/>*e.g.* ``query("Pkg:Conn", `select ...`, name: <formula>, ...)`` |
+| `file` | Once | The table at a file-share path or a URL.<br/>*e.g.* `file("System:AppData/Pkg/presets.csv")` |
+| `table` | Once | The table from CSV text, with optional `DG.CsvImportOptions` such as `delimiter` or `decimalSeparator`.<br/>*e.g.* `table("name;value\n...", delimiter: ";")` |
+| `js` | None | The result of `fn`, or the value of the promise it returns. `fn` is called with the values of the `args` input aliases, even absent ones. It has no formula, since it holds code.<br/>*e.g.* `{js: {args: [...], fn: (...values) => any}}` |
+| `table` (DataFrame) | Once | A `DG.DataFrame`, used as it is, not copied, so every rule that reads it shares the object. It has no formula either.<br/>*e.g.* `{table: df}` |
 
-A `file` and a `table` are loaded once, and so is a `func` or `query`
-whose arguments read no alias or that has none. Once means once for each
-link the rule expands to, see [Rule fields](#rule-fields). A source whose
-arguments read an alias runs on every change, also once for each link. A
-source that fails is reported, no effect is applied, and the next change
-tries again.
+Once means the first result is kept for each link the rule expands to,
+see [Rule fields](#rule-fields). A `func` or `query` without arguments
+counts as one whose arguments read no alias. A source with no caching
+runs on every change, also once for each link. A `choices` source keeps
+one result for each step input, shared by every rule that reads it, and
+evaluates the annotation again when a parameter it
+[references with `@`](../../datagrok/concepts/functions/func-params-annotation.md#referencing-other-parameters)
+changes, as the function form does. A source that fails is reported, its
+result is not kept, no effect is applied, and the next change tries
+again.
 
 ### Rule fields
 
