@@ -108,7 +108,11 @@ preferred.
 
 - Admonitions: `:::note`, `:::tip`, `:::warning`, `:::caution`, `:::important` — use sparingly.
 - Collapsible sections: `<details><summary>Title</summary>...</details>`.
-- Tabs: Import `Tabs` and `TabItem` from `@theme/Tabs` — only use when content varies by context (OS, language).
+- Tabs: Import `Tabs` and `TabItem` from `@theme/Tabs` — only use when content varies by context: OS,
+  language, notation, or variants and parts of one feature (for example, the editor tabs in
+  `access/databases/databases.md#query-editor`, Expressions / Exact match / Partial match in
+  `visualize/viewers/filters.md#expression-filter`, regression line / moving average in
+  `visualize/viewers/line-chart.md`).
 - Code blocks: specify language for syntax highlighting; optional `title="..."`.
 
 ### File naming
