@@ -827,6 +827,11 @@ To target a child dynamic workflow, use a path in `to` (e.g.,
 defined (self-reference), use just the query name with no path
 (e.g., `to: 'out1'`).
 
+A read-only target, such as a saved run opened read-only, is skipped:
+its steps are not added, removed, moved or replaced, while the action's
+changes to writable targets still apply. Replacing a writable workflow
+that holds a read-only item is allowed.
+
 Controller has additional methods:
 
 #### `setPipelineState`
