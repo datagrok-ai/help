@@ -993,12 +993,40 @@ To run SAR Matrix analysis:
       **Fragment cutoff**, **Series levels** and **Group leftovers by MCS**
     * **Series** (optional): group by your own series instead of by structure
     * **Predict analogs**: fill the combinations nobody has made with Free-Wilson predictions
-3. Click **OK**. The analysis opens with three tabs:
+3. Click **OK**. The analysis opens with four tabs:
 
 ![SAR Matrix walkthrough](img/sar_matrix_demo.gif)
 
 <Tabs>
-<TabItem value="matrix" label="SAR Matrix" default>
+<TabItem value="summary" label="Summary" default>
+
+What the analysis concluded, before the grids it concluded it from. The analysis opens here.
+
+![Summary](img/sar_matrix_summary.png)
+
+The line at the top is the scale and direction every ranking below depends on, and the bar under it
+is how much of the table reached a matrix at all: a compound with no analog to pair with informs no
+ranking here.
+
+Four segments sit under that:
+
+* **Overview**: the answers. Which R-group wins, which core runs highest, and which swap buys the
+  most potency, each naming its own limit; then **Start here**, the series ranked by what each one
+  offers, with marks saying why: most measured compounds, widest range, holds the best compound
+  made, most predictions worth making, best-validated fit
+* **Effects**: the rankings behind those answers, a tab per component, and a last tab holding what
+  was read off measured compounds inside each series rather than fitted
+* **Worth making**: analogs nobody has made, ranked by what each gains over the best compound its
+  own series already holds, in that series' own error
+* **Method**: the two cross-validated R² the rankings rest on, and which series the trust gate let
+  through
+
+Given a core column and its R-group columns, one fit ranks the core and every R-group on one scale,
+so a single run says which part of the molecule to change. Which R-group runs along the matrix
+columns is then a layout choice, not a limit on what is ranked.
+
+</TabItem>
+<TabItem value="matrix" label="SAR Matrix">
 
 A ranked list of series sits on the left, the selected matrix on the right. Cores run down the rows and
 substituents across the columns, so every column reads against the same core. A solid cell is a compound you have in the data provided, a dashed one a molecule nobody has made.
@@ -1063,6 +1091,15 @@ The dialog lists only columns whose values have attachment points, such as `[*:1
 a molfile. Each core forms its own series, and a blank R-group means hydrogen. Cells for
 combinations the R-groups can't form are crossed out. If two rows have the same core and R-groups,
 the matrix shows one of them, preferring the one with a measured value.
+
+Molecules that are made of parts are the clearest case. A PROTAC carries its warhead, its linker and
+its E3 ligand as columns of their own, so nothing is fragmented and the **Summary** ranks all three
+in one fit. Which part to change is then an answer rather than three separate runs.
+
+![Warhead, linker and E3 ligand in one run](img/sar_matrix_protac.gif)
+
+To try either shape, open **Browse > Apps > Demo > Cheminformatics** and run **SAR Matrix**, which
+cuts the structures itself, or **PROTAC SAR Matrix**, which is given the three parts as columns.
 
 </details>
 
