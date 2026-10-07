@@ -47,6 +47,26 @@ Datagrok supports several deployment schemas which can be configured using `GROK
 | dockerSettings           | Optional     | See [Docker Settings](#docker-settings)         | Configuration for [Plugins Docker Management](../develop/under-the-hood/infrastructure.md#5-plugin--docker-container-management)                            |
 | connectorsSettings       | Optional     | See [Connectors Settings](#connectors-settings) | List of Grok Connect endpoints for [External Database Connectivity](../develop/under-the-hood/infrastructure.md#3-external-database-connectivity) |
 
+Server-wide options at the root of `GROK_PARAMETERS` (on Kubernetes, `datagrok.grokParametersExtra.<option>` in the Helm values):
+
+| Option                | Default   | Description |
+|-----------------------|-----------|-------------|
+| serverName            | host name | This server's name in log records and the `grok` CLI |
+| deploymentEnvironment |           | Environment name (`prod`, `staging`) on every exported log record |
+| detection             | true      | This server takes part in [problem detection](../govern/audit/problems-and-alerts.md) |
+| lockedLoggerSettings  |           | Logger settings fixed by the deployment, as setting path → value; changing them is refused |
+| signingKeyMaxAgeDays  | 0         | Rotates the primary signing key when it gets older than this many days; 0 turns it off |
+| problemRules          |           | [Problem rules](../govern/audit/problem-rules.md) of the deployment, read-only in the platform |
+
+```json
+{
+  "problemRules": [
+    {"name": "connection-monitor-silent", "severity": "critical", "audience": "platform",
+     "match": {"source": "audit", "type": "connection-checked"}, "when": {"absent": {"for": 30}}}
+  ]
+}
+```
+
 Datagrok also creates a read-only `<db>_reader` database role and gives it a new random
 password on every start. You don't configure it. The former `dbReaderLogin` and
 `useAdminForMigrations` options are no longer used.

@@ -212,6 +212,8 @@ Permission for admin actions:
 | **Admin System Connections** | Edit system data connections such as System:AppData or System:Datagrok |
 | **Admin Sticky Meta**        | Ability to set up Sticky Meta                                          |
 | **Admin Keys**               | Manage server cryptographic keys: create, rotate, move, revoke, delete |
+| **Manage Alerts**            | See problems and alerts, mute, dismiss or fix them, edit [problem rules](../audit/problem-rules.md) |
+| **View Telemetry**           | Read errors as data and the timeline of actions, requests and sessions |
 | **Admin Sync**               | Manage cross-instance sync pairs and run entity sync                   |
 | **Admin Url Aliases**        | Create, re-point, and delete URL aliases                                |
 | **Create Repository**        | Register a new package repository                                      |
