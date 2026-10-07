@@ -13,12 +13,12 @@ keywords:
 
 You can start a workflow from code and, if the top-level configuration defines an
 [`onReturn`](./link-types#return-hook) hook, receive a return value when the user
-exits the workflow with the **Accept** button. On a regular close, the workflow
-resolves to `undefined`.
+exits the workflow with the **Confirm data** button (the check icon in the
+toolbar). On a regular close, the workflow resolves to `undefined`.
 
 The result flows like this:
 
-1. The user clicks **Accept**.
+1. The user clicks **Confirm data**.
 2. The `onReturn` handler runs and calls `controller.returnResult(value)`.
 3. Your awaited `startWorkflow(...)` resolves to that `value`.
 
@@ -68,3 +68,8 @@ const result = await startWorkflow<MyReturnShape>(
 `initialValues` and `inputRestrictions` follow the same semantics as the
 [script node](./configuration#script-nodes) fields of the same name. See
 [Consistency](./link-types#consistency) for the meaning of restriction values.
+
+A workflow entry without `steps` gets the defaults from its configuration:
+the `steps` of a static workflow or the `initialSteps` of a dynamic one,
+expanded all the way down. Pass `steps: []` for an empty workflow. A
+listed `steps` array is built as given, for static workflows too.

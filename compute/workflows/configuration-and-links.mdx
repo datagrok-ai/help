@@ -163,7 +163,7 @@ link set. Two things follow:
   and the user can reset it to the link's value.
 - While a step's results are current, a link doesn't overwrite its
   inputs. A new upstream value marks the step inconsistent instead, and
-  **Rerun with consistent** applies the new values and reruns it.
+  **Update** applies the new values and reruns it.
 
 The restriction of the write sets how strict this is:
 
@@ -184,7 +184,7 @@ and `substrateAdded`.
 
 Try it: run the configuration and the first day, change the maximum
 growth rate on the configuration step and rerun it. The day is marked
-inconsistent, and **Rerun with consistent** reruns it with the new rate.
+inconsistent, and **Update** reruns it with the new rate.
 
 See [Consistency](./link-types#consistency).
 

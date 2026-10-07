@@ -642,10 +642,10 @@ following workflow/script nodes targets:
 - `tags` will be used to fill tags when user saves a workflow. Note
   that tags here are completely unrelated to `PipelineConfiguration`
   ones. They tag a particular saved instance of a workflow.
-- `body` is rendered as markdown in the Compute2 step row, below the
-  title (via the `<dg-markdown>` webcomponent). Use this for inline
-  notes, step instructions, or reactive status text. Works on every
-  step kind including action steps.
+- `body` is rendered as markdown at the top of the workflow view, in
+  place of the workflow description and above the action cards. Use this
+  for inline notes, step instructions, or reactive status text. Works on
+  workflows and action steps; script steps do not show it.
 
 Node meta controller has an additional method:
 
@@ -840,7 +840,9 @@ name. `PipelineInstanceConfig` is a recursive type that should be
 compatible with the current workflow configuration. Each item should
 have a matching `id`, nested items are referenced in `steps`
 regardless of a workflow type. For script nodes it is possible to
-provide `initialValues` and `inputRestrictions`.
+provide `initialValues` and `inputRestrictions`. A workflow item
+without `steps` gets the defaults from its configuration (`steps` or
+`initialSteps`); pass `steps: []` for an empty workflow.
 
 #### `getSteps`
 
@@ -944,7 +946,7 @@ inputs where that is expected.
 
 Uses the `onReturn` field instead of links and is triggered only
 once when a workflow is started [programmatically](code-usage.mdx) and
-exited via the **Accept** button.
+exited via the **Confirm data** button.
 Otherwise, the same as [data links](#data-links).
 
 The return hook handler receives an `IRuntimeReturnController` with the
