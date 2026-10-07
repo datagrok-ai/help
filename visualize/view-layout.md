@@ -30,18 +30,20 @@ not part of the layout: they are stored in your browser. See
 To save a **Table View** layout and apply it to a different dataset:
 1. Open a table. Add [viewers](viewers/viewers.md), arrange them, and customize the way you want.
 2. Save the layout:
-   * **In Datagrok**: On the **Top Menu**, click **View > Layout > Save to
-   Gallery**. This action saves the layout on a server. 
-   * **Locally**: On the **Top Menu**, click **View > Layout > Download**. This action saves the layout to your local drive.
+   * **In Datagrok**: In **Toolbox > Layouts**, click **SAVE**. Alternatively, on the **Top Menu**,
+   click **View > Layout > Save to Gallery**. The layout is saved on the server. You can rename the
+   layout and add tags from its context menu in **Toolbox > Layouts**.
+   * **Locally**: On the **Top Menu**, click **View > Layout > Download**. The layout is saved to
+   your local drive.
 3. Open another table with similar columns.
-4. On the **Top Menu**, click **View > Layout > Open Gallery**. This action
-   opens a panel with [suggestions](#layout-suggestions). 
-5. To apply the layout, find and click the layout you saved earlier. If you
-downloaded the layout, drag and drop the layout file into the
-view.
+4. Find the layout in **Toolbox > Layouts**, or on the **Top Menu**, click **View > Layout > Open
+   Gallery**. Both options show [layout suggestions](#layout-suggestions) for the current table and
+   let you search for layouts by name or tag.
+5. To apply the layout, click the layout you saved earlier. If you downloaded the layout,
+   drag and drop the layout file into the view.
 
-To create a copy of your current view, on the  **Top Menu**, click **View >
-Layout > Clone**.
+To create a copy of your current view, on the **Top Menu**, click **View >
+Layout > Clone View**.
 
 ![](view-layout.gif)
 
@@ -57,20 +59,18 @@ start with "%", e.g., "%myColorCoding".
 
 ### Layout suggestions
 
-When a **Table View** is open, Datagrok automatically suggests relevant layouts
-from the layout gallery, accessible via **Top Menu > View > Layout > Open
-Gallery**.
+When a **Table View** is open, Datagrok automatically suggests relevant layouts, accessible via
+**Toolbox > Layouts** or **Top Menu > View > Layout > Open Gallery**.
 
-A layout is considered relevant if its "columns of interest" match a subset of
-columns in the current table, based on column names, data types,
-semantic types, and other metadata.
+A layout is considered relevant if its "columns of interest" match a subset of columns in the
+current table, based on column names and [semantic types](../govern/catalog/semantic-types.md).
 
 When saving a layout, the columns of interest are determined as follows:
 
 * For layouts that include non-grid viewers, all data columns used in these
   viewers become the columns of interest.
-* For layouts that include only a [grid](viewers/grid.md), all visible
-  (non-hidden) columns become the columns of interest.
+* For layouts that include only a [grid](viewers/grid.md), there are no columns of interest, so
+  these layouts are suggested for any table.
 
 ## Viewer layout
 
