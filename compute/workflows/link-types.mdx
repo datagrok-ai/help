@@ -357,12 +357,23 @@ script inputs that were set by the data link.
 Consistency is tracked based on the value, stored separately from a
 script io.
 
+Numbers, including the cells of a dataframe, count as equal when they
+differ by less than `0.0001`. A script input can set its own tolerance
+with annotations: `consistencyTolerance` is absolute,
+`consistencyRelTolerance` is relative to the assigned value, and when
+either is set the default no longer applies:
+
+```
+//input: double k = 1e-6 {consistencyTolerance: 1e-9}
+//input: double volume {consistencyRelTolerance: 1e-6}
+```
+
 Consistency is also applicable to changes propagated via data
 links. If a script was never run in the current workflow instance,
 data links just set data directly to scripts io. However, if a script
 was run, links will not overwrite script io data, but rather only
 trigger consistency changes. User has either to manually review, apply
-changes and rerun scripts, or do it via **rerun with consistent** on a
+changes and rerun scripts, or do it via **Update** on a
 scope of workflow, nested workflow, or a script.
 
 ![Inconsistent data mark](pics/wineQ_full_workflow_consistency_check.png)
