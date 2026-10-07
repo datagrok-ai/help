@@ -190,7 +190,7 @@ In Datagrok, the underlying data (tables) and their visual representations
 ([layout](../../../visualize/view-layout.md)) are distinct entities. You can download a _layout_ for any
 open table. 
 
-To download a layout, in the **Top Menu**, select **View** > **Layouts** >
+To download a layout, in the **Top Menu**, select **View** > **Layout** >
 **Download** for your current table. You can then apply this layout to any other
 table using drag and drop.
 
