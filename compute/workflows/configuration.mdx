@@ -24,6 +24,11 @@ the handler and controller interfaces, `PipelineInstanceConfig`,
 field names and surface required fields as you type, so the prose below
 focuses on the _meaning_ of each option rather than its TypeScript shape.
 
+To walk a `PipelineState` (in a custom export) or a `PipelineOutline` (from
+`getOutline()`), narrow each node with `isFuncCallState`,
+`isStaticPipelineState` and `isDynamicPipelineState`, also exported from
+`@datagrok-libraries/compute-api`.
+
 :::
 
 ## Getting started
