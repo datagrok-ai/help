@@ -520,7 +520,7 @@ A custom export function receives two arguments
 * `treeState` of type `PipelineState`
 * `utils` of type `ExportUtils`
 
-Export utils contain 4 methods that could reuse standard existing
+Export utils contain 6 methods that could reuse standard existing
 export logic:
 
 * `reportFuncCallExcel` - creates a standard xlsx blob and exceljs
@@ -531,8 +531,31 @@ export logic:
   based on export name. Returns whatever a custom export returned.
 * `reportStateExcel` - creates a standard xlsx tree export, however
   for each call an optional callback will be called (if
-  provided). Returns [Blob, Zippable, string], where 3rd is the name
-  of a file.
+  provided). Returns [Blob, Zippable, string, ExportSummaryItem[]],
+  where 3rd is the name of a file and 4th is the summary below.
+* `getExportSummary` - returns the summary of a workflow as
+  `ExportSummaryItem[]`, see below.
+* `reportSummaryExcel` - creates the summary workbook alone, returns
+  [Blob, ExcelJS.Workbook].
+
+The tree export also writes `000_summary.xlsx` at the root of the zip:
+one row per workflow and step, in tree order. An `ExportSummaryItem` has
+the following fields:
+
+* kind: `'step' | 'workflow'`
+* path: `string[]`, the folders in the zip
+* name: `string`, title?: `string`
+* fileName?: `string`, the step workbook; absent for workflows and for
+  steps that are not loaded
+* status?: `StepStatus`, the status the tree shows for a step
+* runError?: `string`
+* errors, warnings, notifications: `string[]`; for a step each message
+  starts with the name of its input or output, for a workflow they are
+  its [pipeline validator](./link-types#pipeline-validators) results
+* inconsistentInputs: `string[]`
+* rollup?: for a workflow, counts over all steps below it: `steps`,
+  `notLoaded`, `failed`, `outdated`, `withErrors`, `withWarnings` and
+  `inconsistent`
 
 
 The callback in `reportStateExcel` receives an object with the following
@@ -543,6 +566,7 @@ fields:
 * archive: `Zippable`
 * path: `string[]`
 * fileName: `string`
+* status?: `StepStatus`
 * isOutputOutdated?: `boolean`
 * runError?: `string`
 * validation?: `Record<string, ValidationResult>`
