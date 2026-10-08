@@ -72,7 +72,7 @@ and page from them:
 
 Page on a missing heartbeat too: no heartbeat for 15 minutes means the instance is down, hung, or cut off.
 Each record carries the problem's audience: `platform` for the platform's operators, `owner` for problems
-that belong to the owner of a data connection or a rule, which the platform on-call should not be paged for.
+that belong to the owner of a data connection or a rule, so the people who run the platform are not paged for them.
 
 ## Working with problems
 

@@ -17,7 +17,7 @@ statuses and alerts as the built-in ones: it alerts once, stays open until resol
 muted, dismissed or marked fixed.
 
 A rule reads the events Datagrok saves: errors, audit and usage records (see [Audit](audit.md)).
-Levels the logger does not save, such as debug, cannot be matched.
+A level, such as debug, is matched only when the logger saves that level.
 
 ## Where to create rules
 
@@ -38,7 +38,7 @@ Every change is recorded as a `problem-rule-changed` audit event.
   "description": "One account failing to sign in again and again",
   "severity": "warning",
   "match": {"source": "audit", "type": "user-login-failed"},
-  "groupBy": "param:user",
+  "groupBy": "param:login",
   "window": 15,
   "when": {"count": 5},
   "summary": "{count} failed logins for {group} in {window} min"
@@ -125,7 +125,7 @@ grok s observe rules list
 [
   {"name": "failed-logins-per-user", "severity": "warning",
    "match": {"source": "audit", "type": "user-login-failed"},
-   "groupBy": "param:user", "window": 15, "when": {"count": 5},
+   "groupBy": "param:login", "window": 15, "when": {"count": 5},
    "summary": "{count} failed logins for {group} in {window} min"},
 
   {"name": "package-error-spike", "severity": "warning",

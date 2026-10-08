@@ -108,6 +108,11 @@ Each event is associated with a fixed type and the user session that triggered i
 * problem-status-changed
 * problem-rule-changed
 * connection-checked
+* health-checked
+* capture-rule-created
+* capture-rule-activated
+* capture-rule-expired
+* capture-rule-stopped
 * server-started
 * user-logged-in
 * user-logged-out
