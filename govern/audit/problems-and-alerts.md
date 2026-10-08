@@ -19,22 +19,22 @@ monitoring system as a log record, once, and stays open until a person resolves 
 | | Problem | Alert |
 |---|---|---|
 | What it is | what is wrong, for example "service Jupyter fails" | the notification that it went wrong |
-| How long it lives | for good, one per condition | until a person resolves it |
+| How long it lives | one per condition; forgotten 30 days after it ended with no open alert, unless it is muted or not a problem | until a person resolves it |
 | Who changes it | you set its status; Datagrok tracks whether it is happening | Datagrok opens it; you acknowledge and resolve it |
 
 ## What Datagrok detects
 
 | Problem | Raised when | Who acts |
 |---|---|---|
-| Service down | a platform service fails its health check twice in a row; a server stops reporting | platform |
+| Service down | a platform service fails its health check twice in a row, on any server | platform |
 | Error incident | one error hits 3 users, or repeats 20 times, within 15 minutes | platform |
 | Slow or failing requests | requests are slow (p95 of 10 s or more) or a quarter of them fail, over 5 minutes | platform |
-| Failed logins | an account fails to sign in 5 times within 15 minutes; failures spread over many accounts | platform |
+| Failed logins | one login fails to sign in 5 times within 15 minutes (the default [problem rule](problem-rules.md) `login`) | platform |
 | Connection down | an external data connection fails its check twice in a row | its owner |
 | User report | a user files a problem report | platform |
-| Your rules | a condition you defined over the log holds ([problem rules](problem-rules.md)) | its owner |
+| Your rules | a condition you defined over the log holds ([problem rules](problem-rules.md)) | its owner, unless the rule says `platform` |
 
-An administrator can change these thresholds in **Settings** > **Alerts**.
+An administrator can change these thresholds, and the problem rules, in **Settings** > **Alerts**.
 
 ## Statuses
 
@@ -50,7 +50,7 @@ Each problem has a status that decides whether it alerts:
 What to do with an alert:
 
 * **Resolve** it when you have seen it. The problem stays active: if the condition still holds, a new alert opens on the next check.
-* **Mute** the problem to stop its alerts. Muting resolves the open alert.
+* **Mute** the problem to stop its alerts. Muting resolves the open alert, and is the way to stop alerts about a problem.
 * Mark the problem **fixed** to hear about it only if it comes back.
 
 An alert that is open does not page again while its condition flaps or persists. When the condition ends,
@@ -76,16 +76,18 @@ that belong to the owner of a data connection or a rule, so the people who run t
 
 ## Working with problems
 
-Problems and alerts need the **ManageAlerts** [global permission](../access-control/access-control.md#global-permissions),
-which administrators have. Use the [`grok` CLI](https://github.com/datagrok-ai/public/blob/master/tools/GROK_S.md):
+Problems and alerts need the **Manage Alerts** [global permission](../access-control/access-control.md#global-permissions),
+which administrators have. Use the [`grok` CLI](https://github.com/datagrok-ai/public/blob/master/tools/GROK_S.md)
+or the REST API (`/api/problems`). A problem is named by its id or by `kind:key`, for example
+`health:Jupyter`, `report:<report id>` or `connection:<connection id>`:
 
 ```bash
-grok s observe alerts list                                 # open and acknowledged alerts
-grok s observe alerts resolve report:4820 --reason "duplicate"
-grok s observe problems list --status active
-grok s observe problems mute connection:ELN:Prod --until 2026-10-04T06:00 --reason "monthly maintenance"
-grok s observe problems fix health:Jupyter --reason "kernel image rebuilt"
+grok s observe problems list --alert-status open           # the open alerts
+grok s observe problems resolve report:<report id> --reason "duplicate"
+grok s observe problems list --status active --since 7d
+grok s observe problems status connection:<connection id> --data '{"status": "muted", "reason": "monthly maintenance", "until": "2026-10-04T06:00:00Z"}'
+grok s observe problems status health:Jupyter --data '{"status": "fixed", "reason": "kernel image rebuilt"}'
 grok s observe problems history health:Jupyter             # everything that happened to it
 ```
 
-In [Usage Analysis](usage-analysis.md), the **Errors** tab shows the alerts of each error.
+In [Usage Analysis](usage-analysis.md), the **Errors** tab shows the error incident of each error.

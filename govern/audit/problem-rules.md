@@ -1,13 +1,13 @@
 ---
 title: "Problem rules"
 sidebar_position: 4
-description: Define your own problem types as conditions over the Datagrok log, test them against past events, and get alerts like the built-in ones.
+description: Define your own problem types as conditions over the Datagrok log, test them, and get alerts like the built-in ones.
 keywords:
   - problem rules
   - custom alerts
   - alert rules
   - log conditions
-  - GROK_PARAMETERS problemRules
+  - problemRules
 ---
 
 A **problem rule** is your own kind of [problem](problems-and-alerts.md): a condition over the
@@ -19,16 +19,21 @@ muted, dismissed or marked fixed.
 A rule reads the events Datagrok saves: errors, audit and usage records (see [Audit](audit.md)).
 A level, such as debug, is matched only when the logger saves that level.
 
-## Where to create rules
+## Where rules live
+
+The rules are one setting, **Problem rules**, on **Settings** > **Alerts**: a JSON array of rules.
+Saving checks every rule and refuses the save with the first error. Changing it needs the
+**Edit Plugins Settings** [global permission](../access-control/access-control.md#global-permissions)
+and is recorded as a `settings-changed` audit event.
+
+Out of the box the array holds one rule, `login`: 5 failed sign-ins of one login within 15 minutes.
+Saving your own rules replaces it, so keep it in the array if you want it.
 
 | Where | |
 |---|---|
-| **Settings** > **Problem rules** | the list of rules; select one to edit it as JSON, **Test** it, **Save**, enable, disable or delete it. **New…** starts from a template for the condition you pick. Below the rule are its current problems |
-| `grok s observe rules` | `list`, `get`, `add`, `edit`, `enable`, `disable`, `delete`, `test` ([grok CLI](https://github.com/datagrok-ai/public/blob/master/tools/GROK_S.md)) |
-| `GROK_PARAMETERS` `problemRules` | rules the deployment defines; read-only everywhere else |
-
-Rules need the **ManageAlerts** [global permission](../access-control/access-control.md#global-permissions).
-Every change is recorded as a `problem-rule-changed` audit event.
+| **Settings** > **Alerts** | edit **Problem rules**, then **Test rules** |
+| `grok s observe rules` | `get`, `put --json rules.json`, `test` ([grok CLI](https://github.com/datagrok-ai/public/blob/master/tools/GROK_S.md)) |
+| `GROK_PARAMETERS` | `settings.alerts.problemRules`, applied at every start ([below](#rules-the-deployment-defines)) |
 
 ## A rule
 
@@ -47,18 +52,18 @@ Every change is recorded as a `problem-rule-changed` audit event.
 
 | Field | Default | Description |
 |---|---|---|
-| `name` | required | 2–27 lowercase letters, digits or dashes, starting with a letter. Its problems are of kind `rule-<name>` |
+| `name` | required | 2–27 lowercase letters, digits or dashes, starting with a letter; unique. Its problems are of kind `rule-<name>` |
 | `description` | | Free text |
 | `enabled` | `true` | |
 | `severity` | `warning` | `info` records the problem and never alerts; `warning`; `critical` |
-| `audience` | `owner` | `platform` (pages the platform's operators) is allowed only in `GROK_PARAMETERS` |
+| `audience` | `owner` | `owner`, or `platform` to page the platform's operators |
 | `alertname` | `DatagrokRule` | The alert name your monitoring system sees |
 | `match` | required | Which events count, below |
-| `groupBy` | none | One or two of `user`, `session`, `server`, `request`, `type`, `signature`, `param:<name>`. Each group is its own problem |
-| `window` | 60 | Minutes the condition looks back, 1–1440 (360 for `spike`) |
-| `every` | 1 | Minutes between evaluations, 1–60 (10 for `new` and `spike`) |
+| `groupBy` | none | One or two of `user`, `session`, `request`, `type`, `signature`, `param:<name>`. Each group is its own problem |
+| `window` | 60 | Minutes the condition looks back, 1–1440 |
+| `every` | 1 | Minutes between evaluations, 1–60 |
 | `clearAfter` | 5 | Minutes the condition must stop holding before the problem clears, 0–1440 |
-| `when` | `{"count": 1}` | Up to three conditions, all of which must hold, below |
+| `when` | `{"count": 1}` | Conditions, all of which must hold, below |
 | `summary` | generated | The alert text, with placeholders, below |
 
 ### Match
@@ -80,46 +85,33 @@ Every change is recorded as a `problem-rule-changed` audit event.
 | `count` | at least N matching events in the window | `{"count": 5}` |
 | `users` | at least N distinct users among them | `{"users": 5}` |
 | `value` | an aggregate (`avg`, `min`, `max`, `sum`, `p95`) of a numeric parameter compares to a threshold | `{"value": {"param": "ms", "agg": "avg", "op": ">=", "threshold": 5000}}` |
-| `ratio` | matching events are at least a share of the events of `of` (by default: the same match without its text, regex and parameter conditions), with at least `minTotal` (10) of those | `{"ratio": {"atLeast": 0.5, "minTotal": 20}}` |
-| `then` | a matching event is followed by an event of `then.match` within `within` minutes (60), on the same `session`, `user`, `request` or `param:<name>` if `same` is given. Combines with `count` only | `{"then": {"match": {"source": "error"}, "within": 30, "same": "user"}}` |
 | `absent` | no matching event for `for` minutes; with `groupBy`, a group seen within `lookback` minutes (1440) has gone silent. Stands alone | `{"absent": {"for": 30}}` |
-| `new` | the group appears in the window but not in the `baseline` days before it (7, up to 30). Needs `groupBy` | `{"new": {"baseline": 30}}` |
-| `spike` | the window's count is at least `factor` times the usual count of the same window on the previous `days` days (7, up to 14), and at least `minCount` (10) | `{"spike": {"factor": 3}}` |
 
 A problem clears when its condition has not held for `clearAfter` minutes. An `absent` problem clears
-when a matching event arrives. Disabling or deleting a rule clears its problems.
+when a matching event arrives. Disabling or removing a rule clears its problems.
 
 ### Summary
 
-`summary` may use `{rule}`, `{group}`, `{count}`, `{users}`, `{value}`, `{total}`, `{ratio}`,
-`{baseline}`, `{window}`, `{for}`, `{lookback}`, `{first}`, `{last}` and `{message}` (the newest
-matching event's message). Without a summary, Datagrok writes one from the condition.
+`summary` may use `{rule}`, `{group}`, `{count}`, `{users}`, `{value}`, `{window}`, `{for}`,
+`{lookback}`, `{first}`, `{last}` and `{message}` (the newest matching event's message). Without a
+summary, Datagrok writes one from the condition.
 
-## Test before you save
+## Test
 
-**Test** in Settings, or `grok s observe rules test`, runs the rule over the last 24 hours (or fewer,
-`--hours`) without raising anything: how many events it matched, the groups it holds for now, and the
-groups it would have raised at any hour.
-
-```bash
-grok s observe rules test --json failed-logins.json
-grok s observe rules add --json failed-logins.json
-grok s observe rules list
-```
+**Test rules** on **Settings** > **Alerts**, or `grok s observe rules test`, evaluates the saved
+rules once, now, without raising anything: for each rule, how many events it matched in its window
+and the groups it holds for. It needs the **Manage Alerts** and **View Telemetry** permissions.
 
 ## Examples
 
 | Rule | What it catches |
 |---|---|
 | `failed-logins-per-user` | one account failing to sign in again and again |
-| `package-error-spike` | a package suddenly erroring three times as often as on a usual day |
 | `query-timeouts` | a connection whose queries keep timing out |
-| `function-failed-twice` | a function that failed, was run again and failed again |
-| `connection-monitor-silent` | the connection checks have stopped (a deployment rule: it pages the platform) |
 | `chem-error-many-users` | one Chem error hitting five users within 15 minutes |
-| `new-package-version-errors` | the first error from a package version (recorded, not alerted) |
 | `slow-connection-checks` | a data connection answering slowly on average |
-| `partner-bulk-downloads` | a member of the External partners group opening many files |
+| `partner-bulk-downloads` | a member of the External partners group opening many files (the group must exist) |
+| `connection-monitor-silent` | the connection checks have stopped; it pages the platform |
 
 ```json
 [
@@ -128,38 +120,15 @@ grok s observe rules list
    "groupBy": "param:login", "window": 15, "when": {"count": 5},
    "summary": "{count} failed logins for {group} in {window} min"},
 
-  {"name": "package-error-spike", "severity": "warning",
-   "match": {"source": "error", "params": [{"name": "packageName", "op": "exists"}]},
-   "groupBy": "param:packageName", "window": 60, "every": 10,
-   "when": {"spike": {"factor": 3, "days": 7, "minCount": 20}},
-   "summary": "{group}: {count} errors in the last hour, {baseline} on a usual day"},
-
   {"name": "query-timeouts", "severity": "warning",
    "match": {"source": "error", "text": ["timeout"], "params": [{"name": "connection", "op": "exists"}]},
    "groupBy": "param:connection", "window": 60, "when": {"count": 10},
    "summary": "{count} query timeouts on {group} in the last hour"},
 
-  {"name": "function-failed-twice", "severity": "warning",
-   "match": {"source": "error", "params": [{"name": "function", "op": "exists"}]},
-   "groupBy": "param:function", "window": 60,
-   "when": {"then": {"match": {"source": "error"}, "within": 60, "same": "param:function"}},
-   "summary": "{group} failed, ran again and failed again within an hour"},
-
-  {"name": "connection-monitor-silent", "severity": "critical", "audience": "platform",
-   "match": {"source": "audit", "type": "connection-checked"},
-   "when": {"absent": {"for": 30}},
-   "summary": "No connection check for {for} min: the connection monitor is not running"},
-
   {"name": "chem-error-many-users", "severity": "critical",
    "match": {"source": "error", "params": [{"name": "packageName", "op": "=", "value": "Chem"}]},
    "groupBy": "signature", "window": 15, "when": {"users": 5},
    "summary": "{users} users hit the same Chem error in {window} min: {message}"},
-
-  {"name": "new-package-version-errors", "severity": "info",
-   "match": {"source": "error", "params": [{"name": "packageVersion", "op": "exists"}]},
-   "groupBy": ["param:packageName", "param:packageVersion"], "window": 60, "every": 15,
-   "when": {"new": {"baseline": 30}},
-   "summary": "First error from {group}: {message}"},
 
   {"name": "slow-connection-checks", "severity": "warning",
    "match": {"source": "audit", "type": "connection-checked", "params": [{"name": "status", "op": "=", "value": "ok"}]},
@@ -170,7 +139,12 @@ grok s observe rules list
   {"name": "partner-bulk-downloads", "severity": "warning",
    "match": {"source": "usage", "type": "file-open", "groups": ["External partners"]},
    "groupBy": "user", "window": 60, "when": {"count": 200},
-   "summary": "{group} opened {count} files in an hour"}
+   "summary": "{group} opened {count} files in an hour"},
+
+  {"name": "connection-monitor-silent", "severity": "critical", "audience": "platform",
+   "match": {"source": "audit", "type": "connection-checked"},
+   "when": {"absent": {"for": 30}},
+   "summary": "No connection check for {for} min: the connection monitor is not running"}
 ]
 ```
 
@@ -178,28 +152,27 @@ grok s observe rules list
 
 | Limit | Value |
 |---|---|
-| Enabled rules | 50 |
+| Rules | 50 |
 | Problems raised per rule at a time | 100; beyond that, a `problem-rule` problem says so |
 | One evaluation | 10 seconds per query |
-| A test | 30 seconds, the last 1 to 24 hours |
-| Sizes | 10 parameters, 10 keywords, 20 types, 50 users, 10 groups, 50 `in` values, 3 conditions |
+| Sizes | 10 parameters, 10 keywords, 20 types, 50 users, 10 groups, 50 `in` values |
 
-A rule that is invalid, fails, or exceeds a limit raises a `problem-rule` problem for its owners
-until it evaluates again.
+A rule that fails or exceeds a limit raises a `problem-rule` problem for its owners until it
+evaluates again.
 
 ## Rules the deployment defines
 
-Put rules in the top-level `problemRules` key of [`GROK_PARAMETERS`](../../deploy/configuration.md)
-(Helm: `datagrok.grokParametersExtra.problemRules`). They are listed as read-only in Settings and the
-CLI, and only they may use `"audience": "platform"`. A deployment rule with the name of a rule made in
-Settings replaces it.
+Set the rules in [`GROK_PARAMETERS`](../../deploy/configuration.md#settings) under
+`settings.alerts.problemRules`, as the JSON array written as a string. They are written to the
+settings at every start, replacing what was saved in **Settings** since.
 
 ```json
 {
-  "problemRules": [
-    {"name": "connection-monitor-silent", "severity": "critical", "audience": "platform",
-     "match": {"source": "audit", "type": "connection-checked"}, "when": {"absent": {"for": 30}}}
-  ]
+  "settings": {
+    "alerts": {
+      "problemRules": "[{\"name\": \"connection-monitor-silent\", \"severity\": \"critical\", \"audience\": \"platform\", \"match\": {\"source\": \"audit\", \"type\": \"connection-checked\"}, \"when\": {\"absent\": {\"for\": 30}}}]"
+    }
+  }
 }
 ```
 
