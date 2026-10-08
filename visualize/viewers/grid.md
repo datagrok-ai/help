@@ -222,6 +222,14 @@ on the corresponding column separator, like shown on the picture below:
 
 ![](img/grid-unhide-columns.gif)
 
+:::note
+
+To keep a column in place but hide its values, for example in screenshots, click the column
+header and, in the **Context Panel** under **Settings**, select **Blur content**. The grid blurs
+the column's cells, and tooltips leave the column out.
+
+:::
+
 ### Resizing columns
 
 There are multiple ways to resize a column:

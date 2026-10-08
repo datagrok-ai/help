@@ -411,7 +411,7 @@ Sketchers are synchronized with the **Context Panel**. As you draw or edit a mol
 
 Datagrok offers an intuitive filtering functionality to explore and filter datasets. Hovering over categories or distributions in the **Filter Panel** instantly highlights relevant data points across all viewers. For molecules, Datagrok uses integrated [sketchers](#sketching) to allow structure-based filtering. After applying the filter, Datagrok highlights the queried substructures in the filtered subset.
 
-![Filter by substructure](img/filter-substructure.gif)
+![Filtering by substructure with different search types](img/substructure-filter-search-types.gif)
 
 <details>
 <summary>How to use</summary>
@@ -420,7 +420,32 @@ To filter by substructure, follow these steps:
 
 1. On the **Menu Ribbon**, click the **Filter** icon to open the **Filter Panel**. The panel shows filters for all dataset columns. By default, the substructure filter is displayed on top, but you can rearrange, add, or remove filter columns by using available controls.
 1. Open the sketcher by clicking the **Click to edit** button. Sketch or enter a substructure.
+
+   :::note
+
+   By default, Datagrok aligns the filtered molecules with the sketched structure and highlights the
+   sketched structure in them. To disable either behavior, clear the corresponding **Align** or
+   **Highlight** checkbox.
+
+   By default, the filtering results are updated as you draw. To apply the filter only after you
+   click **OK**, clear the **Filter as you draw** checkbox.
+
+   Datagrok remembers your choices.
+
+   :::
+
 1. Once finished, click **OK** to apply the filter.
+1. Optionally, to change how the sketched structure is matched, select a search type above the
+   sketcher:
+   * **Contains** (default): shows molecules that contain the sketched structure as a substructure.
+   * **Included in**: shows molecules that are substructures of the sketched structure.
+   * **Exact**: shows molecules that match the sketched structure exactly.
+   * **Stereo agnostic**: shows molecules that match the sketched structure, ignoring
+     stereochemistry.
+   * **Similar**: shows molecules that are similar to the sketched structure. Set the fingerprint
+     in **FP** and the cutoff with the slider.
+   * **Not contains**: shows molecules that don't contain the sketched structure.
+   * **Not included in**: shows molecules that aren't substructures of the sketched structure.
 
 To clear the filter, use the checkbox provided. To remove the filter altogether, use the **Close** (**x**) icon.
 
@@ -1090,9 +1115,9 @@ Leave it off unless you need the leftover compounds covered.
 ## Docking
 
 Use molecular docking to analyze how small molecules bind to protein targets (powered by [AutoDock Vina](https://autodock.scripps.edu/)).
-Datagrok visualizes predicted poses and calculates binding scores. Requires the [Docking](https://github.com/datagrok-ai/public/blob/master/packages/Docking/README.md) package.
+Datagrok visualizes predicted poses, calculates binding scores, and shows protein-ligand interactions. Requires the [Docking](https://github.com/datagrok-ai/public/blob/master/packages/Docking/README.md) package, and the [BiostructureViewer](https://github.com/datagrok-ai/public/blob/master/packages/BiostructureViewer/README.md) package for protein-ligand interactions.
 
-![Docking](  https://github.com/datagrok-ai/public/raw/master/packages/Docking/help/additional-properties.gif)
+![Docking results and protein-ligand interactions](img/docking-protein-ligand-interactions.gif)
 
 <details>
 <summary>How to use</summary>
@@ -1114,7 +1139,28 @@ or [plugin docs](https://github.com/datagrok-ai/public/blob/master/packages/Dock
 
 **Step 3. Analyze the results**
 
-Explore predicted poses and binding scores in your dataset and the **Context Panel** (under **Docking**).
+Explore predicted poses and binding scores in your dataset and the **Context Panel** (under **AutoDock**).
+
+**Step 4. Analyze protein-ligand interactions**
+
+Click a pose cell to open the **Protein-Ligand Interactions** pane in the **Context Panel**. Use
+the interactive diagram to explore the interactions between the ligand and protein residues. If the
+structure contains multiple ligands, select one in **Ligand**.
+
+To calculate interactions for all rows, click **Compute for whole dataset**. Datagrok adds the
+following columns:
+
+* **PL Diagram**: an interaction diagram for each row.
+* **PL Interactions**: the interacting residues.
+* Interaction count columns for each interaction type found in the dataset, such as **PL HBD** for
+  hydrogen bond donors.
+* **PL Total**: the total number of interactions.
+
+Click a cell in **PL Diagram** to open the interactive diagram and explore the interacting residues
+grouped by interaction type in the **Context Panel**.
+
+The **Protein-Ligand Interactions** pane is also available for other 3D structures that contain a
+ligand and for PDB IDs.
 
 </details>
 
@@ -1338,6 +1384,40 @@ To run a reaction between molecules from two columns, use **Chem** > **Transform
    1. Click **OK**.
 
 In the **pairwise** mode, the products are added to the first table as a new column. In the **matrix** mode, a new table opens with the **Reactant 1**, **Reactant 2**, and **Product** columns.
+
+</details>
+
+### Markush enumeration
+
+To build a table of molecules from cores with R-groups, use **Chem** > **Transform** >
+**Markush Enumeration...**. To work in a full view, open the **Markush Enumerator** app
+(**Browse** > **Apps** > **Chem**). Requires the
+[SequenceTranslator](https://github.com/datagrok-ai/public/blob/master/packages/SequenceTranslator/README.md)
+package.
+
+![Markush enumeration](img/markush-enumeration.gif)
+
+<details>
+<summary>How to use</summary>
+
+1. On the **Top Menu**, select **Chem** > **Transform** > **Markush Enumeration...**. The **Markush
+   Enumerator** dialog opens. If the current cell holds a molecule with R-labels, it becomes the
+   first core.
+1. Under **Cores**, add molecules with R-labels. Draw them with the pencil icon, or import them
+   from a molecule column of an open table with the folder icon.
+1. Under **R-Groups**, add substituents for each R-number the cores use. Draw or import them, or
+   add a ready-made set with the templates icon. In **Target R#**, set the R-number the
+   substituents replace. An R-group can be a single atom, such as N or Cl, drawn without an
+   R-label.
+1. In **Enumerator type**, select **Zip** to combine the i-th substituent of every R-group list
+   (all lists must have the same length), or **Cartesian** to build every combination. The
+   **Preview** shows sample products and the number of results.
+1. To keep only unique products, keep **Remove duplicates** selected. Enter the **Table name**
+   for the new table, or select a table in **Append to table** to add the products to it.
+1. Click **OK**.
+
+To reuse a previous setup, click the **History** (<FAIcon icon="fa-solid fa-history" size="1x"/>)
+icon.
 
 </details>
 

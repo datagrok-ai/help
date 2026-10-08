@@ -114,6 +114,7 @@ packages, which we recommend for installation.
 |-----|-----------|---|
 | <h5>AutoDock</h5> <br/>Displays docking results for molecules that have undergone AutoDock analysis |`Molecule`|[Docking](https://github.com/datagrok-ai/public/blob/master/packages/Docking/README.md)|
 | <h5>DiffDock</h5> <br/>Provides an interactive interface for running molecular docking using NVIDIA's DiffDock model |`Molecule`| |
+| <h5>Protein-Ligand Interactions</h5> <br/>[Shows the interactions between a ligand and the protein residues](../solutions/domains/chem/chem.md#docking) as an interactive diagram |`Molecule3D`, `PDB_ID`|[BiostructureViewer](https://github.com/datagrok-ai/public/blob/master/packages/BiostructureViewer/README.md)|
 
 #### Data access and lookup
 
@@ -193,6 +194,7 @@ Depending on the installed plugins, you can search by substructure and/or simila
 |-----|-----------|---|
 | <h5>AutoDock</h5> <br/>Displays docking results for molecules that have undergone AutoDock analysis |`Molecule`|[Docking](https://github.com/datagrok-ai/public/blob/master/packages/Docking/README.md)|
 | <h5>DiffDock</h5> <br/>Provides an interactive interface for running molecular docking using NVIDIA's DiffDock model |`Molecule`| |
+| <h5>Protein-Ligand Interactions</h5> <br/>[Shows the interactions between a ligand and the protein residues](../solutions/domains/chem/chem.md#docking) as an interactive diagram |`Molecule3D`, `PDB_ID`|[BiostructureViewer](https://github.com/datagrok-ai/public/blob/master/packages/BiostructureViewer/README.md)|
 
 ##### Properties and descriptors
 

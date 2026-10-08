@@ -252,6 +252,9 @@ You can [add custom viewers](../../../../develop/how-to/viewers/develop-custom-v
 
 To explore the binding interactions between small ligand molecules and biological structures, you can use either the [NGL](../../../../visualize/viewers/ngl.md) or [biostructure](../../../../visualize/viewers/biostructure.md) viewer. Both viewers visualize the docked ligands in their spatial context and let you examine their orientation and positioning within the binding site.
 
+To see which residues interact with a ligand, use the
+[Protein-Ligand Interactions](../chem/chem.md#docking) pane on the **Context Panel**.
+
 <details>
 <summary>How to use</summary>
 
