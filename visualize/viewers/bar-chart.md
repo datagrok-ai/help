@@ -33,6 +33,19 @@ To add the viewer from the console, use:
 
 ### Stacked bars and relative values
 
+To see how each bar breaks down by the values of another column, stack the bars by a categorical
+or an integer column (set the **Stack** setting to the column).
+
+:::note
+
+You can change the stack colors when stacking by a categorical column.
+
+When stacking by an integer column, the colors can be changed only if the column has
+**Conditional** [color coding](grid.md#color-code-columns) set in the grid. With other
+color-coding types, the bar chart uses its default color scheme.
+
+:::
+
 Use the 'Relative Values' property in combination with the 'Stack' property to analyze the distribution of the stacked
 values:
 
