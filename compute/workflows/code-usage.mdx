@@ -68,8 +68,24 @@ const result = await startWorkflow<MyReturnShape>(
 `initialValues` and `inputRestrictions` follow the same semantics as the
 [script node](./configuration#script-nodes) fields of the same name. See
 [Consistency](./link-types#consistency) for the meaning of restriction values.
+`initialValues` of a script step may also hold output values: a step with
+any output value starts as run, so links that write into it mark its
+inputs inconsistent instead of changing them.
 
 A workflow entry without `steps` gets the defaults from its configuration:
 the `steps` of a static workflow or the `initialSteps` of a dynamic one,
 expanded all the way down. Pass `steps: []` for an empty workflow. A
 listed `steps` array is built as given, for static workflows too.
+
+On a workflow entry, `initialValues` fills its
+[states](./configuration#states), and `skipOnInit: true` skips its
+[init hook](./link-types#init-hook):
+
+```typescript
+const instanceConfig: PipelineInstanceConfig = {
+  id: 'some_workflow',
+  initialValues: {startedBy: 'batch import'},
+  skipOnInit: true,
+  steps: [{id: 'load'}],
+};
+```

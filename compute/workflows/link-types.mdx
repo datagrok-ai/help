@@ -929,6 +929,11 @@ init when it is:
 Each time, the workflow's init hook runs first, then its `runOnInit`
 links. The rules are the same for a top-level workflow and a nested one.
 
+A duplicated step skips the init hook of every workflow it contains,
+because the copy already holds the values init produced. So does an
+[instance config](./code-usage#with-initial-configuration) entry with
+`skipOnInit: true`. Links, `runOnInit` included, still run.
+
 **What init writes.** A value written at init is a change like any
 other: data links that read it pass it on, and validators and meta links
 react to it. So a state filled by the init hook reaches script inputs
