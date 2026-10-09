@@ -127,6 +127,7 @@ Year - Month' and 'Year - Quarter':
 | Stack Column Name | string | A categorical column to further split data on. Each category would become a part of the bar resulting from *Split*. Shows stacked bars only when *Value Aggr Type* is additive. |
 | Stack Map | string | Time unit map function for *Stack* (applicable to dates only). |
 | Show Stack Selector | boolean |  |
+| Show Stack Percentage | boolean | Shows the share of each stack segment in its bar, in percent, when the segment fits the label. |
 | **Selection** | | |
 | Show Selected Rows | boolean | Whether the selected rows are indicated. Only works for cumulative aggregations such as count. |
 | **Style** | | |

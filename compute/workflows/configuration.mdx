@@ -387,6 +387,10 @@ initial values. __Note__ Initial values don't trigger links, so there
 should be no data links that are dependent only on inputs with initial
 values.
 
+It may also hold output values. A step with any output value starts as
+run: links that write into it mark its inputs inconsistent instead of
+changing them.
+
 #### `inputRestrictions` (Script node)
 
 _Optional_
@@ -443,7 +447,7 @@ workflow. If more validation logic is needed, a
 
 _Optional_
 
-This dynamic item type cannot be added from the UI.
+This dynamic item type cannot be added or duplicated from the UI.
 
 #### `disableUIRemoving`
 
