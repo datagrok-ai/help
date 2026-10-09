@@ -59,7 +59,7 @@ Saving your own rules replaces it, so keep it in the array if you want it.
 | `audience` | `owner` | `owner`, or `platform` to page the platform's operators |
 | `alertname` | `DatagrokRule` | The alert name your monitoring system sees |
 | `match` | required | Which events count, below |
-| `groupBy` | none | One or two of `user`, `session`, `request`, `type`, `signature`, `param:<name>`. Each group is its own problem |
+| `groupBy` | none | One or two of `user`, `session`, `type`, `signature`, `param:<name>`. Each group is its own problem |
 | `window` | 60 | Minutes the condition looks back, 1–1440 |
 | `every` | 1 | Minutes between evaluations, 1–60 |
 | `clearAfter` | 5 | Minutes the condition must stop holding before the problem clears, 0–1440 |
