@@ -75,12 +75,12 @@ which has everything properly configured and all tests written properly.
 
 If a test fails for some reason, you can skip it using the skipReason parameter
 (specify a reason for skipping the test, for example,
-the associated Jira issue key or GitHub issue number):
+the associated GitHub issue):
 
 ```js
 test('Skipped', async () => {
   expect(1, 11);
-}, {skipReason: 'GROK-99999'});
+}, {skipReason: '#4256'});
 ```
 
 ## Testing functions
