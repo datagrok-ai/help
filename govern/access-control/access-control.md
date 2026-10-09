@@ -125,7 +125,7 @@ Data Connection Permissions
 
 | Permission                | Description                              |
 | ------------------------- | ---------------------------------------- |
-| **Data Connection Query** | Execute any query on the data connection |
+| **Data Connection Query** | Execute any query on the data connection, create a query on it, or move a query to it |
 | **Get Schema**            | Read database schema                     |
 | **List Files**            | List files on the file connection        |
 
@@ -228,7 +228,7 @@ Permissions to create entities:
 | **Create Security Connection** | Create a connection that provides credentials |
 | **Create Database Connection** | Create a connection to a database             |
 | **Create File Connection**     | Create a file share                           |
-| **Create Data Query**          | Create a new data query                       |
+| **Create Data Query**          | Create a new data query (also needs **Data Connection Query** on the connection) |
 | **Create Dashboard**           | Create a new dashboard                        |
 | **Create Space**               | Create a new space                            |
 | **Create Domain Schema**       | Create a user-managed domain database schema  |

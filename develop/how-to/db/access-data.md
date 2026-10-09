@@ -249,6 +249,16 @@ grok.dapi.fetchProxy(url, {
 }).then(response => grok.shell.info(response.ok));
 ```
 
+To call a service on behalf of the user with the token that Datagrok keeps when
+[Keep Token](../../../deploy/complete-setup/configure-auth.md#keep-token) is on, put
+`${EXTERNAL_TOKEN}` in a header value. The server replaces it with the user's OpenID token (the ID
+token if the provider returns one, otherwise the access token). If the session has no kept token,
+the server refuses the request and doesn't contact the service.
+
+```javascript
+grok.dapi.fetchProxy(url, {headers: {Authorization: 'Bearer ${EXTERNAL_TOKEN}'}});
+```
+
 ## Reading files
 
 In our [JavaScript API examples](https://public.datagrok.ai/js), you can find methods that provide data for
