@@ -47,6 +47,16 @@ Datagrok supports several deployment schemas which can be configured using `GROK
 | dockerSettings           | Optional     | See [Docker Settings](#docker-settings)         | Configuration for [Plugins Docker Management](../develop/under-the-hood/infrastructure.md#5-plugin--docker-container-management)                            |
 | connectorsSettings       | Optional     | See [Connectors Settings](#connectors-settings) | List of Grok Connect endpoints for [External Database Connectivity](../develop/under-the-hood/infrastructure.md#3-external-database-connectivity) |
 
+Server-wide options at the root of `GROK_PARAMETERS` (on Kubernetes, `datagrok.grokParametersExtra.<option>` in the Helm values):
+
+| Option                | Default   | Description |
+|-----------------------|-----------|-------------|
+| serverName            | host name | This server's name in log records and the `grok` CLI |
+| deploymentEnvironment |           | Environment name (`prod`, `staging`) on every exported log record |
+
+[Problem rules](../govern/audit/problem-rules.md) are a server setting: `settings.alerts.problemRules`
+(see [Settings](#settings)).
+
 Datagrok also creates a read-only `<db>_reader` database role and gives it a new random
 password on every start. You don't configure it. The former `dbReaderLogin` and
 `useAdminForMigrations` options are no longer used.

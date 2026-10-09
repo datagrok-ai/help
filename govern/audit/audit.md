@@ -102,7 +102,12 @@ Each event is associated with a fixed type and the user session that triggered i
 * package-tested
 * alert-opened
 * alert-escalated
+* alert-cleared
+* alert-acknowledged
 * alert-resolved
+* problem-status-changed
+* connection-checked
+* health-checked
 * server-started
 * user-logged-in
 * user-logged-out
@@ -171,9 +176,11 @@ group and audit events to another.
 Besides regular events, the server emits records that let your monitoring
 system page you:
 
-* `alert-opened`, `alert-escalated`, and `alert-resolved` when a problem starts, gets worse, or clears. Alerts
+* `alert-opened` and `alert-escalated` when a problem starts or gets worse, `alert-cleared` when its condition
+  ends, and `alert-acknowledged` and `alert-resolved` when a person acknowledges or resolves the alert. Alerts
   cover a failed service health check, requests slowing down or failing across the board, one error hitting many
-  users, an account that keeps failing to sign in, and a problem reported by a user.
+  users, an account that keeps failing to sign in, a data connection that stops answering, a problem reported by
+  a user, and your own [problem rules](problem-rules.md). See [Problems and alerts](problems-and-alerts.md).
 * `alert-firing` every five minutes for each alert that is still open.
 * `heartbeat` every five minutes. A missing heartbeat means the instance stopped reporting.
 
