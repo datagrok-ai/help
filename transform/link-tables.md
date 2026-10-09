@@ -185,8 +185,6 @@ type in **Browse** > **Databases**.
    dashboard and the Northwind connection with your team. See
    [What recipients get](../datagrok/concepts/project/dashboard.md#what-recipients-get).
 
-![Northwind master-detail dashboard](link-tables-northwind.gif)
-
 For a smaller live example that needs no database, open the **Table Linking**
 demo under **Data Access** in the
 [demo app](https://public.datagrok.ai/apps/Tutorials/Demo/Data-Access/Table-Linking).
