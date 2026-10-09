@@ -53,7 +53,6 @@ Server-wide options at the root of `GROK_PARAMETERS` (on Kubernetes, `datagrok.g
 |-----------------------|-----------|-------------|
 | serverName            | host name | This server's name in log records and the `grok` CLI |
 | deploymentEnvironment |           | Environment name (`prod`, `staging`) on every exported log record |
-| lockedLoggerSettings  |           | Logger settings fixed by the deployment, as setting path → value; changing them is refused |
 
 [Problem rules](../govern/audit/problem-rules.md) are a server setting: `settings.alerts.problemRules`
 (see [Settings](#settings)).
