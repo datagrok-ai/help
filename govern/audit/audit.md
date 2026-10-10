@@ -119,12 +119,26 @@ Each event is associated with a fixed type and the user session that triggered i
 * dev-key-generated
 * settings-changed
 * log-settings-changed
+* group-members-changed
+* permission-granted
+* permission-revoked
+* credentials-saved
+* admin-sql-executed
+* privileged-call
 
 </details>
 
-The last eleven are the platform's own security trail — who logged in and out, whose login
-failed and why, impersonation, admin sessions, developer keys, settings changes, and server
-starts. They are listed on the **System Activity** tab of [Usage Analysis](usage-analysis.md).
+The eleven from `server-started` to `log-settings-changed` are the platform's own security trail — who
+logged in and out, whose login failed and why, impersonation, admin sessions, developer keys, settings
+changes, and server starts. They are listed on the **System Activity** tab of [Usage Analysis](usage-analysis.md).
+
+The last six record who can reach what: group membership changes (made in Datagrok or synced from an
+identity provider), permissions granted and revoked, credentials saved (the names of the saved fields,
+never their values), SQL run on the platform's own database connections, and functions called in an
+admin or impersonated session.
+
+Passwords, tokens, keys, and other secrets are replaced with `[REDACTED]` in event messages and parameters
+before they are printed, stored, or exported.
 
 ## Accessing audit logs
 
