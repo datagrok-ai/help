@@ -31,6 +31,8 @@ monitoring system as a log record, once, and stays open until a person resolves 
 | Slow or failing requests | requests are slow (p95 of 10 s or more) or a quarter of them fail, over 5 minutes | platform |
 | Failed logins | one login fails to sign in 5 times within 15 minutes (the default [problem rule](problem-rules.md) `login`) | platform |
 | Connection down | an external data connection fails its check twice in a row | its owner |
+| Log sync failing | a [Log sync](audit.md#export-logs) destination drops records or fails three times in a row | platform |
+| Audit integrity | the append-only protection of the event log has drifted: a trigger disabled, a privilege granted back (see [Integrity](audit.md#integrity)) | platform |
 | User report | a user files a problem report | platform |
 | Your rules | a condition you defined over the log holds ([problem rules](problem-rules.md)) | its owner, unless the rule says `platform` |
 

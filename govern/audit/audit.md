@@ -202,6 +202,31 @@ events after 365 days, errors, warnings, info, and usage events after 183 days,
 and debug events after 30 days. You can change each period. To keep events
 longer, [export them](#export-logs) to a backend with its own retention policy.
 
+### Integrity
+
+Events are append-only. Datagrok connects to its database as a role that can only read and add events, and so
+does the `System:DatagrokAdmin` connection. Database triggers block changes and deletes for every role, including
+the table owner. Events leave only through the garbage collector, which writes an `events-retention` audit record
+before each run. The `audit-integrity` [problem](problems-and-alerts.md) checks all of this every 5 minutes.
+Audit events are always kept for at least `auditMinRetentionDays` days, a deployment setting in
+`GROK_PARAMETERS` (default 365, never below 30).
+
+This protects the log from everyone who uses Datagrok, administrators included, but not from whoever holds the
+database administrator credential. To keep a copy that outlives the database and its administrators, export the
+log to write-once storage:
+
+1. Create an S3 bucket with Object Lock turned on at creation, in `COMPLIANCE` mode, with a default retention of
+   the period you must keep audit evidence (for example, 400 days). `GOVERNANCE` mode can be bypassed by a
+   privileged account. Don't add a lifecycle rule that expires objects sooner, and never delete the bucket's KMS key.
+1. Run an [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) with an OTLP/HTTP receiver behind
+   TLS and a bearer token, and the `awss3` exporter (`marshaler: otlp_json`, `compression: gzip`) writing to that
+   bucket. Keep the AWS SDK's default checksum behavior: Object Lock rejects uploads without a checksum.
+1. In [Log sync](#export-logs), add an **OpenTelemetry** destination pointing to the collector, with **Auth** set
+   to `bearer` and at least the `audit` level selected.
+
+Turning a destination off or deleting it is itself sent to that destination before the change applies. If a
+destination drops records or keeps failing, Datagrok raises an `export` problem until it delivers again.
+
 ## Logging events
 
 Datagrok logs both client-side and server-side activities. 
