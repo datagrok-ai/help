@@ -222,6 +222,11 @@ Events are append-only. Datagrok connects to its database as a role that can onl
 does the `System:DatagrokAdmin` connection. Database triggers block changes and deletes for every role, including
 the table owner. Events leave only through the garbage collector, which writes an `events-retention` audit record
 before each run. The `audit-integrity` [problem](problems-and-alerts.md) checks all of this every 5 minutes.
+
+If the database login can't create roles (or `dbSeparateAppRole` is turned off), Datagrok connects as that login,
+which then owns the events tables. The triggers still block changes and deletes, but the login could turn them off.
+In this case, `audit-integrity` shows a warning that protection is reduced. To get full protection, give the login
+`CREATEROLE` and restart Datagrok.
 Audit events are always kept for at least `auditMinRetentionDays` days, a deployment setting in
 `GROK_PARAMETERS` (default 365, never below 30).
 
