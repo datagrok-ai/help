@@ -57,6 +57,7 @@ Saving your own rules replaces it, so keep it in the array if you want it.
 | `enabled` | `true` | |
 | `severity` | `warning` | `info` records the problem and never alerts; `warning`; `critical` |
 | `audience` | `owner` | `owner`, or `platform` to page the platform's operators |
+| `owners` | none | up to 10 logins or group names notified in the product when an `owner` alert opens; none: everyone with **Manage Alerts** |
 | `alertname` | `DatagrokRule` | The alert name your monitoring system sees |
 | `match` | required | Which events count, below |
 | `groupBy` | none | One or two of `user`, `session`, `type`, `signature`, `param:<name>`. Each group is its own problem |

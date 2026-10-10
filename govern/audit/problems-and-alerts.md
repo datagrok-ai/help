@@ -31,6 +31,9 @@ monitoring system as a log record, once, and stays open until a person resolves 
 | Slow or failing requests | requests are slow (p95 of 10 s or more) or a quarter of them fail, over 5 minutes | platform |
 | Failed logins | one login fails to sign in 5 times within 15 minutes (the default [problem rule](problem-rules.md) `login`) | platform |
 | Connection down | an external data connection fails its check twice in a row | its owner |
+| Scheduled job failing | a scheduled function's run fails, until its next run succeeds | its author |
+| Log sync failing | a [Log sync](audit.md#export-logs) destination drops records or fails three times in a row | platform |
+| Audit integrity | the append-only protection of the event log has drifted: a trigger disabled, a privilege granted back (see [Integrity](audit.md#integrity)) | platform |
 | User report | a user files a problem report | platform |
 | Your rules | a condition you defined over the log holds ([problem rules](problem-rules.md)) | its owner, unless the rule says `platform` |
 
@@ -71,6 +74,17 @@ and page from them:
 | A log store or SIEM | alert on the `alert-opened` record |
 
 Page on a missing heartbeat too: no heartbeat for 15 minutes means the instance is down, hung, or cut off.
+A reference collector, alert rules and routing are in the [operator guide](operator-guide.md).
+
+Datagrok also notifies people in the product when an alert opens or gets worse, once per alert:
+
+* An owner's alert goes to the owner: the author of the connection or of the scheduled function, or the
+  `owners` of a [problem rule](problem-rules.md). It links to the connection or function.
+* A platform alert, and an owner's alert with no owner, goes to everyone with the **Manage Alerts** permission.
+
+Turn these notifications off in your notification settings. A query on a connection that
+was down on its last check says so in its **Details**, and warns before it runs. A scheduled function shows
+its last successful and last failed run in its **Details**.
 Each record carries the problem's audience: `platform` for the platform's operators, `owner` for problems
 that belong to the owner of a data connection or a rule, so the people who run the platform are not paged for them.
 
