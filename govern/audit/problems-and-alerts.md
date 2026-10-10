@@ -74,6 +74,7 @@ and page from them:
 | A log store or SIEM | alert on the `alert-opened` record |
 
 Page on a missing heartbeat too: no heartbeat for 15 minutes means the instance is down, hung, or cut off.
+A reference collector, alert rules and routing are in the [operator guide](operator-guide.md).
 
 Datagrok also notifies people in the product when an alert opens or gets worse, once per alert:
 
