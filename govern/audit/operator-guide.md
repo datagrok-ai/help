@@ -56,7 +56,7 @@ The defaults, all editable in **Settings** > **Alerts**:
 | Slow or failing requests | at least 20 requests in 5 minutes with p95 of 10 s or more, or 25% failing | 5 clean checks in a row |
 | Connection down | 2 failed checks in a row (200 connections checked every 5 minutes) | a passing check |
 | Scheduled job failing | 1 failed run, over the last 24 hours of runs | a successful run |
-| Failed logins | 5 for one login in 15 minutes (problem rule `login`) | the window passes |
+| Failed logins | 5 for one login in 15 minutes (problem rule `login-failures`) | the window passes |
 
 Silence is caught on your side: no heartbeat for 15 minutes means the instance is down, hung, or cut off.
 

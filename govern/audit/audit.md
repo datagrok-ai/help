@@ -107,7 +107,6 @@ Each event is associated with a fixed type and the user session that triggered i
 * alert-resolved
 * problem-status-changed
 * connection-checked
-* health-checked
 * server-started
 * user-logged-in
 * user-logged-out

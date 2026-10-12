@@ -26,10 +26,10 @@ monitoring system as a log record, once, and stays open until the problem ends o
 
 | Problem | Raised when | Who acts |
 |---|---|---|
-| Service down | a platform service fails its health check twice in a row, on any server | platform |
+| Service down | a platform service fails its health check twice in a row on a server; one problem per service and server | platform |
 | Error incident | one error hits 3 users, or repeats 20 times, within 15 minutes | platform |
 | Slow or failing requests | requests are slow (p95 of 10 s or more) or a quarter of them fail, over 5 minutes | platform |
-| Failed logins | one login fails to sign in 5 times within 15 minutes (the default [problem rule](problem-rules.md) `login`) | platform |
+| Failed logins | one login fails to sign in 5 times within 15 minutes (the default [problem rule](problem-rules.md) `login-failures`) | platform |
 | Connection down | an external data connection fails its check twice in a row | its owner |
 | Scheduled job failing | a scheduled function's run fails, until its next run succeeds | its author |
 | Log sync failing | a [Log sync](audit.md#export-logs) destination drops records or fails three times in a row | platform |
@@ -92,15 +92,15 @@ that belong to the owner of a data connection or a rule, so the people who run t
 Problems and alerts need the **Manage Alerts** [global permission](../access-control/access-control.md#global-permissions),
 which administrators have. Use the [`grok` CLI](https://github.com/datagrok-ai/public/blob/master/tools/GROK_S.md)
 or the REST API (`/api/problems`). A problem is named by its id or by `kind:key`, for example
-`health:Jupyter`, `report:<report id>` or `connection:<connection id>`:
+`health:Jupyter@<server>`, `report:<report id>` or `connection:<connection id>`:
 
 ```bash
 grok s observe problems list --alert-status open           # the open alerts
 grok s observe problems resolve report:<report id> --reason "duplicate"
 grok s observe problems list --status active --since 7d
 grok s observe problems status connection:<connection id> --data '{"status": "muted", "reason": "monthly maintenance", "until": "2026-10-04T06:00:00Z"}'
-grok s observe problems status health:Jupyter --data '{"status": "fixed", "reason": "kernel image rebuilt"}'
-grok s observe problems history health:Jupyter             # everything that happened to it
+grok s observe problems status health:Jupyter@<server> --data '{"status": "fixed", "reason": "kernel image rebuilt"}'
+grok s observe problems history health:Jupyter@<server>    # everything that happened to it
 ```
 
 In [Usage Analysis](usage-analysis.md), the **Errors** tab shows the error incident of each error.
