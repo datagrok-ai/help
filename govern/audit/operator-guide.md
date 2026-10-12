@@ -50,10 +50,10 @@ The defaults, all editable in **Settings** > **Alerts**:
 
 | Problem | Opens | Ends |
 |---|---|---|
-| Service down | 2 failed health checks in a row | a passing check |
+| Service down | 2 failed health checks in a row | 3 passing checks in a row |
 | Error incident | one error signature hits 3 users or 20 occurrences in 15 minutes, or occurs in 4 hours of the last day; critical at 10 times that | 60 minutes without it |
 | User error | one 4xx error in 12 hours of the last day, or for 10 users | 6 hours without it |
-| Slow or failing requests | at least 20 requests in 5 minutes with p95 of 10 s or more, or 25% failing | 5 clean checks in a row |
+| Slow or failing requests | at least 20 requests in 5 minutes with p95 of 10 s or more, or 25% failing | 15 clean checks in a row |
 | Connection down | 2 failed checks in a row (200 connections checked every 5 minutes) | a passing check |
 | Scheduled job failing | 1 failed run, over the last 24 hours of runs | a successful run |
 | Failed logins | 5 for one login in 15 minutes (problem rule `login-failures`) | the window passes |
