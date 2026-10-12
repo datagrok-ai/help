@@ -71,10 +71,8 @@ urgent ones within a few days. The release an issue ships in is its milestone.
 particular package, look inside the package.json file, which must exist for
 each package. Inside this file, there is an "author" field from which you can
 find out whom to assign.
-* **Labels (optional)**. Label an issue with the client code, such as `NX`,
-`Iso`, `Ins`, or `DS`, when it comes from a particular customer. Grouping is
-not what labels are for: the issue type, the release, and larger pieces of work
-are the _Type_ field, the milestone, and a parent issue.
+* **Linking (optional)**. Use **Relationships** in the issue sidebar to mark an
+issue as _Related to_ another, in this or any other `datagrok-ai` repository.
 
 ## Managing tickets
 
