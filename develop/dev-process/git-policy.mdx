@@ -76,7 +76,7 @@ We separated the Git Flow into two types: flow for experienced contributors and 
    </Tabs>
    ```
 
-4. Keep your branch name meaningful. Use the agreed standard: `<first letter of your name><your surname>/<task ID>/<meaningful short description>`. Task ID should be a full ID from any task tracking system. For example, `jdoe/GROK-123/description` for Jira issues or `jdoe/#123/description` for GitHub issues.
+4. Keep your branch name meaningful. Use the agreed standard: `<first letter of your name><your surname>/<task ID>/<meaningful short description>`. Task ID is the GitHub issue as `<repo>-<number>`, for example, `jdoe/public-123/description` for issue #123 in `datagrok-ai/public`.
 
 5. If git checkouts fail on Windows with an error "Filename too long", run the command below:
 
@@ -184,16 +184,15 @@ the [trunk-based development flow](https://www.atlassian.com/continuous-delivery
 
 4. Create a git branch. It would be best to name it according to the task; the name must be meaningful.
    Use the agreed standard: `<first letter of your name><your surname>/<task ID>/<meaningful short description>`. Task
-   ID should be a
-   full ID from any task tracking system. For example, `jdoe/GROK-123/description` for Jira issues or
-   `jdoe/#123/description` for GitHub issues.
+   ID is the GitHub issue as `<repo>-<number>`, for example, `jdoe/public-123/description` for issue #123 in
+   `datagrok-ai/public`.
 
    ```bash
    # git checkout -b <first letter of your name><you surname>/<task ID>/<meaningful short description>
-   git checkout -b jdoe/GROK-123/description
+   git checkout -b jdoe/public-123/description
 
    # git push –set-upstream origin <first letter of your name><you surname>/<task ID>/<meaningful short description>
-   git push --set-upstream origin jdoe/GROK-123/description
+   git push --set-upstream origin jdoe/public-123/description
    ```
 
 5. Make changes in the files.
@@ -359,7 +358,7 @@ Every line in the commit should be 70 chars or less.
   <summary>Samples</summary>
 
 ```
-GROK-123: JS API: Update rxjs dependency version
+#123: JS API: Update rxjs dependency version
 
 Fix the CVE-0000-99999 vulnerability of old version rxjs in
 JS API package.json
@@ -373,7 +372,9 @@ BREAKING CHANGE: deleted the method superCool in chem.ts
 ```
 
 ```
-GROK-456: GitHub Actions: Change in the release notes generation flow
+GitHub Actions: Change in the release notes generation flow
+
+Refs datagrok-ai/core#456
 ```
 
 ```
@@ -391,7 +392,7 @@ The header is an essential part in the commit message. It should be 70 chars or 
 Example:
 
 ```
-GROK-321: Grok Connect: Fix vulnerability in Postgres provider (WIP)
+#321: Grok Connect: Fix vulnerability in Postgres provider (WIP)
 ```
 
 ```
@@ -401,8 +402,9 @@ closes #321: Grok Connect | Postgres: Fix vulnerability in provider
 ##### Ticket ID (references in commitlint)
 
 The ticket ID is highly recommended in the commit message. If there is a ticket, mention it in the commit message.
-The ticket ID is a complete id from Jira or GitHub. The change type for release notes will be determined by ticket type,
-such as Bug or Feature.
+The ticket ID is the GitHub issue number in the repository you commit to. For an issue in another repository, leave
+the ID out of the header and add `Refs datagrok-ai/<repo>#<number>` to the body. The change type for release notes will
+be determined by the issue type, such as Bug or Feature.
 
 :::note
 Commits without ticket ID won't be included to release notes
@@ -410,8 +412,8 @@ Commits without ticket ID won't be included to release notes
 
 Example:
 
-- `GROK-1234` - Jira issue in GROK project
-- `#1093` - GitHub issue
+- `#1093` - GitHub issue in the same repository
+- `GROK-1234` - an older Jira issue, still accepted
 
 ##### Scope
 
