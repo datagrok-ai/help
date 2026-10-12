@@ -27,4 +27,5 @@ As a start, we suggest installing:
 - [Peptides](https://github.com/datagrok-ai/public/blob/master/packages/Peptides/README.md)
 - [PowerGrid](https://github.com/datagrok-ai/public/blob/master/packages/PowerGrid/README.md)
 - [PowerPack](https://github.com/datagrok-ai/public/blob/master/packages/PowerPack/README.md)
+- [Scripting](https://github.com/datagrok-ai/public/blob/master/packages/Scripting/README.md) for running [Python, R, and other scripts](https://datagrok.ai/help/compute/scripting/)
 - [Tutorials](https://github.com/datagrok-ai/public/blob/master/packages/Tutorials/README.md)

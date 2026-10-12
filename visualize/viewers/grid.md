@@ -48,6 +48,7 @@ and built to support interactive exploration of vast amounts of scientific data.
 | Show in full screen                   | Alt+F                           |
 |<h4>**Sort**</h4>||
 | Sort a column                          | Double-click column header      |
+| Move selected rows to the top          | **Select** > **Selection to Top** |
 |<h4>**Edit**</h4>||
 | Edit cell                              | Double-click                    |
 | Copy cell value                        | Ctrl+C                          |
@@ -185,6 +186,12 @@ sorting order.
 To sort by multiple columns at once, right-click the grid, choose "Sort...", and 
 pick the desired columns, along with the sort direction for each of the columns. 
 
+To move the selected rows to the top, in the **Top Menu**, select **Select** > **Selection to Top**.
+Both the selected rows and the rest keep the current sort order. The grid remembers which rows
+were selected at that moment, so selecting other rows later doesn't move them. To bring a new
+selection to the top, run the command again. To return to a regular sort, double-click any column
+header.
+
 ### Selecting columns
 
 There are multiple ways to select a column:
@@ -221,6 +228,14 @@ it gets bolder and darker if there are hidden columns. To unhide a column, doubl
 on the corresponding column separator, like shown on the picture below:
 
 ![](img/grid-unhide-columns.gif)
+
+:::note
+
+To keep a column in place but hide its values, for example in screenshots, click the column
+header and, in the **Context Panel** under **Settings**, select **Blur content**. The grid blurs
+the column's cells, and tooltips leave the column out.
+
+:::
 
 ### Resizing columns
 

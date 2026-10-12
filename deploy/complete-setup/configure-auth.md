@@ -145,6 +145,8 @@ Long-lived sessions are supported without exposing privileged credentials, and D
 external systems while preserving user-controlled authorization boundaries.
 
 Right now user OpenID authentication is supported by [BigQuery](../../access/databases/connectors/bigquery.md) and [Databricks](../../access/databases/connectors/databricks.md) providers.
+Package code can also pass the kept token to other services through
+[`fetchProxy`](../../develop/how-to/db/access-data.md#rest-endpoints).
 
 ## Group synchronization
 

@@ -357,16 +357,40 @@ script inputs that were set by the data link.
 Consistency is tracked based on the value, stored separately from a
 script io.
 
-Numbers, including the cells of a dataframe, count as equal when they
-differ by less than `0.0001`. A script input can set its own tolerance
-with annotations: `consistencyTolerance` is absolute,
-`consistencyRelTolerance` is relative to the assigned value, and when
-either is set the default no longer applies:
+Floating-point numbers, including the cells of `double` and `qnum`
+dataframe columns, count as equal when they differ by less than
+`0.0001`. Integers, integer columns and all other values compare
+exactly.
+
+A `double` or `dataframe` input can set its own tolerance with
+annotations: `consistencyTolerance` is absolute and
+`consistencyRelTolerance` is relative to the assigned value. When either
+is set, the default no longer applies. When both apply to the same
+value, the relative one is used:
 
 ```
 //input: double k = 1e-6 {consistencyTolerance: 1e-9}
 //input: double volume {consistencyRelTolerance: 1e-6}
 ```
+
+On a dataframe input, a number applies to every floating-point column.
+For per-column control, give a JSON object that maps column names to
+tolerances. Names ignore case, like column lookups do, and the `*` key
+covers the columns not listed. Columns that neither the object nor `*`
+cover keep the default:
+
+```
+//input: dataframe trajectory {consistencyTolerance: 1e-9}
+//input: dataframe samples {consistencyTolerance: {"time": 0, "*": 1e-6}; consistencyRelTolerance: {"conc": 1e-3}}
+```
+
+In `samples`, `time` compares exactly, `conc` uses the relative
+tolerance (it wins over the `*` absolute one), and other floating-point
+columns use the absolute `1e-6`. Write the JSON without quotes around
+it. In a decorator, pass it as a string:
+`options: {consistencyTolerance: '{"time": 0, "*": 1e-6}'}`. A
+malformed value, or a tolerance on an input of another type, is
+reported as a workflow warning and ignored.
 
 Consistency is also applicable to changes propagated via data
 links. If a script was never run in the current workflow instance,

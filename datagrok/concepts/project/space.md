@@ -60,11 +60,18 @@ If you have the necessary privileges, you can move entities between spaces by
 dragging them to a different location in the **Browse** tree. Valid locations are highlighted with a dotted border. Moving entities
 impacts their hierarchy, names, and privileges.
 
+:::note
+
+A move never gives you more privileges than you have. If the new space would grant you a
+privilege you don't have on the entity, such as **Edit**, the move fails.
+
+:::
+
 ![](../../navigation//views/img/namespaces-drag-and-drop.gif)
 
-When moving entities, you have these options:
+When moving entities, you have these options, depending on the entity type:
 
-1. **Clone**:
+1. **Clone** (**Copy** for files and folders):
    * This action creates a copy of the entity in the new space. The entity in the original space remains unaffected.
 1. **Move**:
    * The entity is moved to the new space, is automatically renamed, and adopts the permissions of the new space.
@@ -74,6 +81,26 @@ When moving entities, you have these options:
    * Any changes made to the entity in the original space are automatically reflected in the linked copy.
 
 Linked entities are visually distinguished by a **Link** (<FAIcon icon="fa-solid fa-link" size="1x"/>) **icon**. You cannot edit linked entities directly, but you can clone them.
+
+:::note
+
+Not all options are available for every entity. For example, [function runs](../functions/function-call.md) and entities from packages can only be linked. Dragging them to a space automatically links them to it.
+
+:::
+
+<details>
+<summary>Options by entity type</summary>
+
+| Entity                                                                    | Options                         |
+|---------------------------------------------------------------------------|---------------------------------|
+| [Tables](../table.md) saved in dashboards                                 | **Move**, **Link**, **Clone**   |
+| [Table Views](../../../visualize/table-view-1.md) saved in dashboards     | **Clone**                       |
+| Files and folders                                                         | **Move**, **Link**, **Copy**    |
+| Function runs                                                             | **Link**                        |
+| Entities from packages (scripts, queries, connections a package provides) | **Link**                        |
+| Other entities (scripts, queries, connections, models, projects)          | **Move**, **Link**              |
+
+</details>
 
 ## Removing entities from spaces
 

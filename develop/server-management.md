@@ -251,7 +251,10 @@ What doesn't travel:
 * **Removals.** A push adds and updates. Links that exist only on the target
   are kept.
 
-For moving a whole instance, conflict handling, and the bundle format, see the
+For a step-by-step guide, including preparing the target, moving a whole
+instance, and checking the result, see
+[Promote content between instances](../govern/promote-content.md). For every
+flag and the bundle format, see the
 [full reference](https://github.com/datagrok-ai/public/blob/master/tools/GROK_S.md#migrating-entities-between-instances-pull--push--migrate).
 
 ## Sync an AD group with Datagrok
