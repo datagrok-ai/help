@@ -14,12 +14,12 @@ keywords:
 Datagrok watches itself. When a service fails, one error hits many users, requests slow down,
 an account keeps failing to sign in, a data source stops answering, or a user reports a problem,
 the server records a **problem** and raises an **alert** about it. The alert goes to your
-monitoring system as a log record, once, and stays open until a person resolves it.
+monitoring system as a log record, once, and stays open until the problem ends or a person resolves it.
 
 | | Problem | Alert |
 |---|---|---|
 | What it is | what is wrong, for example "service Jupyter fails" | the notification that it went wrong |
-| How long it lives | one per condition; forgotten 30 days after it ended with no open alert, unless it is muted or not a problem | until a person resolves it |
+| How long it lives | one per condition; forgotten 30 days after it ended with no open alert, unless it is muted or not a problem | until the problem ends or a person resolves it |
 | Who changes it | you set its status; Datagrok tracks whether it is happening | Datagrok opens it; you acknowledge and resolve it |
 
 ## What Datagrok detects
@@ -55,8 +55,8 @@ What to do with an alert:
 * **Mute** the problem to stop its alerts. Muting resolves the open alert, and is the way to stop alerts about a problem.
 * Mark the problem **fixed** to hear about it only if it comes back.
 
-An alert that is open does not page again while its condition flaps or persists. When the condition ends,
-the alert is marked cleared but stays open until someone resolves it.
+An alert that is open does not page again while its condition persists. When the condition ends, the
+alert is cleared and resolved.
 
 ## Where alerts go
 

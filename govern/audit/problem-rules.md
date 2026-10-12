@@ -13,7 +13,7 @@ keywords:
 A **problem rule** is your own kind of [problem](problems-and-alerts.md): a condition over the
 platform's log, such as "one account fails to sign in five times in 15 minutes" or "no connection
 check for 30 minutes". Every group of events the condition holds for becomes a problem, with the same
-statuses and alerts as the built-in ones: it alerts once, stays open until resolved, and can be
+statuses and alerts as the built-in ones: it alerts once, resolves when the condition ends, and can be
 muted, dismissed or marked fixed.
 
 A rule reads the events Datagrok saves: errors, audit and usage records (see [Audit](audit.md)).
@@ -43,7 +43,7 @@ Saving your own rules replaces it, so keep it in the array if you want it.
   "description": "One account failing to sign in again and again",
   "severity": "warning",
   "match": {"source": "audit", "type": "user-login-failed"},
-  "groupBy": "param:login",
+  "groupBy": "param:login|user|param:type",
   "window": 15,
   "when": {"count": 5},
   "summary": "{count} failed logins for {group} in {window} min"
@@ -60,7 +60,7 @@ Saving your own rules replaces it, so keep it in the array if you want it.
 | `owners` | none | up to 10 logins or group names notified in the product when an `owner` alert opens; none: everyone with **Manage Alerts** |
 | `alertname` | `DatagrokRule` | The alert name your monitoring system sees |
 | `match` | required | Which events count, below |
-| `groupBy` | none | One or two of `user`, `session`, `type`, `signature`, `param:<name>`. Each group is its own problem |
+| `groupBy` | none | One or two of `user`, `session`, `type`, `signature`, `param:<name>`; `a\|b` takes the first present. Each group is its own problem |
 | `window` | 60 | Minutes the condition looks back, 1–1440 |
 | `every` | 1 | Minutes between evaluations, 1–60 |
 | `clearAfter` | 5 | Minutes the condition must stop holding before the problem clears, 0–1440 |
@@ -118,7 +118,7 @@ and the groups it holds for. It needs the **Manage Alerts** and **View Telemetry
 [
   {"name": "failed-logins-per-user", "severity": "warning",
    "match": {"source": "audit", "type": "user-login-failed"},
-   "groupBy": "param:login", "window": 15, "when": {"count": 5},
+   "groupBy": "param:login|user|param:type", "window": 15, "when": {"count": 5},
    "summary": "{count} failed logins for {group} in {window} min"},
 
   {"name": "query-timeouts", "severity": "warning",

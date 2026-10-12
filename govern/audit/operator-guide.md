@@ -33,7 +33,7 @@ so a deployment is one series however many servers it runs.
 | `datagrok.alert.opened` | a problem starts: its condition held past the threshold below |
 | `datagrok.alert.escalated` | it gets worse, for example an error incident crosses 10 times its threshold |
 | `datagrok.alert.firing` | every 5 minutes while the alert is open (not stored in the database) |
-| `datagrok.alert.cleared` | the condition ended; the alert stays open until a person resolves it |
+| `datagrok.alert.cleared` | the condition ended, which resolves the alert |
 | `datagrok.alert.acknowledged`, `datagrok.alert.resolved` | a person acknowledges or resolves it |
 | `datagrok.heartbeat` | every 5 minutes while the instance is alive (not stored) |
 | `datagrok.audit.<type>` | every audit record, when the `audit` level is selected ([audit events](audit.md)) |
