@@ -40,7 +40,7 @@ General:
 | X Column Names | list | Columns to be put on the X axis |
 | Y Column Names | list | Columns to be put on the Y axis |
 | Correlation Type | correlationtype |  |
-| Show Pearson R | boolean | Shows the Pearson correlation coefficient inside the corresponding cell. |
+| Show Coefficients | boolean | Shows the correlation coefficient (Pearson or Spearman, see Correlation Type) inside the corresponding cell. |
 | Show Tooltip | boolean | Shows the tooltip with the corresponding scatter plot inside. |
 | Ignore Double Click | boolean | Ignores double click behavior on the grid cells. |
 | Back Color | number |  |
