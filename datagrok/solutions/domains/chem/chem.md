@@ -1004,22 +1004,21 @@ What the analysis concluded, before the grids it concluded it from. The analysis
 
 ![Summary](img/sar_matrix_summary.png)
 
-The line at the top is the scale and direction every ranking below depends on, and the bar under it
-is how much of the table reached a matrix at all: a compound with no analog to pair with informs no
+The line at the top is the scale and direction every ranking below depends on. Beside it, the level
+chips (**All**, **L1**, **L2**, ...) read every ranking at one cut level. The bar under it is how
+much of the table reached a matrix at all: a compound with no analog to pair with informs no
 ranking here.
 
-Four segments sit under that:
+Three sections sit under that:
 
 * **Overview**: the answers. Which R-group wins, which core runs highest, and which swap buys the
-  most potency, each naming its own limit; then **Start here**, the series ranked by what each one
-  offers, with marks saying why: most measured compounds, widest range, holds the best compound
-  made, most predictions worth making, best-validated fit
-* **Effects**: the rankings behind those answers, a tab per component, and a last tab holding what
-  was read off measured compounds inside each series rather than fitted
+  most potency, each naming its own limit; then **Start here**, the series to open first, with five
+  squares saying why: most measured compounds, widest range, holds the best compound made, most
+  predictions worth making, best-validated fit. Hover the squares for the reasons
+* **Effects**: the rankings behind those answers, one per component under **Show**, and a last one
+  holding what was read off measured compounds inside each series rather than fitted
 * **Worth making**: analogs nobody has made, ranked by what each gains over the best compound its
   own series already holds, in that series' own error
-* **Method**: the two cross-validated R² the rankings rest on, and which series the trust gate let
-  through
 
 Given a core column and its R-group columns, one fit ranks the core and every R-group on one scale,
 so a single run says which part of the molecule to change. Which R-group runs along the matrix
