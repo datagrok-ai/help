@@ -121,6 +121,10 @@ When the scatterplot is colored by a categorical column, a separate regression l
 each category, up to 20 categories. To show a single regression line for all points, clear
 **Regression Per Category**.
 
+To force the regression line through the origin, select **Zero Intercept** in the **Statistics**
+section of the **Context Panel**. With this option enabled, R² is calculated differently, so don't
+compare it directly with the R² of a regression with a free intercept.
+
 #### Regression statistics
 
 By default, the regression equation and R² are shown in the top-left corner of the scatterplot. To

@@ -54,6 +54,8 @@ For example, you can:
   `orthogonal` or `radial`. For `orthogonal` layout, you can also:
   * Define the tree **direction** using the **Orient** setting.
   * Change the **shape of the branches** using the **Edge Shape** setting.
+* **Size molecule labels**. When the hierarchy has a molecule column, set **Molecule Size** to
+  `small`, `normal`, or `large`, or keep `fit` to scale the molecules to the available space.
 
 ## Interaction with other viewers
 
