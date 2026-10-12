@@ -357,12 +357,47 @@ script inputs that were set by the data link.
 Consistency is tracked based on the value, stored separately from a
 script io.
 
+Floating-point numbers, including the cells of `double` and `qnum`
+dataframe columns, count as equal when they differ by less than
+`0.0001`. Integers, integer columns and all other values compare
+exactly.
+
+A `double` or `dataframe` input can set its own tolerance with
+annotations: `consistencyTolerance` is absolute and
+`consistencyRelTolerance` is relative to the assigned value. When either
+is set, the default no longer applies. When both apply to the same
+value, the relative one is used:
+
+```
+//input: double k = 1e-6 {consistencyTolerance: 1e-9}
+//input: double volume {consistencyRelTolerance: 1e-6}
+```
+
+On a dataframe input, a number applies to every floating-point column.
+For per-column control, give a JSON object that maps column names to
+tolerances. Names ignore case, like column lookups do, and the `*` key
+covers the columns not listed. Columns that neither the object nor `*`
+cover keep the default:
+
+```
+//input: dataframe trajectory {consistencyTolerance: 1e-9}
+//input: dataframe samples {consistencyTolerance: {"time": 0, "*": 1e-6}; consistencyRelTolerance: {"conc": 1e-3}}
+```
+
+In `samples`, `time` compares exactly, `conc` uses the relative
+tolerance (it wins over the `*` absolute one), and other floating-point
+columns use the absolute `1e-6`. Write the JSON without quotes around
+it. In a decorator, pass it as a string:
+`options: {consistencyTolerance: '{"time": 0, "*": 1e-6}'}`. A
+malformed value, or a tolerance on an input of another type, is
+reported as a workflow warning and ignored.
+
 Consistency is also applicable to changes propagated via data
 links. If a script was never run in the current workflow instance,
 data links just set data directly to scripts io. However, if a script
 was run, links will not overwrite script io data, but rather only
 trigger consistency changes. User has either to manually review, apply
-changes and rerun scripts, or do it via **rerun with consistent** on a
+changes and rerun scripts, or do it via **Update** on a
 scope of workflow, nested workflow, or a script.
 
 ![Inconsistent data mark](pics/wineQ_full_workflow_consistency_check.png)
@@ -642,10 +677,10 @@ following workflow/script nodes targets:
 - `tags` will be used to fill tags when user saves a workflow. Note
   that tags here are completely unrelated to `PipelineConfiguration`
   ones. They tag a particular saved instance of a workflow.
-- `body` is rendered as markdown in the Compute2 step row, below the
-  title (via the `<dg-markdown>` webcomponent). Use this for inline
-  notes, step instructions, or reactive status text. Works on every
-  step kind including action steps.
+- `body` is rendered as markdown at the top of the workflow view, in
+  place of the workflow description and above the action cards. Use this
+  for inline notes, step instructions, or reactive status text. Works on
+  workflows and action steps; script steps do not show it.
 
 Node meta controller has an additional method:
 
@@ -827,6 +862,11 @@ To target a child dynamic workflow, use a path in `to` (e.g.,
 defined (self-reference), use just the query name with no path
 (e.g., `to: 'out1'`).
 
+A read-only target, such as a saved run opened read-only, is skipped:
+its steps are not added, removed, moved or replaced, while the action's
+changes to writable targets still apply. Replacing a writable workflow
+that holds a read-only item is allowed.
+
 Controller has additional methods:
 
 #### `setPipelineState`
@@ -840,7 +880,9 @@ name. `PipelineInstanceConfig` is a recursive type that should be
 compatible with the current workflow configuration. Each item should
 have a matching `id`, nested items are referenced in `steps`
 regardless of a workflow type. For script nodes it is possible to
-provide `initialValues` and `inputRestrictions`.
+provide `initialValues` and `inputRestrictions`. A workflow item
+without `steps` gets the defaults from its configuration (`steps` or
+`initialSteps`); pass `steps: []` for an empty workflow.
 
 #### `getSteps`
 
@@ -911,6 +953,11 @@ init when it is:
 Each time, the workflow's init hook runs first, then its `runOnInit`
 links. The rules are the same for a top-level workflow and a nested one.
 
+A duplicated step skips the init hook of every workflow it contains,
+because the copy already holds the values init produced. So does an
+[instance config](./code-usage#with-initial-configuration) entry with
+`skipOnInit: true`. Links, `runOnInit` included, still run.
+
 **What init writes.** A value written at init is a change like any
 other: data links that read it pass it on, and validators and meta links
 react to it. So a state filled by the init hook reaches script inputs
@@ -944,7 +991,7 @@ inputs where that is expected.
 
 Uses the `onReturn` field instead of links and is triggered only
 once when a workflow is started [programmatically](code-usage.mdx) and
-exited via the **Accept** button.
+exited via the **Confirm data** button.
 Otherwise, the same as [data links](#data-links).
 
 The return hook handler receives an `IRuntimeReturnController` with the

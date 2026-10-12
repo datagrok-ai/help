@@ -287,10 +287,14 @@ To learn more, check out [cheminformatics](../../datagrok/solutions/domains/chem
 
 ## WebGPU acceleration
 
-WebGPU acceleration allows you to quickly render massive datasets (10 millions rows and more).
-To get the maximum performance, set **Zoom and Filter** property to "no action".
+Scatter plots of more than 50,000 rows are drawn on the GPU, so that panning and zooming stay smooth with millions
+of rows. The plot uses WebGPU where the browser provides it, and WebGL where it does not (for example, when an
+organization disables WebGPU). Plots with jitter, labels next to the markers, a date axis by a time unit, or
+**Zoom and Filter** set to "pack and zoom by filter" are drawn without the GPU. GPU rendering comes with the
+[Power Grid](https://github.com/datagrok-ai/public/tree/master/packages/PowerGrid) package.
 
-This feature is currently in beta. To enable it, check **Settings** > **Beta** > **Enable Scatter Plot Web GPU Acceleration**
+GPU rendering is on by default; to turn it off, clear **Settings** > **General** > **Scatter Plot Web GPU Acceleration**.
+To get the maximum performance, set **Zoom and Filter** property to "no action".
 
 ![](img/webgpu-scatterplot.gif)
 

@@ -24,6 +24,11 @@ the handler and controller interfaces, `PipelineInstanceConfig`,
 field names and surface required fields as you type, so the prose below
 focuses on the _meaning_ of each option rather than its TypeScript shape.
 
+To walk a `PipelineState` (in a custom export) or a `PipelineOutline` (from
+`getOutline()`), narrow each node with `isFuncCallState`,
+`isStaticPipelineState` and `isDynamicPipelineState`, also exported from
+`@datagrok-libraries/compute-api`.
+
 :::
 
 ## Getting started
@@ -59,7 +64,7 @@ configured slightly differently.
 
 | `type` value | Variant |
 |--------------|---------|
-| `'static'` (default) | [Static workflow](#static-workflows) — fixed `steps` array. |
+| `'static'` | [Static workflow](#static-workflows) — fixed `steps` array. |
 | `'dynamic'` | [Dynamic workflow](#dynamic-workflows) — user can add/remove steps from `stepTypes`. |
 | `'action'` | [Action step](#action-steps) — lightweight placeholder, no children. |
 | `'ref'` | [Workflow reference](#reusing-workflows) — replaced at load time by another provider's configuration. |
@@ -382,6 +387,10 @@ initial values. __Note__ Initial values don't trigger links, so there
 should be no data links that are dependent only on inputs with initial
 values.
 
+It may also hold output values. A step with any output value starts as
+run: links that write into it mark its inputs inconsistent instead of
+changing them.
+
 #### `inputRestrictions` (Script node)
 
 _Optional_
@@ -438,7 +447,7 @@ workflow. If more validation logic is needed, a
 
 _Optional_
 
-This dynamic item type cannot be added from the UI.
+This dynamic item type cannot be added or duplicated from the UI.
 
 #### `disableUIRemoving`
 
@@ -520,7 +529,7 @@ A custom export function receives two arguments
 * `treeState` of type `PipelineState`
 * `utils` of type `ExportUtils`
 
-Export utils contain 4 methods that could reuse standard existing
+Export utils contain 6 methods that could reuse standard existing
 export logic:
 
 * `reportFuncCallExcel` - creates a standard xlsx blob and exceljs
@@ -531,8 +540,31 @@ export logic:
   based on export name. Returns whatever a custom export returned.
 * `reportStateExcel` - creates a standard xlsx tree export, however
   for each call an optional callback will be called (if
-  provided). Returns [Blob, Zippable, string], where 3rd is the name
-  of a file.
+  provided). Returns [Blob, Zippable, string, ExportSummaryItem[]],
+  where 3rd is the name of a file and 4th is the summary below.
+* `getExportSummary` - returns the summary of a workflow as
+  `ExportSummaryItem[]`, see below.
+* `reportSummaryExcel` - creates the summary workbook alone, returns
+  [Blob, ExcelJS.Workbook].
+
+The tree export also writes `000_summary.xlsx` at the root of the zip:
+one row per workflow and step, in tree order. An `ExportSummaryItem` has
+the following fields:
+
+* kind: `'step' | 'workflow'`
+* path: `string[]`, the folders in the zip
+* name: `string`, title?: `string`
+* fileName?: `string`, the step workbook; absent for workflows and for
+  steps that are not loaded
+* status?: `StepStatus`, the status the tree shows for a step
+* runError?: `string`
+* errors, warnings, notifications: `string[]`; for a step each message
+  starts with the name of its input or output, for a workflow they are
+  its [pipeline validator](./link-types#pipeline-validators) results
+* inconsistentInputs: `string[]`
+* rollup?: for a workflow, counts over all steps below it: `steps`,
+  `notLoaded`, `failed`, `outdated`, `withErrors`, `withWarnings` and
+  `inconsistent`
 
 
 The callback in `reportStateExcel` receives an object with the following
@@ -543,6 +575,7 @@ fields:
 * archive: `Zippable`
 * path: `string[]`
 * fileName: `string`
+* status?: `StepStatus`
 * isOutputOutdated?: `boolean`
 * runError?: `string`
 * validation?: `Record<string, ValidationResult>`

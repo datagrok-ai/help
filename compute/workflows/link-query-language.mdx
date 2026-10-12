@@ -224,7 +224,7 @@ link:
 {
   id: 'needsReviews',
   type: 'pipelineValidator',
-  from: 'scores:reviews/all(review)/score',
+  from: 'scores(optional):reviews/all(review)/score',
   to: 'self',
   handler: ({controller}) => {
     const scores = controller.getAll('scores');

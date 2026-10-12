@@ -284,8 +284,9 @@ Content moves from dev to production in one of two ways:
 * **As entities.** For content authored in the UI, the `grok s` CLI can pull
   entities from one instance into a folder of files, show the difference, and
   push them to another instance, keeping their IDs so a repeated push updates
-  rather than duplicates. Credentials never travel with the content. See the
-  [Move content between instances](../develop/server-management.md#move-content-between-instances).
+  rather than duplicates. Credentials never travel with the content. See
+  [Promote content between instances](promote-content.md) for the steps, from
+  one dashboard to a whole instance.
 
 ## Monitor the platform
 
