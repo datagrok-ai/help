@@ -74,13 +74,13 @@ which has everything properly configured and all tests written properly.
 ## Skipping tests
 
 If a test fails for some reason, you can skip it using the skipReason parameter
-(specify a reason for skipping the test, for example,
-the associated GitHub issue):
+(specify a reason for skipping the test, for example, the associated GitHub
+issue, prefixed with its repository: `public#NNN` or `core#NNN`):
 
 ```js
 test('Skipped', async () => {
   expect(1, 11);
-}, {skipReason: '#4256'});
+}, {skipReason: 'public#4256'});
 ```
 
 ## Testing functions
