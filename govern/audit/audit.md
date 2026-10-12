@@ -64,6 +64,7 @@ Each event is associated with a fixed type and the user session that triggered i
 * connection-edited
 * connection-deleted
 * connection-published
+* connection-raw-write
 * job-created
 * job-edited
 * job-deleted
@@ -89,6 +90,27 @@ Each event is associated with a fixed type and the user session that triggered i
 * project-edited
 * project-deleted
 * project-opened
+* docker-image-created
+* docker-image-rebuilt
+* docker-image-deleted
+* docker-container-created
+* docker-container-edited
+* docker-container-started
+* docker-container-stopped
+* docker-container-action-failed
+* docker-container-deleted
+* docker-container-config-created
+* docker-container-config-deleted
+* package-created
+* package-edited
+* package-deleted
+* package-version-published
+* package-version-activated
+* sync-setup-created
+* sync-setup-edited
+* sync-setup-deleted
+* user-report-created
+* user-applied
 * entity-shared
 * entity-shared-silent
 * user-invited
@@ -107,6 +129,15 @@ Each event is associated with a fixed type and the user session that triggered i
 * alert-resolved
 * problem-status-changed
 * connection-checked
+* user-error
+* client-audit
+* key.material.delete
+* key.revoke.immediate
+* key.revoke.force
+* key.revoke.queued
+* key.rotation.start
+* key.rotation.complete
+* key.rotation.auto
 * server-started
 * user-logged-in
 * user-logged-out
@@ -186,18 +217,10 @@ group and audit events to another.
 
 </details>
 
-Besides regular events, the server emits records that let your monitoring
-system page you:
-
-* `alert-opened` and `alert-escalated` when a problem starts or gets worse, `alert-cleared` when its condition
-  ends, and `alert-acknowledged` and `alert-resolved` when a person acknowledges or resolves the alert. Alerts
-  cover a failed service health check, requests slowing down or failing across the board, one error hitting many
-  users, an account that keeps failing to sign in, a data connection that stops answering, a problem reported by
-  a user, and your own [problem rules](problem-rules.md). See [Problems and alerts](problems-and-alerts.md).
-* `alert-firing` every five minutes for each alert that is still open.
-* `heartbeat` every five minutes. A missing heartbeat means the instance stopped reporting.
-
-`alert-firing` and `heartbeat` aren't stored in the database. They exist only in Log sync destinations.
+Besides regular events, the server emits alert records and a heartbeat that let your monitoring system page
+you when a [problem](problems-and-alerts.md) starts. The records, when they arrive, and the problems behind
+them are in the [operator guide](operator-guide.md#what-arrives-and-when). `alert-firing` and `heartbeat` aren't
+stored in the database. They exist only in Log sync destinations.
 
 To learn more, see [Export logs to Amazon CloudWatch](../../datagrok/solutions/teams/it/log-export-cloud-watch.md).
 

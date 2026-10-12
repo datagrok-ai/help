@@ -148,7 +148,7 @@ and the groups it holds for. It needs the **Manage Alerts** and **View Telemetry
 |---|---|
 | Rules | 50 |
 | Problems raised per rule at a time | 100; beyond that, a `problem-rule` problem says so |
-| One evaluation | 10 seconds per query |
+| One evaluation | 10 seconds per query; all the rules of one run share 40 seconds, and a rule left without time runs on the next one |
 | Sizes | 10 parameters, 10 keywords, 20 types, 50 `in` values, 10 owners |
 
 A rule that fails or exceeds a limit raises a `problem-rule` problem for its owners until it

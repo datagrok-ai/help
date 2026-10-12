@@ -24,19 +24,12 @@ monitoring system as a log record, once, and stays open until the problem ends o
 
 ## What Datagrok detects
 
-| Problem | Raised when | Who acts |
-|---|---|---|
-| Service down | a platform service fails its health check twice in a row on a server; one problem per service and server | platform |
-| Error incident | one error hits 3 users, or repeats 20 times, within 15 minutes | platform |
-| Slow or failing requests | requests are slow (p95 of 10 s or more) or a quarter of them fail, over 5 minutes | platform |
-| Failed logins | one login fails to sign in 5 times within 15 minutes (the default [problem rule](problem-rules.md) `login-failures`) | platform |
-| Connection down | an external data connection fails its check twice in a row | its owner |
-| Scheduled job failing | a scheduled function's run fails, until its next run succeeds | its author |
-| Log sync failing | a [Log sync](audit.md#export-logs) destination drops records or fails three times in a row | platform |
-| User report | a user files a problem report | platform |
-| Your rules | a condition you defined over the log holds ([problem rules](problem-rules.md)) | its owner, unless the rule says `platform` |
-
-An administrator can change these thresholds, and the problem rules, in **Settings** > **Alerts**.
+Services that fail their health checks, errors that hit many users or keep recurring, errors users keep making,
+slow or failing requests, data connections and scheduled jobs that fail, containers that don't start, storage,
+identity providers and Log sync destinations that keep failing, problem reports, and the conditions of your own
+[problem rules](problem-rules.md), such as the default `login-failures`. When each one opens and ends, who acts
+on it, and which thresholds an administrator can change in **Settings** > **Alerts**:
+[What Datagrok detects](operator-guide.md#what-datagrok-detects) in the operator guide.
 
 ## Statuses
 
@@ -60,11 +53,10 @@ alert is cleared and resolved.
 
 ## Where alerts go
 
-Alerts are log records: `alert-opened`, `alert-escalated`, `alert-cleared`, `alert-acknowledged` and
-`alert-resolved`, all with the same alert id, plus `alert-firing` every 5 minutes while an alert is open
-and a `heartbeat` every 5 minutes while the instance is alive. Send them to your monitoring system with an
-OpenTelemetry destination in [Log sync](audit.md#export-logs) (its **Alerts** option is on by default)
-and page from them:
+Alerts are log records, all of one alert with the same alert id, plus a heartbeat every 5 minutes while the
+instance is alive ([the records and when they arrive](operator-guide.md#what-arrives-and-when)). Send them to your
+monitoring system with an OpenTelemetry destination in [Log sync](audit.md#export-logs) (its **Alerts** option is
+on by default) and page from them:
 
 | Your stack | Rule |
 |---|---|

@@ -35,28 +35,48 @@ so a deployment is one series however many servers it runs.
 | `datagrok.alert.firing` | every 5 minutes while the alert is open (not stored in the database) |
 | `datagrok.alert.cleared` | the condition ended, which resolves the alert |
 | `datagrok.alert.acknowledged`, `datagrok.alert.resolved` | a person acknowledges or resolves it |
+| `datagrok.problem.status_changed` | a person sets a problem's status (mutes it, marks it fixed or not a problem), or a timed mute ends |
 | `datagrok.heartbeat` | every 5 minutes while the instance is alive (not stored) |
 | `datagrok.audit.<type>` | every audit record, when the `audit` level is selected ([audit events](audit.md)) |
-| `datagrok.error.<type>` | every error, when the `error` level is selected |
+| `datagrok.error.<type>` | every error that has a type, when the `error` level is selected; an error without one arrives as a plain log record with no event name |
 | `user-report-created` audit record and a `report` alert | a user files a problem report |
 
 Alert records carry `datagrok.alert.id`, `.kind`, `.key`, `.name`, `.severity` (`critical`, `warning`, `info`),
-`.status`, `.audience` (`platform` or `owner`) and `.url` (the evidence). Page from `opened` or `firing` until
-`resolved` with the same id; `info` is for the record only.
+`.status`, `.audience` (`platform` or `owner`) and `.url` (the evidence), and `datagrok.problem.id`. Page from
+`opened` or `firing` until `resolved` with the same id; `info` is for the record only. In the database and in
+other destinations the same records are the audit types `alert-opened`, `alert-escalated`, `alert-firing`,
+`alert-cleared`, `alert-acknowledged`, `alert-resolved`, `problem-status-changed` and `heartbeat`.
 
-## Thresholds
+## What Datagrok detects
 
-The defaults, all editable in **Settings** > **Alerts**:
+Each problem is named `kind:key`, the name the [CLI and the REST API](problems-and-alerts.md#working-with-problems)
+take. The defaults:
 
-| Problem | Opens | Ends |
-|---|---|---|
-| Service down | 2 failed health checks in a row | 3 passing checks in a row |
-| Error incident | one error signature hits 3 users or 20 occurrences in 15 minutes, or occurs in 4 hours of the last day; critical at 10 times that | 60 minutes without it |
-| User error | one 4xx error in 12 hours of the last day, or for 10 users | 6 hours without it |
-| Slow or failing requests | at least 20 requests in 5 minutes with p95 of 10 s or more, or 25% failing | 15 clean checks in a row |
-| Connection down | 2 failed checks in a row (200 connections checked every 5 minutes) | a passing check |
-| Scheduled job failing | 1 failed run, over the last 24 hours of runs | a successful run |
-| Failed logins | 5 for one login in 15 minutes (problem rule `login-failures`) | the window passes |
+| Problem (`kind:key`) | Opens | Ends | Who acts |
+|---|---|---|---|
+| Service down (`health:<check>@<server>`) | 2 failed health checks in a row on that server | 3 passing checks in a row | platform |
+| Error incident (`error-incident:<signature>`) | one error signature hits 3 users or 20 occurrences in 15 minutes, or occurs in 4 hours of the last day however rarely; critical at 10 times the users or occurrences | 60 minutes without it | platform |
+| User error (`user-error:<signature>`) | one error the caller made (answered 4xx) occurs in 12 hours of the last day, or for 10 users | 6 hours without it | platform |
+| Slow requests (`degraded:latency`), failing requests (`degraded:errors`, critical) | at least 20 requests in 5 minutes with p95 of 10 s or more, or 25% of them failing | 15 clean checks in a row, one a minute | platform |
+| Connection down (`connection:<connection id>`) | 2 failed checks in a row; 200 connections are checked every 5 minutes, those checked longest ago first | a passing check | the connection's author |
+| Container failing (`container:<image>`) | a container of the image fails to start | 5 minutes with no failing container of it | platform |
+| Scheduled job failing (`job:<function id>`) | 1 failed run since the last successful one, over the last 24 hours of runs | a successful run | the function's author |
+| Storage failing (`storage:<storage>`) | an S3 storage is still throttled after every retry | it answers again, or 15 minutes without a failure | platform |
+| Identity provider failing (`identity-provider:<provider>`) | an OpenID provider refuses the token exchange twice within an hour | a login through it works again, or 60 minutes without a failure | platform |
+| Log sync failing (`export:<destination>`) | a [Log sync](audit.md#export-logs) destination drops records, or 3 batches in a row fail | it delivers again, or 15 minutes without a failure | platform |
+| User report (`report:<report id>`) | a user files a problem report | the report is resolved | platform |
+| Failed logins (`rule-login-failures:<login>`) | 5 failed logins for one login in 15 minutes (the default [problem rule](problem-rules.md) `login-failures`) | `clearAfter` (5 minutes) after the condition stops holding | platform |
+| Your rules (`rule-<name>:<group>`) | the rule's condition holds ([problem rules](problem-rules.md)) | `clearAfter` (5 minutes by default) after it stops holding | the rule's `owners`, unless it says `platform` |
+| Rule failing (`problem-rule:<name>`) | a problem rule is invalid, fails, or exceeds a limit | it evaluates again, or is disabled or deleted | the rule's `owners` |
+
+An error signature is the first 12 characters of the error's stack trace hash, or, for an error without a stack
+trace, of its event type id.
+
+In **Settings** > **Alerts** an administrator can change the error incident, user error, slow and failing request
+and scheduled job thresholds, the failed health checks that open a service-down problem, the number of
+connections checked per run, and the problem rules, including `login-failures`. The rest is fixed: the 3 passing
+checks that end a service-down problem, the 2 failed checks that open a connection-down problem, and the
+container, storage, identity provider, Log sync and report conditions.
 
 Silence is caught on your side: no heartbeat for 15 minutes means the instance is down, hung, or cut off.
 

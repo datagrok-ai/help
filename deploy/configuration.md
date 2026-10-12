@@ -53,6 +53,7 @@ Server-wide options at the root of `GROK_PARAMETERS` (on Kubernetes, `datagrok.g
 |-----------------------|-----------|-------------|
 | serverName            | host name | This server's name in log records and the `grok` CLI |
 | deploymentEnvironment |           | Environment name (`prod`, `staging`) on every exported log record |
+| jsonLogs              | false     | Prints the server's log to stdout as one JSON object per line, for your cluster's log collection ([Logs of the other services](../govern/audit/operator-guide.md#logs-of-the-other-services)) |
 
 [Problem rules](../govern/audit/problem-rules.md) are a server setting: `settings.alerts.problemRules`
 (see [Settings](#settings)).
