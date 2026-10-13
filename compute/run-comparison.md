@@ -30,7 +30,7 @@ superscript digits (`m²` is `m2`), liters as `l` or `L`, and time unit spelling
 by guess.
 
 When runs name the same quantity differently (for example, `pressure` and `P`), map the
-names manually: **Mappings...** next to the value filter opens a dialog with name
+names manually: **Mappings...** in the Index columns header opens a dialog with name
 pairs. Mapped names match as the same value across all runs, index columns included.
 The mapping is exact up to case and separators — no fuzzy matching — and pairs chain
 (mapping A to B and B to C makes all three equal).
@@ -39,8 +39,9 @@ The same dialog takes unit mappings, `1 g/L = 1000 mg/L`. A run whose value is i
 mapped units joins the row, and its values are multiplied into the units of the first
 run when the chart is built, so the export carries the converted numbers. A mapping works
 in both directions; mappings never chain, so `1 h = 60 min` and `1 min = 60 s` do not
-convert hours to seconds. Index columns are never converted; use the time units picker for
-time indexes. A constant factor cannot express offsets such as °C ↔ K.
+convert hours to seconds. Index columns convert the same way when their units are mapped;
+the relative timeseries mode keeps its own time units picker instead. A constant factor
+cannot express offsets such as °C ↔ K.
 
 Columns additionally require their tables to be comparable: the index columns must
 name-match. Beyond that, matching stays per column — the tables don't need to share
