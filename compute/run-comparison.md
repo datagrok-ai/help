@@ -35,7 +35,9 @@ pairs. Mapped names match as the same value across all runs, index columns inclu
 The mapping is exact up to case and separators — no fuzzy matching — and pairs chain
 (mapping A to B and B to C makes all three equal).
 
-The same dialog takes unit mappings, `1 g/L = 1000 mg/L`. A run whose value is in
+A run that has the value under the same name but in other units is left out and its chip
+under Results says `units differ (mg/L)`. The same dialog takes unit mappings,
+`1 g/L = 1000 mg/L`. A run whose value is in
 mapped units joins the row, and its values are multiplied into the units of the first
 run when the chart is built, so the export carries the converted numbers. A mapping works
 in both directions; mappings never chain, so `1 h = 60 min` and `1 min = 60 s` do not
