@@ -20,10 +20,10 @@ single dashboard to a whole instance.
 
 ## Choose the path
 
-| Content                                                  | How to move it                                                                         |
-|----------------------------------------------------------|----------------------------------------------------------------------------------------|
-| Kept in Git as a package (business-critical content)      | Publish the same package version to each instance: `grok publish <instance> --release` |
-| Built in the UI: dashboards, spaces, queries, scripts...  | Move it with `grok s`, as described on this page                                       |
+| Content                                                                                                                         | How to move it                                                                         |
+|---------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
+| Kept in Git as a package: business-critical content (see [Manage an enterprise instance](manage-enterprise.md#promote-content)) | Publish the same package version to each instance: `grok publish <instance> --release` |
+| Built in the UI, such as dashboards, spaces, queries, and scripts                                                               | Move it with `grok s`, as described on this page                                       |
 
 `grok s` moves connections, queries (including visual queries), scripts,
 dashboards and spaces, views and layouts, tables with their data, files, jobs,
@@ -31,7 +31,7 @@ notebooks, models, and the groups and permissions they need.
 
 ## How it works
 
-Content travels as a **bundle**: a folder with one JSON file per entity, plus
+Content travels as a *bundle*: a folder with one JSON file per entity, plus
 the data of the tables. You can review a bundle, commit it to Git, and push it
 again later.
 
@@ -53,19 +53,21 @@ grok s migrate Chem:TargetDashboard --from dev --to prod      # pull and push in
 
 `--from`, `--to`, and `--host` take the server aliases from
 `~/.grok/config.yaml` (see [Configuration](../develop/server-management.md#configuration)).
+For every flag and the bundle format, see the
+[full `grok s` reference](https://github.com/datagrok-ai/public/blob/master/tools/GROK_S.md#migrating-entities-between-instances-pull--push--migrate).
 
 ## Prepare the target
 
 Some things belong to the instance rather than to a bundle, so they have to be
 in place before the first push:
 
-| What                     | Why                                                                                | How                                                                                     |
-|--------------------------|------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| An administrator account | Without `--admin`, a run sees and places only the content its own account can reach | Use an account in the Administrators group on both instances                            |
-| Users                    | Content of a user who doesn't exist on the target is saved under the pushing account | Create the users on the target first                                                   |
-| Packages                 | Content that calls package functions needs the package on the target              | Publish the packages: `grok publish <target> --release`                                 |
-| Credentials              | Passwords never travel                                                             | Prepare a credentials file (see below), or enter the passwords in the UI after the push |
-| A backup                 | A push can't be undone                                                             | [Back up](../deploy/complete-setup/backup.md) the target before a large move            |
+| What                     | Why                                                                                  | How                                                                                                          |
+|--------------------------|--------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| An administrator account | Without `--admin`, a run sees and places only the content its own account can reach  | Use an account that can start an admin session (the `StartAdminSession` global permission) on both instances |
+| Users                    | Content of a user who doesn't exist on the target is saved under the pushing account | Create the users on the target first                                                                         |
+| Packages                 | Content that calls package functions needs the package on the target                 | Publish the packages: `grok publish <target> --release`                                                      |
+| Credentials              | Passwords never travel                                                               | Prepare a credentials file (see below), or enter the passwords in the UI after the push                      |
+| A backup                 | A push can't be undone                                                               | [Back up](../deploy/complete-setup/backup.md) the target before a large move                                 |
 
 If you have a staging instance that mirrors production, try the move there
 first.
@@ -98,7 +100,9 @@ CHEMBL_PROD_PASSWORD=... grok s migrate Chem:TargetDashboard --from dev --to pro
    ```
 
 3. Run the same command again. Every entity should now be reported as
-   `identical`, and nothing is written.
+   `identical`, and nothing is written. The exception is a connection whose
+   password you pass with `--creds`: it is reported as `update` and written
+   again.
 
 To move a space with everything in it, select the space: `--space Chem`. Select
 the space itself rather than the items in it, so that they keep their place in
@@ -122,8 +126,9 @@ To move all the content of an instance, move it one space at a time. Each space
 is its own pull and push, so a failure affects one space rather than the whole
 run.
 
-1. See the plan. The run first lists the users and packages the target is
-   missing, and doesn't start until they are in place:
+1. See which spaces would move and how many entities each holds. The run first
+   lists the users and packages the target is missing, and doesn't start until
+   they are in place or you pass `--force`:
 
    ```bash
    grok s migrate --from dev --to prod --admin --by-namespace --on-conflict adopt --dry-run
@@ -143,9 +148,8 @@ To move only some spaces, add `--only Chem,Bio`, or leave spaces out with
 `--skip`. Layouts and views that belong to no space are moved only by a run
 without `--only`.
 
-A move of a few dashboards takes minutes, and a move of a whole instance can
-take hours. Select dashboards and spaces rather than tables: the tables they use
-come along, and tables that nothing uses stay behind.
+Select dashboards and spaces rather than individual tables: the tables they use
+come along, and tables nothing uses stay behind.
 
 ### Name conflicts
 
@@ -161,8 +165,9 @@ An entity whose name exists on the target under a different ID is a conflict.
 
 ## Check the result
 
-1. Run the same move again. Every entity should be `identical`. A run with a
-   `failed` row exits with an error.
+1. Run the same move again. Every entity should be `identical`, except
+   connections passed with `--creds`. A run with a `failed` row exits with an
+   error.
 2. Open the main dashboards on the target. Check that they are in their spaces
    and show their data and layouts.
 3. Check the sharing of a few key dashboards and spaces.
@@ -170,17 +175,17 @@ An entity whose name exists on the target under a different ID is a conflict.
 
 ## What doesn't travel
 
-| What                       | What to do                                                             |
-|----------------------------|------------------------------------------------------------------------|
+| What                        | What to do                                                             |
+|-----------------------------|------------------------------------------------------------------------|
 | Passwords and other secrets | Pass `--creds`, or enter them in the UI on the target                  |
-| Users                      | Create them on the target first                                        |
-| Package content            | Publish the package to the target                                      |
-| Files inside file shares   | Copy the storage behind the share. Only standalone files are moved     |
-| Removals                   | A push only adds and updates. Remove what's no longer needed in the UI |
-| Trained model files        | Retrain or upload the model on the target                              |
+| Users                       | Create them on the target first                                        |
+| Package content             | Publish the package to the target                                      |
+| Files inside file shares    | Copy the storage behind the share. Only standalone files are moved     |
+| Removals                    | A push only adds and updates. Remove what's no longer needed in the UI |
+| Trained model files         | Retrain or upload the model on the target                              |
 
-Tables built by joining or aggregating other tables move with their data, but
-to refresh them, the target needs their source tables too.
+A table with data sync brings what its sync script calls (the file connections
+it reads and its source queries or scripts), so it can refresh on the target.
 
 ## See also
 
