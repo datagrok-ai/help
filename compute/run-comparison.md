@@ -48,7 +48,10 @@ series. To chart several series within one run, use a
 model results.
 
 When an input and an output of the same step share a caption, the parameter name is
-shown after it, for example `Data (result)`, so the two rows stay distinguishable.
+shown after it, for example `Data (result)`, so the two rows stay distinguishable. A
+workflow step that repeats (for example, one step per day) gives one row per occurrence,
+labeled with its step, for example `Final biomass  Daily cultivation · Day 2`; runs pair
+by step, so Day 2 of one run is compared with Day 2 of another.
 
 Automatic matching picks the best candidate per run, which is not always the desired one —
 for example, when a run has several similar tables. Expand a compare row (the chevron on
