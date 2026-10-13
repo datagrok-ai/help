@@ -64,6 +64,7 @@ Each event is associated with a fixed type and the user session that triggered i
 * connection-edited
 * connection-deleted
 * connection-published
+* connection-raw-write
 * job-created
 * job-edited
 * job-deleted
@@ -89,6 +90,27 @@ Each event is associated with a fixed type and the user session that triggered i
 * project-edited
 * project-deleted
 * project-opened
+* docker-image-created
+* docker-image-rebuilt
+* docker-image-deleted
+* docker-container-created
+* docker-container-edited
+* docker-container-started
+* docker-container-stopped
+* docker-container-action-failed
+* docker-container-deleted
+* docker-container-config-created
+* docker-container-config-deleted
+* package-created
+* package-edited
+* package-deleted
+* package-version-published
+* package-version-activated
+* sync-setup-created
+* sync-setup-edited
+* sync-setup-deleted
+* user-report-created
+* user-applied
 * entity-shared
 * entity-shared-silent
 * user-invited
@@ -102,7 +124,20 @@ Each event is associated with a fixed type and the user session that triggered i
 * package-tested
 * alert-opened
 * alert-escalated
+* alert-cleared
+* alert-acknowledged
 * alert-resolved
+* problem-status-changed
+* connection-checked
+* user-error
+* client-audit
+* key.material.delete
+* key.revoke.immediate
+* key.revoke.force
+* key.revoke.queued
+* key.rotation.start
+* key.rotation.complete
+* key.rotation.auto
 * server-started
 * user-logged-in
 * user-logged-out
@@ -114,12 +149,26 @@ Each event is associated with a fixed type and the user session that triggered i
 * dev-key-generated
 * settings-changed
 * log-settings-changed
+* group-members-changed
+* permission-granted
+* permission-revoked
+* credentials-saved
+* admin-sql-executed
+* privileged-call
 
 </details>
 
-The last eleven are the platform's own security trail — who logged in and out, whose login
-failed and why, impersonation, admin sessions, developer keys, settings changes, and server
-starts. They are listed on the **System Activity** tab of [Usage Analysis](usage-analysis.md).
+The eleven from `server-started` to `log-settings-changed` are the platform's own security trail — who
+logged in and out, whose login failed and why, impersonation, admin sessions, developer keys, settings
+changes, and server starts. They are listed on the **System Activity** tab of [Usage Analysis](usage-analysis.md).
+
+The last six record who can reach what: group membership changes (made in Datagrok or synced from an
+identity provider), permissions granted and revoked, credentials saved (the names of the saved fields,
+never their values), SQL run on the platform's own database connections, and functions called in an
+admin or impersonated session.
+
+Passwords, tokens, keys, and other secrets are replaced with `[REDACTED]` in event messages and parameters
+before they are printed, stored, or exported.
 
 ## Accessing audit logs
 
@@ -168,16 +217,10 @@ group and audit events to another.
 
 </details>
 
-Besides regular events, the server emits records that let your monitoring
-system page you:
-
-* `alert-opened`, `alert-escalated`, and `alert-resolved` when a problem starts, gets worse, or clears. Alerts
-  cover a failed service health check, requests slowing down or failing across the board, one error hitting many
-  users, an account that keeps failing to sign in, and a problem reported by a user.
-* `alert-firing` every five minutes for each alert that is still open.
-* `heartbeat` every five minutes. A missing heartbeat means the instance stopped reporting.
-
-`alert-firing` and `heartbeat` aren't stored in the database. They exist only in Log sync destinations.
+Besides regular events, the server emits alert records and a heartbeat that let your monitoring system page
+you when a [problem](problems-and-alerts.md) starts. The records, when they arrive, and the problems behind
+them are in the [operator guide](operator-guide.md#what-arrives-and-when). `alert-firing` and `heartbeat` aren't
+stored in the database. They exist only in Log sync destinations.
 
 To learn more, see [Export logs to Amazon CloudWatch](../../datagrok/solutions/teams/it/log-export-cloud-watch.md).
 
@@ -194,6 +237,23 @@ turn on the **Garbage Collector** in **Settings** > **Admin**. It removes audit
 events after 365 days, errors, warnings, info, and usage events after 183 days,
 and debug events after 30 days. You can change each period. To keep events
 longer, [export them](#export-logs) to a backend with its own retention policy.
+
+### Integrity
+
+Events live in the Datagrok database, so whoever can change the database can change them. To keep a copy that no
+one can alter or delete, administrators included, export the log to write-once storage:
+
+1. Create an S3 bucket with Object Lock turned on at creation, in `COMPLIANCE` mode, with a default retention of
+   the period you must keep audit evidence (for example, 400 days). `GOVERNANCE` mode can be bypassed by a
+   privileged account. Don't add a lifecycle rule that expires objects sooner, and never delete the bucket's KMS key.
+1. Run an [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) with an OTLP/HTTP receiver behind
+   TLS and a bearer token, and the `awss3` exporter (`marshaler: otlp_json`, `compression: gzip`) writing to that
+   bucket. Keep the AWS SDK's default checksum behavior: Object Lock rejects uploads without a checksum.
+1. In [Log sync](#export-logs), add an **OpenTelemetry** destination pointing to the collector, with **Auth** set
+   to `bearer` and at least the `audit` level selected.
+
+Turning a destination off or deleting it is itself sent to that destination before the change applies. If a
+destination drops records or keeps failing, Datagrok raises an `export` problem until it delivers again.
 
 ## Logging events
 
