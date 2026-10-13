@@ -54,6 +54,9 @@ series in an unnamed split category.
 Click a value in the Compare list to chart it; clicking the selected value again clears the
 selection.
 
+Chart and export columns carry their units in the name, for example `Biomass (g/L)` and
+`Time (h)`, taken from the first run, so an exported table keeps them in any format.
+
 Matched values whose data is the same in every run (equal scalar values, or equal
 value, index, and split column contents) are hidden from the compare list by default.
 Numbers count as equal when they differ by less than 0.1%, and datetime index
