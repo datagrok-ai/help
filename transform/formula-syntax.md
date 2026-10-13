@@ -61,6 +61,8 @@ The table name is optional and defaults to the table the formula runs on.
 
 ```javascript
 ${quantity} * Lookup("products", "id", ${productId}, "price")   // Value from another table, matched by key
+Linked("poses", "score", "min")                                 // Smallest score of the rows of a linked table
+Min(${poses.score})                                             // The same, written as a column of the linked table
 Avg(Column("price", "products"))                                // Whole column of another table
 CumSum(${amount}) / Sum($[amount])                              // Running share of the total
 ${price} - MovingAvg(${price}, 7)                               // Deviation from the 7-row trailing average

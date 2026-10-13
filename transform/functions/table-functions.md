@@ -4,6 +4,7 @@ description: Reference for formula functions that reference tables and columns b
 keywords:
   - lookup function
   - vlookup formula
+  - linked table aggregate
   - running total
   - cumulative sum
   - moving average
@@ -21,6 +22,7 @@ table's columns are offered as you type each argument.
 - [CumSum](#cumsum)
 - [GetCurrentTable](#getcurrenttable)
 - [IndexOf](#indexof)
+- [Linked](#linked)
 - [Lookup](#lookup)
 - [MovingAvg](#movingavg)
 - [RowCount](#rowcount)
@@ -83,6 +85,30 @@ It pairs with [Value](#value), which takes the same zero-based row.
 ```javascript
 IndexOf(${id}, "A-17")                // Row of the first "A-17"
 IndexOf(${id}, ${id}) == row - 1      // True for the first occurrence of each id
+```
+
+## Linked(`tableName`, `columnName`, `aggregation`) {#linked}
+
+Aggregates the rows of a [linked table](../link-tables.md) that hold the row's key. `aggregation` is `count`, `sum`,
+`avg`, `min`, or `max`, or `value` for the one matching value when each row matches at most one row (the formula
+fails when a row matches several). The rows are matched by the link's key columns, the same way the link matches them
+for selection and filtering, so the formula doesn't repeat the keys. A row with no match gets an empty value, or 0 for
+`count`. The formula works from either table of the link.
+
+You can also write a column of a linked table as `${table.column}`. Inside `Min`, `Max`, `Avg`, `Sum`, or
+`TotalCount`, it aggregates the matching rows. On its own, it's the one matching value. A column of the table itself
+whose name contains a dot takes precedence.
+
+The column recalculates when the linked table changes: when you edit its values, add or remove its rows, or edit the
+keys in either table. If the tables are no longer linked, the column keeps its last values.
+
+```javascript
+Linked("poses", "score", "min")       // Best docking score of each compound
+Linked("poses", "score", "count")     // Number of poses of each compound
+Linked("assays", "IC50", "avg")       // Mean IC50 over the compound's assay rows
+Min(${poses.score})                   // Same as Linked("poses", "score", "min")
+TotalCount(${poses.score})            // Number of poses of each compound
+${properties.logP} * 2                // The compound's one row in a properties table
 ```
 
 ## Lookup(`tableName`, `keyColumn`, `key`, `valueColumn`) {#lookup}
