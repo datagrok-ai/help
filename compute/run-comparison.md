@@ -141,9 +141,10 @@ uses the parallel-coordinates plot, because a two-axis radar degenerates to a li
 radar viewer comes with the Charts package — without it, the parallel-coordinates plot is
 used for any number of values.
 
-Editing matches never exits the mode: a run that is missing or re-sourced from another
-table in one of the selected values shows as a gap in that panel, and the value's row is
-marked **partial**. Reverting the edit restores the chart exactly.
+The chart shows every run any selected value has. A value without data for one of those
+runs (missing, or picked from another table than the run's charted rows) shows a gap
+there, and its row is marked **partial**, whichever order the values were checked in.
+Editing matches never exits the mode, and reverting an edit restores the chart exactly.
 
 ## Default index annotations
 
