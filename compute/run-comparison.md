@@ -48,6 +48,9 @@ their full column sets. Split columns don't affect matching: each run charts wit
 own split column even when the names differ, and runs without one chart as a single
 series in an unnamed split category.
 
+Click a value in the Compare list to chart it; clicking the selected value again clears the
+selection.
+
 Matched values whose data is the same in every run (equal scalar values, or equal
 value, index, and split column contents) are hidden from the compare list by default.
 Numbers count as equal when they differ by less than 0.1%, and datetime index
