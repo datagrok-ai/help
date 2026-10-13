@@ -23,7 +23,7 @@ Scalars and dataframe columns are matched across runs by name: exact, then norma
 partially missing units produce a warning icon.
 
 When runs name the same quantity differently (for example, `pressure` and `P`), map the
-names manually: the exchange icon next to the value filter opens the **Name mappings**
+names manually: **Name mappings...** next to the value filter opens a
 dialog with name pairs. Mapped names match as the same value across all runs, index
 columns included. The mapping is exact up to case and separators — no fuzzy matching —
 and pairs chain (mapping A to B and B to C makes all three equal).
@@ -122,8 +122,8 @@ against another across runs.
 
 ## Multiple values
 
-When the selected value has compatible siblings, the **Multiple values** toggle (or
-Shift+click on a compare row) enables selecting several values at once. Unchecking the
+When the selected value has compatible siblings, the **Multiple values** toggle next to
+the value filter (or Shift+click on a compare row) enables selecting several values at once. Unchecking the
 last selected value turns the mode off, keeping that value as the regular selection. Every scalar is
 compatible with every other scalar. Column values are compatible when they share at least
 one run from the same tables and their index is numeric or datetime everywhere. Scalars
