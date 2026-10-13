@@ -30,7 +30,7 @@ superscript digits (`m²` is `m2`), liters as `l` or `L`, and time unit spelling
 by guess.
 
 When runs name the same quantity differently (for example, `pressure` and `P`), map the
-names manually: **Mappings...** in the Index columns header opens a dialog with name
+names manually: **Mappings...** in the Compare header opens a dialog with name
 pairs. Mapped names match as the same value across all runs, index columns included.
 The mapping is exact up to case and separators — no fuzzy matching — and pairs chain
 (mapping A to B and B to C makes all three equal).
@@ -41,9 +41,9 @@ under Results says `units differ (mg/L)`. The same dialog takes unit mappings,
 mapped units joins the row, and its values are multiplied into the units of the first
 run when the chart is built, so the export carries the converted numbers. A mapping works
 in both directions; mappings never chain, so `1 h = 60 min` and `1 min = 60 s` do not
-convert hours to seconds. Index columns convert the same way when their units are mapped;
-the relative timeseries mode keeps its own time units picker instead. A constant factor
-cannot express offsets such as °C ↔ K.
+convert hours to seconds. Mappings convert values only, never index columns: to put time
+axes in different units on one scale, use the relative timeseries mode and its time units
+picker. A constant factor cannot express offsets such as °C ↔ K.
 
 Columns additionally require their tables to be comparable: the index columns must
 name-match. Beyond that, matching stays per column — the tables don't need to share
@@ -54,8 +54,9 @@ series in an unnamed split category.
 Click a value in the Compare list to chart it; clicking the selected value again clears the
 selection.
 
-Chart and export columns carry their units in the name, for example `Biomass (g/L)` and
-`Time (h)`, taken from the first run, so an exported table keeps them in any format.
+Chart and export columns carry their units in the name, so an exported table keeps them in
+any format: `Biomass (g/L)` in the first run's units, and `Time (h)` when every run's index
+column has the same units (otherwise just `Time`).
 
 Matched values whose data is the same in every run (equal scalar values, or equal
 value, index, and split column contents) are hidden from the compare list by default.
