@@ -14,6 +14,7 @@ keywords:
 - [Date](#date)
 - [DateAdd](#dateadd)
 - [DateDiff](#datediff)
+- [DateFromUnixTimestamp](#datefromunixtimestamp)
 - [DateNow](#datenow)
 - [DateParse](#dateparse)
 - [DateTime](#datetime)
@@ -29,6 +30,7 @@ keywords:
 - [Time](#time)
 - [TimeParse](#timeparse)
 - [Today](#today)
+- [UnixTimestamp](#unixtimestamp)
 - [Weeknum](#weeknum)
 - [Year](#year)
 
@@ -50,10 +52,22 @@ DateAdd(${StartDate}, ${Duration})
 
 ## DateDiff(`dt1`, `dt2`) {#datediff}
 
-Returns the difference (time span) between two dates `dt1` and `dt2`.
+Returns the [time span](timespan-functions.md) from `dt2` to `dt1` in milliseconds. The result is positive when
+`dt1` is later than `dt2`, and negative when it is earlier. To get days, hours, or minutes, wrap the result in a
+time span function.
 
 ```javascript
 DateDiff(${FirstDate}, ${SecondDate})
+InDays(DateDiff(${FirstDate}, ${SecondDate}))       // full days
+TotalDays(DateDiff(Date(2026, 5, 19), Date(2026, 5, 1)))    // 18
+```
+
+## DateFromUnixTimestamp(`timestamp`) {#datefromunixtimestamp}
+
+Returns the date that is `timestamp` seconds after 1970-01-01 00:00:00 UTC.
+
+```javascript
+DateFromUnixTimestamp(1700000000)    // 2023-11-14 22:13:20 UTC
 ```
 
 ## DateNow() {#datenow}
@@ -178,6 +192,17 @@ Returns today's date.
 
 ```javascript
 Today()    // On January 1, 2021, would return the value 01-01-2021 00:00:00.000
+```
+
+## UnixTimestamp(`dt`) {#unixtimestamp}
+
+Returns the number of microseconds from 1970-01-01 00:00:00 UTC to the date `dt`. This is the unit of a
+datetime axis, so use it to place a [formula line](../../develop/how-to/viewers/show-formula-lines.md) at a date.
+It is not the inverse of [DateFromUnixTimestamp](#datefromunixtimestamp), which takes seconds.
+
+```javascript
+UnixTimestamp(Date(2011, 1, 1))    // 1293840000000000
+${Started} = UnixTimestamp(Date(2011, 1, 1))    // a formula line at January 1, 2011
 ```
 
 ## Weeknum(`dt`) {#weeknum}
