@@ -22,6 +22,13 @@ Scalars and dataframe columns are matched across runs by name: exact, then norma
 (case/underscore/dash-insensitive), then fuzzy. Values with mismatching units never match;
 partially missing units produce a warning icon.
 
+Units are compared case-sensitively, since `MPa` and `mPa` differ by 10⁹. Only spellings
+that never change the meaning count as the same: spaces, a trailing period, `µ` and `u`,
+superscript digits (`m²` is `m2`), liters as `l` or `L`, and time unit spellings (`s`,
+`sec`, `seconds`; `h`, `hr`, `hours`). One- and two-letter symbols keep their case, so
+`H` is not an hour and `MS` is not a millisecond. Similar-looking units are never matched
+by guess.
+
 When runs name the same quantity differently (for example, `pressure` and `P`), map the
 names manually: **Name mappings...** next to the value filter opens a
 dialog with name pairs. Mapped names match as the same value across all runs, index
