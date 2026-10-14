@@ -20,7 +20,9 @@ options.
 
 Scalars and dataframe columns are matched across runs by name: exact, then normalized
 (case/underscore/dash-insensitive), then fuzzy. Values with mismatching units never match;
-partially missing units produce a warning icon.
+partially missing units produce a warning icon. Raw tables such as CSV files carry no units,
+so a raw column without units joins a row with units without the warning: an info icon says
+its values are taken in the row's units.
 
 Units are compared case-sensitively, since `MPa` and `mPa` differ by 10⁹. Only spellings
 that never change the meaning count as the same: spaces, a trailing period, `µ` and `u`,
