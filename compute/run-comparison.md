@@ -56,7 +56,8 @@ selection.
 
 Chart and export columns carry their units in the name, so an exported table keeps them in
 any format: `Biomass (g/L)` in the first run's units, and `Time (h)` when every run's index
-column has the same units (otherwise just `Time`).
+column has the same units (otherwise just `Time`). Selected values that share a name also
+carry their step, as in the Compare list: `Daily cultivation · Day 2 · Final biomass`.
 
 Matched values whose data is the same in every run (equal scalar values, or equal
 value, index, and split column contents) are hidden from the compare list by default.
