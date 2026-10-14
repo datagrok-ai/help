@@ -157,7 +157,11 @@ selection.
 Several columns chart as stacked line-chart panels with runs (and split categories) as
 lines inside. When the columns come from different steps of a run, each step charts as its
 own line, labeled with the run and the step, and each step's time starts at zero on the
-[relative timeseries](#relative-timeseries) axis. In the
+[relative timeseries](#relative-timeseries) axis. When every selected value has the same
+units, all values chart in one panel on a shared y axis, one line per value and run; turn
+off **Shared y axis** above the chart to get the stacked panels back, for example when the
+magnitudes differ too much. Values in different units or without units always chart in
+stacked panels. In the
 [independent points mode](#independent-points), the values share one scatterplot instead,
 colored by value name. A comparison of several values needs a numeric or datetime index —
 if an index moves to a string column, the chart is replaced with a hint until the index is
