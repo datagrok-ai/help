@@ -149,15 +149,20 @@ against another across runs.
 When the selected value has compatible siblings, the **Multiple values** toggle next to
 the value filter (or Shift+click on a compare row) enables selecting several values at once. Unchecking the
 last selected value turns the mode off, keeping that value as the regular selection. Every scalar is
-compatible with every other scalar. Column values are compatible when they share at least
-one run from the same tables and their index is numeric or datetime everywhere. Scalars
-and columns never mix in one selection.
+compatible with every other scalar, and every column with every other column whose index is
+numeric or datetime everywhere, from any workflow step. Scalars and columns never mix in one
+selection.
 
 Several columns chart as stacked line-chart panels with runs (and split categories) as
-lines inside. In the [independent points mode](#independent-points), the values share one
-scatterplot instead, colored by value name. A comparison of several values needs a numeric
-or datetime index — if an index moves to a string column, the chart is replaced with a
-hint until the index is changed back or a single value is selected.
+lines inside. When the columns come from different steps of a run, each step charts as its
+own line, labeled with the run and the step, and each step's time starts at zero on the
+[relative timeseries](#relative-timeseries) axis. In the
+[independent points mode](#independent-points), the values share one scatterplot instead,
+colored by value name. A comparison of several values needs a numeric or datetime index —
+if an index moves to a string column, the chart is replaced with a hint until the index is
+changed back or a single value is selected. Steps indexed by datetime and by numbers chart
+together only in the relative timeseries mode set on every table; until then, a hint says
+so.
 
 Several scalars chart on a radar chart: one axis per value, one polygon per run. A switch
 above the chart flips it to a parallel-coordinates plot. With two values the tool always
@@ -166,9 +171,9 @@ radar viewer comes with the Charts package — without it, the parallel-coordina
 used for any number of values.
 
 The chart shows every run any selected value has. A value without data for one of those
-runs (missing, or picked from another table than the run's charted rows) shows a gap
-there, and its row is marked **partial**, whichever order the values were checked in.
-Editing matches never exits the mode, and reverting an edit restores the chart exactly.
+runs shows a gap there, and its row is marked **partial**, whichever order the values were
+checked in. Editing matches never exits the mode, and reverting an edit restores the chart
+exactly.
 
 ## Default index annotations
 
