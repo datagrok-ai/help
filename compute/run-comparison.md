@@ -33,7 +33,10 @@ When runs name the same quantity differently (for example, `pressure` and `P`), 
 names manually: **Mappings...** in the Compare header opens a dialog with name
 pairs. Mapped names match as the same value across all runs, index columns included.
 The mapping is exact up to case and separators — no fuzzy matching — and pairs chain
-(mapping A to B and B to C makes all three equal).
+(mapping A to B and B to C makes all three equal). The dialog lists the values that are in
+no compare row, by name and units with the number of runs that have them; **Map name** and
+**Map units** start a mapping from that value. After ten values, **...more** shows the rest in
+a scrolling list. Columns of tables without an index are not listed: pick an index first.
 
 A run that has the value under the same name but in other units is left out and its chip
 under Results says `units differ (mg/L)`. The same dialog takes unit mappings,
