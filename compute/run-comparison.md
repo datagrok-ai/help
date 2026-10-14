@@ -37,6 +37,8 @@ The mapping is exact up to case and separators — no fuzzy matching — and pai
 no compare row, by name and units with the number of runs that have them; **Map name** and
 **Map units** start a mapping from that value. After ten values, **...more** shows the rest in
 a scrolling list. Columns of tables without an index are not listed: pick an index first.
+Neither are values whose name and units already match a compare row, such as a workflow
+step only one run has, since no mapping can place them.
 
 A run that has the value under the same name but in other units is left out and its chip
 under Results says `units differ (mg/L)`. The same dialog takes unit mappings,
