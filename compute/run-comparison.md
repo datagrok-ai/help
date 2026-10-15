@@ -1,230 +1,155 @@
 ---
 title: "Run comparison"
+sidebar_position: 7
 keywords:
   - model run comparison
   - compare runs
-  - comparison index column
-  - comparison split column
+  - compare workflow runs
   - time series comparison
-  - scatterplot comparison
+  - compare model with measured data
 ---
 
-The run comparison tool compares outputs of model runs side by side: pick a model, add
-historical runs (or raw workspace tables) to the comparison set, choose what to compare, and
-get a chart preview. The tool is a preliminary data selection with a quick preview — complex
-analysis belongs in the Datagrok workspace, where any comparison can be
-[exported](#exporting) as a snapshot: the data table plus the chart with its current
-options.
+Run comparison puts the results of several model runs side by side. Open the **Model Hub**,
+then select **Tools** > **Compare Runs...** on the ribbon. Pick a model, add its runs from
+the history list, and add workspace tables, such as measured data, if you need them. The
+tool matches the values of all runs by name, and you pick what to chart.
 
-## Matching
+## Comparing a value
 
-Scalars and dataframe columns are matched across runs by name: exact, then normalized
-(case/underscore/dash-insensitive), then fuzzy. Values with mismatching units never match;
-partially missing units produce a warning icon. Raw tables such as CSV files carry no units,
-so a raw column without units joins a row with units without the warning: an info icon says
-its values are taken in the row's units.
+The **Compare** list shows every value that at least two runs share, with its units and how
+many runs have it (`3/3`). The badge says how its names matched: **exact**, **normalized**
+(ignoring case and separators), or **fuzzy**. Values in different units never match. Click a
+value to chart it: a scalar charts as one bar per run.
 
-Units are compared case-sensitively, since `MPa` and `mPa` differ by 10⁹. Only spellings
-that never change the meaning count as the same: spaces, a trailing period, `µ` and `u`,
-superscript digits (`m²` is `m2`), liters as `l` or `L`, and time unit spellings (`s`,
-`sec`, `seconds`; `h`, `hr`, `hours`). One- and two-letter symbols keep their case, so
-`H` is not an hour and `MS` is not a millisecond. Similar-looking units are never matched
-by guess.
+![A scalar output charted as one bar per run](img/run-comparison-scalar.png)
 
-When runs name the same quantity differently (for example, `pressure` and `P`), map the
-names manually: **Mappings...** in the Compare header opens a dialog with name
-pairs. Mapped names match as the same value across all runs, index columns included.
-The mapping is exact up to case and separators — no fuzzy matching — and pairs chain
-(mapping A to B and B to C makes all three equal). The dialog lists the values that are in
-no compare row, by name and units with the number of runs that have them; **Map name** and
-**Map units** start a mapping from that value. After ten values, **...more** shows the rest in
-a scrolling list. Columns of tables without an index are not listed: pick an index first.
-Neither are values whose name and units already match a compare row, such as a workflow
-step only one run has, since no mapping can place them.
+## Comparing several values
 
-A run that has the value under the same name but in other units is left out and its chip
-under Results says `units differ (mg/L)`. The same dialog takes unit mappings,
-`1 g/L = 1000 mg/L`. A run whose value is in
-mapped units joins the row, and its values are multiplied into the units of the first
-run when the chart is built, so the export carries the converted numbers. A mapping works
-in both directions; mappings never chain, so `1 h = 60 min` and `1 min = 60 s` do not
-convert hours to seconds. Mappings convert values only, never index columns: to put time
-axes in different units on one scale, use the relative timeseries mode and its time units
-picker. A constant factor cannot express offsets such as °C ↔ K.
+Turn on **Multiple values**, or Shift+click a second value, to chart several scalars at once.
+Three or more values chart on a radar chart, one polygon per run, and the switch above the
+chart flips it to a parallel coordinates plot. Two values always use the parallel
+coordinates plot.
 
-Columns additionally require their tables to be comparable: the index columns must
-name-match. Beyond that, matching stays per column — the tables don't need to share
-their full column sets. Split columns don't affect matching: each run charts with its
-own split column even when the names differ, and runs without one chart as a single
-series in an unnamed split category.
+![Four scalars of three runs on a radar chart](img/run-comparison-several-scalars.png)
 
-Click a value in the Compare list to chart it; clicking the selected value again clears the
-selection.
+## Comparing series
 
-Chart and export columns carry their units in the name, so an exported table keeps them in
-any format: `Biomass (g/L)` in the first run's units, and `Time (h)` when every run's index
-column has the same units (otherwise just `Time`). Selected values that share a name also
-carry their step, as in the Compare list: `Daily cultivation · Day 2 · Final biomass`.
+To compare dataframe outputs, pick their index column under **Index columns**: the x axis
+of the chart. The columns of that table then appear in the **Compare** list, and a column
+charts as one line per run. With **Merge same functions** on, one pick covers the same
+output of all runs.
 
-Matched values whose data is the same in every run (equal scalar values, or equal
-value, index, and split column contents) are hidden from the compare list by default.
-Numbers count as equal when they differ by less than 0.1%, and datetime index
-values only when they match exactly. Turn off **Hide equal values** to show them.
+![Ball flight trajectories of three runs, height over distance](img/run-comparison-series.png)
 
-## Fine-tuning matches
+## Comparing workflows
 
-Each compare row maps the same value across runs. Several items of one run can match
-the row, but only one of them is active at a time: the active item is the run's charted
-series. To chart several series within one run, use a
-[split column](#index-and-split-columns) instead — that is the native pattern for
-model results.
+Runs of a [workflow](workflows/overview.mdx) are compared step by step. A value of a step
+that repeats, such as one cultivation step per day, gets one row per occurrence, labeled
+with its step, and runs pair by step: day 2 of one run is compared with day 2 of the
+others.
 
-When an input and an output of the same step share a caption, the parameter name is
-shown after it, for example `Data (result)`, so the two rows stay distinguishable. A
-workflow step that repeats (for example, one step per day) gives one row per occurrence,
-labeled with its step, for example `Final biomass  Daily cultivation · Day 2`; runs pair
-by step, so Day 2 of one run is compared with Day 2 of another.
+![Final biomass of day 2 in three bioreactor workflow runs](img/run-comparison-workflow-step.png)
 
-Automatic matching picks the best candidate per run, which is not always the desired one —
-for example, when a run has several similar tables. Expand a compare row (the chevron on
-column targets) to see every compatible item grouped by run, with checkboxes:
+## Different run lengths
 
-* items picked by the automatic matching are checked and marked **(auto)**;
-* other compatible items are listed unchecked — checking one makes it the run's series
-  and unchecks the run's previous pick (one item per run);
-* unchecking an item excludes the run from the chart;
-* raw workspace tables are checked in every target whose name matches exactly (up to case
-  and separators), not just the best one; fuzzy name matches are listed unchecked;
-* **Reset to auto** discards the manual toggles for that target.
+When runs have different numbers of steps, a row covers only the runs that have that
+step, and its count shows it (`4/5`). Under **Results**, a red chip names each run left
+out of the chart and the reason.
 
-Toggles survive index and split changes, and the coverage count next to each target
-reflects the checked items.
+![Day 4 compared across five runs, the three-day run marked as left out](img/run-comparison-different-length.png)
 
-## Index and split columns
+## Several steps
 
-Column comparison requires an index (x axis) column per table. An optional split column
-marks a categorical column whose values are separate series within one run.
+With **Multiple values** on, you can chart columns from different steps together: each
+step of a run is its own line. When all the values have the same units, they share one
+panel and one y axis. Turn off **Shared y axis** above the chart to give each value its own
+panel, for example when their magnitudes differ too much.
 
-* Numeric (int, bigint, float), datetime, and string columns are offered as indexes.
-* Split columns must be string-typed and different from the index.
-* With **Merge same functions** (on by default), tables produced by the same function
-  collapse into one picker row; a selection applies to all runs.
-* Charts are built by concatenating raw rows of all runs into one long dataframe; the line
-  chart splits by run and, when set, by the split column. There is no row alignment or
-  tolerance logic — differing grids simply chart as separate lines.
+![Biomass profiles of days 1 to 3 of two runs on a shared y axis](img/run-comparison-several-steps.png)
 
-## Row semantics
+## Step summaries
 
-When a table's index column is numeric or datetime, a selector appears next to its
-pickers saying what the table's rows mean. The default is **series**: rows form an
-indexed sequence, and values chart as lines connected along the index. A value charts in
-a non-default mode only when **every** participating table has that mode set. Until then
-it charts as a plain series, and the runs whose tables lack the setting are flagged with
-an amber chip under Results.
+A workflow that collects its steps into a summary table can be compared on it: pick the
+step number (here `Day`) as the index, and each run becomes one line through its steps.
+Runs of different lengths simply end at different points.
 
-### Relative timeseries
+![Final biomass per day of five runs](img/run-comparison-summary-series.png)
 
-The **relative timeseries** mode charts the table on an elapsed-time axis, which lets
-runs with different time representations — a datetime column in a workflow dataframe,
-plain float seconds in a CSV — share one line chart.
+## Hiding equal values
 
-* Numeric indexes get a **units** selector (ms, s, min, h, days) saying what the numbers
-  mean. It is prefilled from the column's units metadata when recognizable. Datetime
-  indexes need no units.
-* Runs are aligned automatically: each table's earliest time point is treated
-  as 0, so runs overlay for shape comparison regardless of when they were recorded.
-* The chart axis is a float column labeled with its unit, for example `time (s)`. The
-  unit comes from the first participating numeric index; a comparison of only datetime
-  indexes picks a readable unit from the data range automatically.
+**Hide equal values** is on by default. It removes the values that are the same in all
+runs, such as inputs nobody changed, so the list shows only what differs. A charted value
+stays in the list.
 
-### Independent points
+## Adding measured data
 
-The **independent points** mode treats rows as unordered observations and charts them as
-unconnected (index, value) points instead of a line. Row order and grid alignment stop
-mattering, so this mode suits unordered data — optimization populations, sampled or
-stochastic results, per-item tables. And since any numeric column can serve as the index,
-it also gives value-vs-value views: pick one output quantity as the index and compare it
-against another across runs.
+Tables in the workspace, such as measured data loaded from a file, can join the
+comparison: add them under **Add table**, and pick their index the same way. A column
+joins every row with the same name. A string column of the table can be picked as its
+split column, to chart each category, such as each reactor, as a separate line. Tables
+usually carry no units: an info icon marks rows where such a table is taken to be in the
+row's units.
 
-* Points are colored by the split column when one is set, otherwise by run. When the
-  split takes the color, runs are distinguished by marker shapes.
-* With [multiple values](#multiple-values) selected, all values chart on one scatterplot
-  sharing the y axis, colored by value name with runs as marker shapes. Whether the
-  values are comparable on one scale (units, magnitude) is up to you.
+![Two runs and a measured table split by reactor](img/run-comparison-measured-data.png)
 
-## Multiple values
+## Aligning time axes
 
-When the selected value has compatible siblings, the **Multiple values** toggle next to
-the value filter (or Shift+click on a compare row) enables selecting several values at once. Unchecking the
-last selected value turns the mode off, keeping that value as the regular selection. Every scalar is
-compatible with every other scalar, and every column with every other column whose index is
-numeric or datetime everywhere, from any workflow step. Scalars and columns never mix in one
-selection.
+When tables record time differently, for example model hours and lab timestamps, set the
+index to **relative timeseries** on each of them. Every table then starts at zero, and the
+chart uses one elapsed-time axis. For a numeric index, the picker next to it sets its time
+units. Here the lab log's `timestamp` index was also mapped to `Time`
+([names and units](#names-and-units)), because index columns of different names never match.
 
-Several columns chart as stacked line-chart panels with runs (and split categories) as
-lines inside. When the columns come from different steps of a run, each step charts as its
-own line, labeled with the run and the step, and each step's time starts at zero on the
-[relative timeseries](#relative-timeseries) axis. When every selected value has the same
-units, all values chart in one panel on a shared y axis, one line per value and run; turn
-off **Shared y axis** above the chart to get the stacked panels back, for example when the
-magnitudes differ too much. Values in different units or without units always chart in
-stacked panels. In the
-[independent points mode](#independent-points), the values share one scatterplot instead,
-colored by value name. A comparison of several values needs a numeric or datetime index —
-if an index moves to a string column, the chart is replaced with a hint until the index is
-changed back or a single value is selected. Steps indexed by datetime and by numbers chart
-together only in the relative timeseries mode set on every table; until then, a hint says
-so.
+![Model runs and a lab log with timestamps on one elapsed-time axis](img/run-comparison-relative-timeseries.png)
 
-Several scalars chart on a radar chart: one axis per value, one polygon per run. A switch
-above the chart flips it to a parallel-coordinates plot. With two values the tool always
-uses the parallel-coordinates plot, because a two-axis radar degenerates to a line. The
-radar viewer comes with the Charts package — without it, the parallel-coordinates plot is
-used for any number of values.
+## Scattered samples
 
-The chart shows every run any selected value has. A value without data for one of those
-runs shows a gap there, and its row is marked **partial**, whichever order the values were
-checked in. Editing matches never exits the mode, and reverting an edit restores the chart
-exactly.
+Data without a meaningful order, such as samples taken at random points, charts better as
+points. Set the index to **independent points** on each table: the chart becomes a
+scatterplot. Any numeric column can be the index, so this also gives value-vs-value views,
+here biomass against substrate.
 
-## Default index annotations
+![Biomass against substrate of two runs and a set of samples](img/run-comparison-independent-points.png)
 
-A model can declare how its dataframe output should be indexed in a comparison with the
-`comparison` option — a small JSON object on the output:
+## Names and units
 
-```javascript
-//output: dataframe result {comparison: {"index": "time", "split": "species", "mode": "timeseries", "units": "s"}}
-```
+When runs or tables name the same value differently, or use other units, open
+**Mappings...**. The dialog lists the values that are in no compare row, with their units
+and the number of runs that have them. **Map name** and **Map units** start a mapping from
+a listed value. Name mappings work for index columns too. A unit mapping, such as
+`1 g/L = 1000 mg/L`, works in both directions and converts the values when the chart is
+built.
 
-| Key | Value | Pre-fills |
-|-----|-------|-----------|
-| `index` | column name | the index (x axis) picker |
-| `split` | column name | the split picker |
-| `mode` | `series`, `timeseries`, or `points` | the [row semantics](#row-semantics) selector |
-| `units` | `ms`, `s`, `min`, `h`, or `days` | the time units selector |
+![The Mappings dialog with three name mappings and a unit mapping](img/run-comparison-mappings.png)
 
-All keys are optional. When a run is added to the comparison:
+## Fixing a match
 
-* `index` pre-fills the index picker, and the column is offered even when its
-  type is behind a toggle (an explicit annotation outranks the type gating);
-* `split` pre-fills the split picker, provided the column is a valid split
-  (string-typed, not the index);
-* `mode` pre-fills the row semantics selector. `units` applies only together with
-  `mode: timeseries` on a numeric index and outranks the column's units metadata;
-* annotations never overwrite a selection the user has already made; a missing column
-  name or an unknown mode or units value is silently ignored;
-* merged rows work naturally: all merged tables come from the same function, so they carry
-  the same annotation and agree on the default.
+Matching picks one item per run for each row, which isn't always the one you need. Expand
+the row with its chevron to see every compatible item, grouped by run:
 
-Raw workspace tables have no annotations.
+* the items matching picked are checked and marked **(auto)**;
+* checking another item makes it the run's item and unchecks the previous one;
+* unchecking an item leaves the run out of the chart;
+* **Reset to auto** discards your changes for that row.
+
+![The Biomass row expanded, with the day 1 profile checked in each run](img/run-comparison-fix-match.png)
 
 ## Exporting
 
-**Results > Export...** asks for a snapshot name and offers two ways out:
+**Export...** under **Results** saves a snapshot of the comparison: the chart data and the
+chart. **Open in workspace** opens it as a table with the chart, for any further analysis.
+**Save & share** saves it as a project.
 
-* **Open in workspace** adds the comparison to the workspace: the data table plus the
-  chart with its current options. Tweak the chart before exporting — the tweaks carry
-  over.
-* **Save & share** opens the platform project dialog on the same snapshot, so the
-  comparison can be saved as a project and shared without leaving the tool. On platforms
-  without the project dialog, only **Open in workspace** is offered.
+## Index annotations
+
+A model can set the index for its dataframe outputs, so that users don't have to pick it.
+Add the `comparison` option to the output:
+
+```javascript
+//output: dataframe profile {comparison: {"index": "Time", "split": "reactor", "mode": "timeseries", "units": "h"}}
+```
+
+All keys are optional. `index` and `split` name columns of the output. `mode` is
+`series`, `timeseries` (relative timeseries), or `points` (independent points), and
+`units` (`ms`, `s`, `min`, `h`, or `days`) sets the time units of a numeric index in the
+`timeseries` mode. The annotations only fill in what the user hasn't picked yet.
