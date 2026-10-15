@@ -1,5 +1,6 @@
 ---
 title: "Diff Studio"
+sidebar_position: 1
 keywords:    
   - modeling complex systems processes
   - ordinary differential equations solver

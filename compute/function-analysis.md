@@ -1,5 +1,6 @@
 ---
 title: Model optimization tools
+sidebar_position: 2
 keywords:
  - parameter fitting
  - parameter optimization

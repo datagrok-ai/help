@@ -1,5 +1,6 @@
 ---
 title: "Jupyter Notebook"
+sidebar_position: 3
 description: Create, import, and link Jupyter notebooks to Datagrok tables for data analysis and visualization.
 keywords:
   - jupyter notebooks
