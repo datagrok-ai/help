@@ -379,6 +379,8 @@ programmatically — `grok.dapi.domains.table('s.t').grants()/grant()/revoke()` 
 `grok.dapi.domains.schema('s').grants()/grant()/revoke()` for the schema entity. Note that
 schema-level grants gate schema *operations* (apply requires Edit, delete requires Delete,
 sharing requires Share) — they do not grant access to row data; grant per table for that.
+To see another user's private rows, turn on Admin mode first: otherwise, you see only the rows shared with you.
+
 In row mode, sharing
 a row for the first time transparently *promotes* it to a full platform entity — after that it
 behaves like any entity: sharing dialog, favorites, comments, global search.
