@@ -96,6 +96,7 @@ empty path. These forms are equivalent:
 |------------|---------|------------|
 | `optional` | A query with no match does not prevent the link from being created; the alias reads as absent. | Any query. |
 | `call`     | Match the node (the FuncCall) itself rather than a script io. In `funccall` actions it is required for inputs read as `DG.FuncCall` and for the `setFuncCall` output. In every other link type it must be combined with `optional`, and the controller exposes only a `hasCall(name)` presence check. | `from` of any link; `to` of `funccall` actions only. Not in `base`, `showWhen`, `hideWhen` or rule queries, not with `template`. Accepted in `not` without effect. |
+| `node`     | Address a workflow node rather than a script io: `error`, `warning` and `notification` on the alias go to the node, as a pipeline validator's do. A pipeline validator's `to` addresses nodes anyway, so there the flag only documents it. | `to` of rules and pipeline validators. |
 | `template` | Expand the last segment into one query per io: a `\|`-list of io names, or an `outputs()` / `inputs()` wildcard. The alias is the prefix plus the io name; a `_` prefix gives the io names alone. | `from` of data, validator, meta, node meta and pipeline validator links; `to` of data, validator and meta links; `from` and `to` of rules. |
 
 ### Where a query appears
@@ -104,13 +105,14 @@ empty path. These forms are equivalent:
 |---|---|---|
 | `from` of data, validator, meta, node meta and pipeline validator links | a script io, or a node with `call` | `optional`, `call` with `optional`, `template` |
 | `to` of data, validator and meta links | a script io | `optional`, `template` |
-| `to` of node meta and pipeline validator links | a node, or empty for the host workflow | `optional` |
+| `to` of node meta and pipeline validator links | a node, or empty for the host workflow | `optional`; `node` on pipeline validators |
 | `base` | a node; `first`, `last`, `expand` and their tag variants only | none |
 | `not` | a node | `optional`; `call` accepted without effect |
-| `actions` of validators and node meta links | a node, any selector | `optional` |
+| `actions` of validators, node meta links and rules | a node, any selector | `optional` |
 | `showWhen`, `hideWhen` of actions | a node; no io wildcards | `optional` |
 | `from` / `to` of `funccall` actions | a node with `call`, or a script io | `optional`, `call` |
-| `from` / `to` of rules | a script io | `optional`, `template` |
+| `from` of rules | a script io | `optional`, `template` |
+| `to` of rules | a script io; a description field for `describe`; a node with `node` | `optional`, `template`, `node` |
 | `io`, `check.table` and `vars` values of checks | a script io | none; written without an alias |
 
 Two rules hold across the table. `base` is evaluated first and must

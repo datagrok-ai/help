@@ -215,6 +215,15 @@ base-instantiated links, or `undefined` when the link has no `base`
 query. Each link instance created from a `base` match reports the
 position of its own base node.
 
+#### `getStepsCount`
+
+```
+getStepsCount(): number;
+```
+
+Returns the number of child steps of the node the link is defined on.
+Rule formulas read it as `$steps`.
+
 #### `getAdditionalParam`
 
 ```
@@ -711,9 +720,11 @@ have an empty `to`.
 A rule has type `rule`. It reads inputs through `from`, and while its
 formula `when` holds, applies its `effects` to the `to` targets: hiding
 and showing inputs, replacing dropdown items, adding messages, and
-writing values. It works like a set of [meta](#metadata-links),
-[validator](#io-validators) and [data](#data-links) links without a
-handler:
+writing values, and at the workflow level setting titles and
+descriptions, hiding actions, and checking the workflow. It works like a
+set of [meta](#metadata-links), [validator](#io-validators),
+[data](#data-links), [node meta](#node-meta-links) and
+[pipeline validator](#pipeline-validators) links without a handler:
 
 ```
 {

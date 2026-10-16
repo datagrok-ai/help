@@ -501,6 +501,81 @@ tolerance starts at 0.000001. On a load from history, the rule refreshes
 the inputs of steps that have not run yet. See
 [Init hook](./link-types#init-hook) for the order of init.
 
+### Workflow targets
+
+Rules also reach past script inputs, to the workflow itself. The examples
+use the `scenarios` workflow of [Dynamic workflows](#dynamic-workflows),
+a list of `data` and `model` steps.
+
+**Titles and descriptions.** `describe(t, value)` sets the description
+field that `t`'s query ends with: `title` (the name in the navigation
+tree), `description`, `tags`, or `body`, as a
+[node meta link](./link-types#node-meta-links) does. While none of a
+rule's `describe` effects on the field is on, the field is cleared. In a
+rule with a `base`, `$position` is the base step's index among the
+workflow's steps, counting from 0:
+
+```js
+{
+  id: 'scenarioTitle',
+  type: 'rule',
+  base: 'base:expand(model)',
+  from: 'route:same(@base)/route',
+  to: 'title:same(@base)/title',
+  effects: ['describe(title, cat("Step ", add($position, 1), ": ", route))'],
+}
+```
+
+In the sequence `data, model, model`, with an intravenous and an oral
+dose, the models are titled `Step 2: iv` and `Step 3: oral`.
+
+**Actions.** A rule's `actions` field addresses actions the same way a
+validator's does: an alias for the node that shows them, here the
+workflow itself, which an alias without a path names.
+`hideAction(a, "id")` and `showAction(a, "id")` hide or show the action
+with that id:
+
+```js
+{
+  id: 'reportAfterFit',
+  type: 'rule',
+  from: 'auc:first(model)/auc',
+  to: [],
+  actions: 'scenarios',
+  when: 'missing(auc)',
+  effects: ['hideAction(scenarios, "report")'],
+}
+```
+
+The rule writes both states, so while it is off, its `hideAction` shows
+the action. As with [UI metadata](./link-types#ui-metadata), a later link
+overrides an earlier one, in the order the links first set it. The
+action's own `showWhen`/`hideWhen` take their place from the moment they
+start to hide it, so they win over a rule that set the action before
+then, until the rule sets it again.
+
+**The workflow's own checks.** A `to` alias flagged `(node)` addresses a
+workflow node instead of an input, and `error`, `warning`, and
+`notification` on it work as a
+[pipeline validator](./link-types#pipeline-validators). `$steps` is the
+number of steps of the node the rule is defined on:
+
+```js
+{
+  id: 'stepsRequired',
+  type: 'rule',
+  from: [],
+  to: 'scenarios(node)',
+  when: 'eq($steps, 0)',
+  effects: ['error(scenarios, "Add a data step and a model step")'],
+}
+```
+
+A rule link that reads `$steps` runs again after every change to the
+workflow's steps. Its value effects do so only after such changes, not
+when the workflow is created or loaded, which takes
+[`runOnInit`](#defaults-at-init) as usual.
+
 ### Sources
 
 `sources` adds aliases whose values come from a function, a query, a
@@ -893,14 +968,17 @@ kind, a column type or a semantic type, as in the `type` check option.
 ### Effects
 
 Each effect writes to its targets, `t` below: a `to` alias or a list
-`[a, b]` of them. Every effect takes `when:`, its own condition.
+`[a, b]` of them; for `hideAction` and `showAction`, `a` is an `actions`
+alias. Every effect takes `when:`, its own condition.
 
 | Effect | On | Off |
 |---|---|---|
 | `hide(t)`, `show(t)` | Hides or shows the targets. | The opposite. |
+| `hideAction(a, id)`, `showAction(a, id)` | Hides or shows the action with that id, a text in quotes. | The opposite. |
+| `describe(t, value)` | Sets the `title`, `description`, `tags` or `body` that `t`'s query ends with. | Field cleared. |
 | `items(t, list)` | Replaces the dropdown items. | Items removed. |
 | `meta(t, key: value, ...)` | Sets each key, as in [UI metadata](./link-types#ui-metadata). | Keys removed. |
-| `error(t, message)`, `warning(t, message)`, `notification(t, message)` | Adds the message with that severity. | No message. |
+| `error(t, message)`, `warning(t, message)`, `notification(t, message)` | Adds the message with that severity; on a `(node)` alias, to the workflow node. | No message. |
 | `verdicts(t, source)` | Adds each verdict of a `validators` source, failures as errors, the rest as warnings. | No message. |
 | `set(t, value, restriction:)` | Writes the value. | Keeps the value, no longer marked. |
 | `clear(t, restriction:)` | Writes `null`. | Nothing. |
@@ -940,22 +1018,36 @@ again.
 ### Rule fields
 
 A `rule` takes `id`, `from`, `to`, `effects`, and optionally `when`,
-`sources`, `debounce` (delays its messages), `runOnInit` (applies its value
-effects at init), and the [common options](./link-types#common-options)
-`not`, `base`, `nodePriority`, and `dataFrameMutations`. Rule queries take
-no flag but `optional` and `template`.
+`sources`, `actions` (aliases for the nodes that show actions),
+`debounce` (delays its messages), `runOnInit` (applies its value effects
+at init), and the [common options](./link-types#common-options) `not`,
+`base`, `nodePriority`, and `dataFrameMutations`. Rule queries take no
+flag but `optional` and `template`, and `node` on `to`.
 
-The driver splits a rule into up to three links, one per kind of effect.
+The driver splits a rule into up to five links, one per kind of target.
 In the driver's log messages and config errors, a rule `r` shows as
-`r::meta`, `r::validator`, and `r::data`, and a check `c` as `c::min`,
-`c::max`, and so on.
+`r::meta`, `r::validator`, `r::data`, `r::nodemeta` (descriptions and
+actions), and `r::pipelineValidator` (`(node)` targets), and a check `c`
+as `c::min`, `c::max`, and so on.
+
+Besides `$all`, rule formulas read `$position`, the base step's index (in
+rules with a `base`), and `$steps`, the number of steps of the node the
+rule is defined on.
 
 ### Rule errors
 
 Config processing rejects a rule when, for example:
 
 - the rule has a `handler`: rules always use their built-in behavior
-- a query uses a flag other than `optional` and `template`
+- a query uses a flag other than `optional` and `template`, or `node`
+  outside `to`
+- `describe` targets a query that does not end with `title`,
+  `description`, `tags` or `body`; an `actions` alias gets an effect
+  other than `hideAction` or `showAction`, or one of those targets a
+  `to` alias; a `(node)` alias gets an effect other than `error`,
+  `warning` or `notification`; one effect or alias mixes these kinds of
+  targets
+- a formula reads `$position` in a rule without a `base`
 - a formula does not parse (the message gives the column), calls an
   unknown operation, has an effect where a source is expected or the
   other way round, or misses an argument or has an unknown option
