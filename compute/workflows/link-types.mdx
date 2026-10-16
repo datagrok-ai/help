@@ -505,20 +505,7 @@ platform — your code only forwards it.
 
 Not gated by [`showWhen`/`hideWhen`](#visibility): `getValidationAction`
 returns a descriptor regardless of whether the UI would currently render the
-action. Use [`isActionVisible`](#isactionvisible) if a validator needs to
-mirror the UI's decision.
-
-#### `isActionVisible`
-
-```
-isActionVisible(name: string, actionId: string): boolean;
-```
-
-Returns the same boolean that Compute2 uses to decide whether to render the
-action — `true` when the action has no [`showWhen`/`hideWhen`](#visibility) or
-when its current evaluation matches; `false` when the action is hidden or
-when the `name`/`actionId` pair is not wired up. Pure query; does not affect
-execution.
+action. Which actions a validation result offers is up to the validator.
 
 For validation of the workflow structure itself (rather than a single
 script io) use [pipeline validators](#pipeline-validators) — a reactive,
@@ -682,13 +669,41 @@ following workflow/script nodes targets:
   for inline notes, step instructions, or reactive status text. Works on
   workflows and action steps; script steps do not show it.
 
-Node meta controller has an additional method:
+Node meta controller has additional methods:
 
 ```
 setDescriptionItem(name: string, description: any): void;
 ```
 
 Sets description to an output query with the specified name.
+
+```
+setActionVisible(name: string, actionId: string, visible: boolean): void;
+```
+
+Shows or hides the action `actionId` on the node of the `actions` query
+`name`, the same addressing as [`getValidationAction`](#getvalidationaction).
+As with [meta](#metadata-links), a later link overrides an earlier one, in
+the order the links first set it; a link created by a tree mutation comes
+last. The action's own [`showWhen`/`hideWhen`](#visibility) hide it the same
+way, from the moment they start to hide it, so a node meta link that sets
+`true` afterwards shows the action again. A run that does not call it for an
+action withdraws the link's earlier call, and so does removing the link; a
+run that throws keeps it. A node meta link that only sets visibility can
+have an empty `to`.
+
+```js
+{
+  id: 'add-day-limit',
+  type: 'nodemeta',
+  from: 'max:bioreactorConfiguration/maxVolume',
+  to: [],
+  actions: 'cultivation:dailyCultivation',
+  handler: ({controller}) => {
+    controller.setActionVisible('cultivation', 'addDay', controller.getFirst('max') > 10);
+  },
+}
+```
 
 
 ## Rules
@@ -803,7 +818,11 @@ does not apply to it.
 `showWhen` and `hideWhen` make an action conditionally visible based on the
 current tree state. Both accept an LQL string or an array of them, with the
 same shape as the link-level [`from`](#from) and [`not`](#not) fields. They
-are re-evaluated on every tree mutation.
+are re-evaluated on every tree mutation. To show or hide an action by input
+values, use a [node meta link](#node-meta-links). While `showWhen`/`hideWhen`
+hide an action, they act like one more such link; when they stop hiding it,
+they withdraw, the same way the meta of a removed link goes away, and leave
+any node meta link's choice in place.
 
 #### `showWhen`
 
@@ -828,8 +847,7 @@ Visibility is a UI hint, not an execution gate. Compute2 honors it when
 rendering actions at positions `buttons`, `menu`, and `globalmenu`. RTD
 itself still runs hidden actions if invoked, and
 [`getValidationAction`](#getvalidationaction) returns a descriptor regardless
-of visibility. Validators that need to mirror the UI's decision can call
-[`isActionVisible`](#isactionvisible).
+of visibility.
 
 ### Data actions
 
