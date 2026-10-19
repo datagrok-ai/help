@@ -9,54 +9,7 @@ if [[ $action == *"merge"* ]]; then
     python3 -V
     python3 -m pip install pyyaml deepmerge argparse cfn-lint awscli
     echo "Creating CFN scripts from templates using merge script..."
-    python3 deploy/aws/cloudformation/templates/cf_template_merge.py -i deploy/aws/cloudformation/templates/create_network.template.yml \
-     -i deploy/aws/cloudformation/templates/fargate.template.yml \
-     -i deploy/aws/cloudformation/templates/r53.template.yml \
-     -i deploy/aws/cloudformation/templates/marketplace.template.yml \
-     -i deploy/aws/cloudformation/templates/versions.template.yml \
-     -o deploy/aws/cloudformation/network-fargate-r53-marketplace.yml
-    python3 deploy/aws/cloudformation/templates/cf_template_merge.py -i deploy/aws/cloudformation/templates/create_network.template.yml \
-     -i deploy/aws/cloudformation/templates/fargate.template.yml \
-     -i deploy/aws/cloudformation/templates/dns.template.yml \
-     -i deploy/aws/cloudformation/templates/marketplace.template.yml \
-     -i deploy/aws/cloudformation/templates/versions.template.yml \
-     -o deploy/aws/cloudformation/network-fargate-dns-marketplace.yml
-    python3 deploy/aws/cloudformation/templates/cf_template_merge.py -i deploy/aws/cloudformation/templates/choose_vpc.template.yml \
-     -i deploy/aws/cloudformation/templates/fargate.template.yml \
-     -i deploy/aws/cloudformation/templates/dns.template.yml \
-     -i deploy/aws/cloudformation/templates/marketplace.template.yml \
-     -i deploy/aws/cloudformation/templates/versions.template.yml \
-     -o deploy/aws/cloudformation/vpc-fargate-dns-marketplace.yml
-    python3 deploy/aws/cloudformation/templates/cf_template_merge.py -i deploy/aws/cloudformation/templates/choose_vpc.template.yml \
-     -i deploy/aws/cloudformation/templates/fargate.template.yml \
-     -i deploy/aws/cloudformation/templates/r53.template.yml \
-     -i deploy/aws/cloudformation/templates/marketplace.template.yml \
-     -i deploy/aws/cloudformation/templates/versions.template.yml \
-     -o deploy/aws/cloudformation/vpc-fargate-r53-marketplace.yml
-    python3 deploy/aws/cloudformation/templates/cf_template_merge.py -i deploy/aws/cloudformation/templates/create_network.template.yml \
-     -i deploy/aws/cloudformation/templates/fargate.template.yml \
-     -i deploy/aws/cloudformation/templates/r53.template.yml \
-     -i deploy/aws/cloudformation/templates/basic.template.yml \
-     -i deploy/aws/cloudformation/templates/versions.template.yml \
-     -o deploy/aws/cloudformation/network-fargate-r53-basic.yml
-    python3 deploy/aws/cloudformation/templates/cf_template_merge.py -i deploy/aws/cloudformation/templates/choose_vpc.template.yml \
-     -i deploy/aws/cloudformation/templates/fargate.template.yml \
-     -i deploy/aws/cloudformation/templates/r53.template.yml \
-     -i deploy/aws/cloudformation/templates/basic.template.yml \
-     -i deploy/aws/cloudformation/templates/versions.template.yml \
-     -o deploy/aws/cloudformation/vpc-fargate-r53-basic.yml
-    python3 deploy/aws/cloudformation/templates/cf_template_merge.py -i deploy/aws/cloudformation/templates/create_network.template.yml \
-     -i deploy/aws/cloudformation/templates/fargate.template.yml \
-     -i deploy/aws/cloudformation/templates/dns.template.yml \
-     -i deploy/aws/cloudformation/templates/basic.template.yml \
-     -i deploy/aws/cloudformation/templates/versions.template.yml \
-     -o deploy/aws/cloudformation/network-fargate-dns-basic.yml
-    python3 deploy/aws/cloudformation/templates/cf_template_merge.py -i deploy/aws/cloudformation/templates/choose_vpc.template.yml \
-     -i deploy/aws/cloudformation/templates/fargate.template.yml \
-     -i deploy/aws/cloudformation/templates/dns.template.yml \
-     -i deploy/aws/cloudformation/templates/basic.template.yml \
-     -i deploy/aws/cloudformation/templates/versions.template.yml \
-     -o deploy/aws/cloudformation/vpc-fargate-dns-basic.yml
+    bash deploy/aws/cloudformation/build.sh
 fi
 
 if [[ $action == *"lint"* ]]; then

@@ -1,18 +1,26 @@
 #! /bin/bash
+# Generates every deployment profile: {network,vpc} x {fargate,eks} x {r53,dns} x {basic,marketplace}.
+# common.template.yml holds the ALB, RDS, S3 and secrets shared by ECS and EKS, so replacing an
+# ECS stack's template with the matching EKS one keeps the database and the bucket
+# (see deploy-amazon-eks.mdx#migrate-from-ecs).
 
-./templates/cf_template_merge.py -i templates/create_network.template.yml -i templates/fargate.template.yml -i templates/r53.template.yml -i templates/marketplace.template.yml -i templates/versions.template.yml -o network-fargate-r53-marketplace.yml
-./templates/cf_template_merge.py -i templates/create_network.template.yml -i templates/fargate.template.yml -i templates/dns.template.yml -i templates/marketplace.template.yml -i templates/versions.template.yml -o network-fargate-dns-marketplace.yml
-./templates/cf_template_merge.py -i templates/choose_vpc.template.yml -i templates/fargate.template.yml -i templates/dns.template.yml -i templates/marketplace.template.yml -i templates/versions.template.yml -o vpc-fargate-dns-marketplace.yml
-./templates/cf_template_merge.py -i templates/choose_vpc.template.yml -i templates/fargate.template.yml -i templates/r53.template.yml -i templates/marketplace.template.yml -i templates/versions.template.yml -o vpc-fargate-r53-marketplace.yml
-./templates/cf_template_merge.py -i templates/create_network.template.yml -i templates/fargate.template.yml -i templates/r53.template.yml -i templates/basic.template.yml -i templates/versions.template.yml -o network-fargate-r53-basic.yml
-./templates/cf_template_merge.py -i templates/choose_vpc.template.yml -i templates/fargate.template.yml -i templates/r53.template.yml -i templates/basic.template.yml -i templates/versions.template.yml -o vpc-fargate-r53-basic.yml
-./templates/cf_template_merge.py -i templates/create_network.template.yml -i templates/fargate.template.yml -i templates/dns.template.yml -i templates/basic.template.yml -i templates/versions.template.yml -o network-fargate-dns-basic.yml
-./templates/cf_template_merge.py -i templates/choose_vpc.template.yml -i templates/fargate.template.yml -i templates/dns.template.yml -i templates/basic.template.yml -i templates/versions.template.yml -o vpc-fargate-dns-basic.yml
+set -e
+cd "$(dirname "$0")"
+python=${PYTHON:-python3}
 
-# EKS variants (non-marketplace only; the EKS + ECS templates share logical IDs
-# for RDS and S3 so customers can update an ECS stack to EKS in-place without
-# losing data — see deploy-amazon-eks.mdx).
-./templates/cf_template_merge.py -i templates/create_network.template.yml -i templates/eks.template.yml -i templates/r53.template.yml -i templates/basic.template.yml -i templates/versions.template.yml -o network-eks-r53-basic.yml
-./templates/cf_template_merge.py -i templates/choose_vpc.template.yml -i templates/eks.template.yml -i templates/r53.template.yml -i templates/basic.template.yml -i templates/versions.template.yml -o vpc-eks-r53-basic.yml
-./templates/cf_template_merge.py -i templates/create_network.template.yml -i templates/eks.template.yml -i templates/dns.template.yml -i templates/basic.template.yml -i templates/versions.template.yml -o network-eks-dns-basic.yml
-./templates/cf_template_merge.py -i templates/choose_vpc.template.yml -i templates/eks.template.yml -i templates/dns.template.yml -i templates/basic.template.yml -i templates/versions.template.yml -o vpc-eks-dns-basic.yml
+for network in network:create_network vpc:choose_vpc; do
+  for compute in fargate eks; do
+    for dns in r53 dns; do
+      for offer in basic marketplace; do
+        "$python" templates/cf_template_merge.py \
+          -i "templates/${network#*:}.template.yml" \
+          -i templates/common.template.yml \
+          -i "templates/${compute}.template.yml" \
+          -i "templates/${dns}.template.yml" \
+          -i "templates/${offer}.template.yml" \
+          -i templates/versions.template.yml \
+          -o "${network%%:*}-${compute}-${dns}-${offer}.yml"
+      done
+    done
+  done
+done
