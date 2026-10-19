@@ -251,8 +251,8 @@ grok.dapi.fetchProxy(url, {
 
 To call a service on behalf of the user with the token that Datagrok keeps when
 [Keep Token](../../../deploy/complete-setup/configure-auth.md#keep-token) is on, put
-`${EXTERNAL_TOKEN}` in a header value. The server replaces it with the user's OpenID token (the ID
-token if the provider returns one, otherwise the access token). If the session has no kept token,
+`${EXTERNAL_TOKEN}` in a header value. The server replaces it with the user's OpenID access
+token. If the session has no kept token,
 the server refuses the request and doesn't contact the service.
 
 ```javascript
