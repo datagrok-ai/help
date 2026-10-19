@@ -1120,7 +1120,7 @@ the value of an input with no field, no longer marked. Without
 | `query` | Once if no argument reads an input, directly or through a source | The dataframe the SQL returns on the connection. `@name` binds the argument of that name. An argument the SQL does not declare with `--input:` gets its type from the value (`int`, `double`, `bool`, `dataframe`, `datetime`, otherwise `string`). Declare the ones that need another type.<br/>*e.g.* ``query("Pkg:Conn", `select ...`, name: <formula>, ...)`` |
 | `file` | Once | The table at a file-share path or a URL.<br/>*e.g.* `file("System:AppData/Pkg/presets.csv")` |
 | `table` | Once | The table from CSV text, with optional `DG.CsvImportOptions` such as `delimiter` or `decimalSeparator`.<br/>*e.g.* `table("name;value\n...", delimiter: ";")` |
-| `js` | None | The result of `fn`, or the value of the promise it returns. `fn` is called with the values of the `args` aliases, inputs or earlier sources, even absent ones. It has no formula, since it holds code.<br/>*e.g.* `{js: {args: [...], fn: (...values) => any}}` |
+| `js` | None | The result of `fn`, or the first value of the promise or Observable it returns (`undefined` when the Observable completes without one). `fn` is called with the values of the `args` aliases, inputs or earlier sources, even absent ones. It has no formula, since it holds code.<br/>*e.g.* `{js: {args: [...], fn: (...values) => any}}` |
 | `table` (DataFrame) | Once | A `DG.DataFrame`, used as it is, not copied, so every rule that reads it shares the object. It has no formula either.<br/>*e.g.* `{table: df}` |
 
 Once means the first result is kept for each link the rule expands to,
