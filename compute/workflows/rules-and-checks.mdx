@@ -678,8 +678,9 @@ when the workflow is created or loaded, which takes
 `sources` adds aliases whose values come from a function, a query, a
 file, a table, or code. Formulas read them next to the `from` aliases. A
 `file` or `table` is loaded once, and so is a `func` or `query` whose
-arguments read no alias. The other sources run again on every change,
-see [Source kinds](#source-kinds) for the caching of each kind. A
+arguments read no input, directly or through another source. The other
+sources run again on every change, see [Source kinds](#source-kinds) for
+the caching of each kind. A
 function annotated with
 [`meta.cache`](../../develop/how-to/functions/cache-function-results.md) avoids repeated calls.
 
@@ -710,6 +711,22 @@ An uncached source runs whenever an input in `from` changes, even while
 the rule is off, so `AllometricClearance` also runs without a weight. Keep `from` to
 what the sources need, and make the function accept an absent value, as
 the `nullable` annotation and the `null` check do here.
+
+Sources resolve in the order they are declared, and a `js`, `func` or
+`query` source reads the sources declared before it as well as the `from`
+aliases. Here a second function turns the scaled clearance into a
+maintenance dose:
+
+```js
+sources: {
+  scaled: 'func("Pkg:AllometricClearance", weight: weight)',
+  maintenance: 'func("Pkg:MaintenanceDose", clearance: scaled, target: 2)',
+},
+```
+
+A source waits only for the sources it reads, so independent ones still
+run together. Reading a source declared later, or the source itself, is
+a config error.
 
 A `validators` source runs
 [validator functions](../../datagrok/concepts/functions/func-params-annotation.md#validation)
@@ -1099,16 +1116,16 @@ the value of an input with no field, no longer marked. Without
 |---|---|---|
 | `validators` | None | The verdicts of the validator functions, each called with the value of `input` as its single argument, following the [validator contract](../../datagrok/concepts/functions/func-params-annotation.md#validation): `null` or `true` pass, a string is the message, `false` fails with a message naming the function, and a thrown error becomes a warning. Without `names`, the validators the input's annotation declares run (platform 1.28.0 or later).<br/>*e.g.* `validators(input, names: [...])` |
 | `choices` | Until an `@` parameter changes | `{items, values, inList, row, rowErrors}`: the list the input's `choices` annotation evaluates to, the value of each item, whether the current value is in the list, the lookup row of the current value converted to the input types, and the cells that don't fit (platform 1.28.0 or later).<br/>*e.g.* `choices(input)` |
-| `func` | Once if no argument reads an alias | The result of a platform function or package query, with each parameter set to its formula. The core `OpenFile` function with a literal `fullPath` loads a file-share table: `func("OpenFile", fullPath: "System:AppData/Pkg/presets.csv")`.<br/>*e.g.* `func("Pkg:Function", param: <formula>, ...)` |
-| `query` | Once if no argument reads an alias | The dataframe the SQL returns on the connection. `@name` binds the argument of that name. An argument the SQL does not declare with `--input:` gets its type from the value (`int`, `double`, `bool`, `dataframe`, `datetime`, otherwise `string`). Declare the ones that need another type.<br/>*e.g.* ``query("Pkg:Conn", `select ...`, name: <formula>, ...)`` |
+| `func` | Once if no argument reads an input, directly or through a source | The result of a platform function or package query, with each parameter set to its formula. The core `OpenFile` function with a literal `fullPath` loads a file-share table: `func("OpenFile", fullPath: "System:AppData/Pkg/presets.csv")`.<br/>*e.g.* `func("Pkg:Function", param: <formula>, ...)` |
+| `query` | Once if no argument reads an input, directly or through a source | The dataframe the SQL returns on the connection. `@name` binds the argument of that name. An argument the SQL does not declare with `--input:` gets its type from the value (`int`, `double`, `bool`, `dataframe`, `datetime`, otherwise `string`). Declare the ones that need another type.<br/>*e.g.* ``query("Pkg:Conn", `select ...`, name: <formula>, ...)`` |
 | `file` | Once | The table at a file-share path or a URL.<br/>*e.g.* `file("System:AppData/Pkg/presets.csv")` |
 | `table` | Once | The table from CSV text, with optional `DG.CsvImportOptions` such as `delimiter` or `decimalSeparator`.<br/>*e.g.* `table("name;value\n...", delimiter: ";")` |
-| `js` | None | The result of `fn`, or the value of the promise it returns. `fn` is called with the values of the `args` input aliases, even absent ones. It has no formula, since it holds code.<br/>*e.g.* `{js: {args: [...], fn: (...values) => any}}` |
+| `js` | None | The result of `fn`, or the value of the promise it returns. `fn` is called with the values of the `args` aliases, inputs or earlier sources, even absent ones. It has no formula, since it holds code.<br/>*e.g.* `{js: {args: [...], fn: (...values) => any}}` |
 | `table` (DataFrame) | Once | A `DG.DataFrame`, used as it is, not copied, so every rule that reads it shares the object. It has no formula either.<br/>*e.g.* `{table: df}` |
 
 Once means the first result is kept for each link the rule expands to,
 see [Rule fields](#rule-fields). A `func` or `query` without arguments
-counts as one whose arguments read no alias. A source with no caching
+counts as one whose arguments read no input. A source with no caching
 runs on every change, also once for each link. A separate effect's link
 resolves only the sources it uses. A `choices` source keeps
 one result for each step input, shared by every rule that reads it, and
@@ -1164,9 +1181,10 @@ Config processing rejects a rule when, for example:
   alias inside `map`, `filter`, `all`, `some`, `none`, or `reduce`, where
   names are fields of the element. `var("name")` reads an element field
   that shares an alias's name.
-- a source alias repeats a `from` alias, a `js` source reads an alias
-  that is not in `from`, or `verdicts` names a source that is not
-  `validators`
+- a source alias repeats a `from` alias or is a number, a `js`, `func`
+  or `query` source reads an alias that is neither in `from` nor an
+  earlier source, reads a later source or itself, or `verdicts` names a
+  source that is not `validators`
 - a source is of an unknown kind, misses what its kind needs (`fn`,
   `name`, a path, a table, or `connection` and `sql`), or names an
   unknown input
