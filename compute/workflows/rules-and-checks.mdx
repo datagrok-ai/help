@@ -480,9 +480,59 @@ condition and the rule's hold. One rule then covers a weighted dose:
   dose exceeds 2000 mg: 30 mg/kg for 80 kg shows *Total dose 2400 mg is
   above the usual maximum of 2000 mg*.
 
+### Separate effects
+
+Every effect of a rule runs when any input in `from` changes. A `set` then
+writes its value again when an input that only another effect reads
+changes, and a value the user typed is lost. `separate: true` gives the
+effect a link of its own, which runs only when an input it reads
+changes:
+
+```js
+{
+  id: 'solver',
+  type: 'rule',
+  from: ['method:model/method', 'unit:model/doseUnit'],
+  to: ['t:model/tolerance', 'ka:model/ka'],
+  effects: [
+    'set(t, if(eq(method, "LSODA"), 0.000001, 0.0001), restriction: "restricted", separate: true)',
+    'hide(ka, when: eq(unit, "mg"))',
+  ],
+}
+```
+
+- Changing the method sets the tolerance.
+- Changing the dose unit hides or shows `ka` and leaves the tolerance as
+  it is. A tolerance the user typed stays, still marked as differing from
+  0.0001.
+
+A separate effect reads its own expressions and `when`, the rule's
+`when`, and the sources it uses, and their inputs trigger it. The rule's
+`when` still applies. `additionalTriggers:` adds inputs it doesn't read,
+for a reset, and makes the effect separate:
+
+```js
+{
+  id: 'subjectReset',
+  type: 'rule',
+  from: ['profile:data/profile', 'compound:model/compound', 'route:model/route', 'weight:model/weight'],
+  to: 's:model/subject',
+  effects: ['clear(s, when: not(missing(profile)), additionalTriggers: [compound, route])'],
+}
+```
+
+A new profile, compound, or route clears the subject. A new weight
+doesn't. List in `additionalTriggers` the inputs a `choices` annotation
+depends on, since the driver can't see them.
+
+A separate effect starts working once its own inputs exist, even when
+other inputs of the rule are missing. An effect that reads no input needs
+`additionalTriggers`, or `runOnInit` for a value effect, which then
+writes its value once, at init.
+
 ### Defaults at init
 
-A rule runs when an input it reads changes. `runOnInit: true` also runs
+A rule runs whenever an input in `from` changes. `runOnInit: true` also runs
 its value effects once when the workflow is created or loaded:
 
 ```js
@@ -914,6 +964,10 @@ read the first profile and the third model reads the second.
   `clear` of [Dropdown items](#dropdown-items).
 - **Sources run while the rule is off.** Guard code against absent
   inputs, and keep `from` small.
+- **Effects with different inputs in one rule.** Every effect runs when
+  any input in `from` changes, so a `set` writes again, and a value the
+  user typed is lost, when an input only a `hide` reads changes. Make
+  such effects [separate](#separate-effects).
 - **Items don't constrain a run.** Neither `items` nor a `choices`
   annotation rejects a value. Add a rule message, a `clear` or a check.
 - **Messages on hidden inputs don't show.** A hidden input is not
@@ -969,7 +1023,8 @@ kind, a column type or a semantic type, as in the `type` check option.
 
 Each effect writes to its targets, `t` below: a `to` alias or a list
 `[a, b]` of them; for `hideAction` and `showAction`, `a` is an `actions`
-alias. Every effect takes `when:`, its own condition.
+alias. Every effect takes `when:`, its own condition, and `separate:` and
+`additionalTriggers:`, see [Separate effects](#separate-effects).
 
 | Effect | On | Off |
 |---|---|---|
@@ -1007,7 +1062,8 @@ the value of an input with no field, no longer marked. Without
 Once means the first result is kept for each link the rule expands to,
 see [Rule fields](#rule-fields). A `func` or `query` without arguments
 counts as one whose arguments read no alias. A source with no caching
-runs on every change, also once for each link. A `choices` source keeps
+runs on every change, also once for each link. A separate effect's link
+resolves only the sources it uses. A `choices` source keeps
 one result for each step input, shared by every rule that reads it, and
 evaluates the annotation again when a parameter it
 [references with `@`](../../datagrok/concepts/functions/func-params-annotation.md#referencing-other-parameters)
@@ -1028,7 +1084,9 @@ The driver splits a rule into up to five links, one per kind of target.
 In the driver's log messages and config errors, a rule `r` shows as
 `r::meta`, `r::validator`, `r::data`, `r::nodemeta` (descriptions and
 actions), and `r::pipelineValidator` (`(node)` targets), and a check `c`
-as `c::min`, `c::max`, and so on.
+as `c::min`, `c::max`, and so on. A separate effect gets a link of its
+own, named by its kind and position: `r::data:2` for a second effect of
+`r` that writes values.
 
 Besides `$all`, rule formulas read `$position`, the base step's index (in
 rules with a `base`), and `$steps`, the number of steps of the node the
@@ -1066,3 +1124,7 @@ Config processing rejects a rule when, for example:
   unknown input
 - an alias or a source name starts with `$`, which is reserved for the
   names the driver adds
+- `separate` is not `true` or `false`, `additionalTriggers` names an
+  alias that is not in `from` or comes with `separate: false`, or a
+  separate effect reads no input and has no `additionalTriggers` (a value
+  effect may use `runOnInit` instead)
