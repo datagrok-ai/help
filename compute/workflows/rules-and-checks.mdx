@@ -357,6 +357,53 @@ Rule messages appear as soon as an input changes. For an expensive
 source, `debounce` on the rule waits that many milliseconds after the last
 change before the messages update.
 
+### Message actions
+
+A message can offer actions as buttons. `actions:` on the rule names the
+nodes that show them, and `actions:` on the message lists the buttons:
+
+```js
+{
+  id: 'weightNeeded',
+  type: 'rule',
+  from: ['unit:model/doseUnit', 'weight:model/weight'],
+  to: 'w:model/weight',
+  actions: 'fixes',
+  when: 'and(eq(unit, "mg/kg"), missing(weight))',
+  effects: [
+    'error(w, "Body weight is required for a dose in mg/kg", actions: [action(fixes, "defaultWeight", "Use 70 kg")])',
+  ],
+}
+```
+
+The workflow that defines the rule also defines the action, with
+`position: 'none'` so that it shows only as the button:
+
+```js
+actions: [{
+  id: 'defaultWeight',
+  position: 'none',
+  from: [],
+  to: 'w:model/weight',
+  handler({controller}) {
+    controller.setAll('w', 70);
+  },
+}],
+```
+
+- `action(fixes, "defaultWeight", "Use 70 kg")` is the action with id
+  `defaultWeight` on the node of the `fixes` alias, here the workflow
+  that defines the rule. The id is in quotes, as in `hideAction`. The
+  button name is a formula, so it can include input values.
+- `additionalParams:` passes an object to the action, which reads it with
+  [`getAdditionalParam`](./link-types#getadditionalparam):
+  `action(fixes, "setWeight", "Use 70 kg", additionalParams: obj(weight: 70))`.
+- The alias finds the actions shown on its node, as
+  [`getValidationAction`](./link-types#getvalidationaction) does. An
+  action that is not there adds no button. A hidden action still does.
+- Each message of a list gets the same buttons. Messages on a `(node)`
+  alias take no actions.
+
 ### Dropdown items
 
 `items` replaces the items of a dropdown. An input is a dropdown when its
@@ -1033,7 +1080,7 @@ alias. Every effect takes `when:`, its own condition, and `separate:` and
 | `describe(t, value)` | Sets the `title`, `description`, `tags` or `body` that `t`'s query ends with. | Field cleared. |
 | `items(t, list)` | Replaces the dropdown items. | Items removed. |
 | `meta(t, key: value, ...)` | Sets each key, as in [UI metadata](./link-types#ui-metadata). | Keys removed. |
-| `error(t, message)`, `warning(t, message)`, `notification(t, message)` | Adds the message with that severity; on a `(node)` alias, to the workflow node. | No message. |
+| `error(t, message, actions:)`, `warning(t, message, actions:)`, `notification(t, message, actions:)` | Adds the message with that severity; on a `(node)` alias, to the workflow node. `actions:` lists its buttons, see [Message actions](#message-actions). | No message. |
 | `verdicts(t, source)` | Adds each verdict of a `validators` source, failures as errors, the rest as warnings. | No message. |
 | `set(t, value, restriction:)` | Writes the value. | Keeps the value, no longer marked. |
 | `clear(t, restriction:)` | Writes `null`. | Nothing. |
@@ -1074,7 +1121,8 @@ again.
 ### Rule fields
 
 A `rule` takes `id`, `from`, `to`, `effects`, and optionally `when`,
-`sources`, `actions` (aliases for the nodes that show actions),
+`sources`, `actions` (aliases for the nodes that show actions, used by
+`hideAction`, `showAction` and [message actions](#message-actions)),
 `debounce` (delays its messages), `runOnInit` (applies its value effects
 at init), and the [common options](./link-types#common-options) `not`,
 `base`, `nodePriority`, and `dataFrameMutations`. Rule queries take no
@@ -1124,6 +1172,9 @@ Config processing rejects a rule when, for example:
   unknown input
 - an alias or a source name starts with `$`, which is reserved for the
   names the driver adds
+- a message action names an `actions` alias the rule does not declare or
+  has no action id, `actions:` is set on an effect that is not a message,
+  or a message with actions targets a `(node)` alias
 - `separate` is not `true` or `false`, `additionalTriggers` names an
   alias that is not in `from` or comes with `separate: false`, or a
   separate effect reads no input and has no `additionalTriggers` (a value
