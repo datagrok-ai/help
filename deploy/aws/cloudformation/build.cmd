@@ -1,13 +1,14 @@
-py templates/cf_template_merge.py -i templates/create_network.template.yml  -i templates/fargate.template.yml  -i templates/r53.template.yml  -i templates/marketplace.template.yml  -i templates/versions.template.yml  -o network-fargate-r53-marketplace.yml
-py templates/cf_template_merge.py -i templates/create_network.template.yml  -i templates/fargate.template.yml  -i templates/dns.template.yml  -i templates/marketplace.template.yml  -i templates/versions.template.yml  -o network-fargate-dns-marketplace.yml
-py templates/cf_template_merge.py -i templates/choose_vpc.template.yml  -i templates/fargate.template.yml  -i templates/dns.template.yml  -i templates/marketplace.template.yml  -i templates/versions.template.yml  -o vpc-fargate-dns-marketplace.yml
-py templates/cf_template_merge.py -i templates/choose_vpc.template.yml  -i templates/fargate.template.yml  -i templates/r53.template.yml  -i templates/marketplace.template.yml  -i templates/versions.template.yml  -o vpc-fargate-r53-marketplace.yml
-py templates/cf_template_merge.py -i templates/create_network.template.yml  -i templates/fargate.template.yml  -i templates/r53.template.yml  -i templates/basic.template.yml  -i templates/versions.template.yml  -o network-fargate-r53-basic.yml
-py templates/cf_template_merge.py -i templates/choose_vpc.template.yml  -i templates/fargate.template.yml  -i templates/r53.template.yml  -i templates/basic.template.yml  -i templates/versions.template.yml  -o vpc-fargate-r53-basic.yml
-py templates/cf_template_merge.py -i templates/create_network.template.yml  -i templates/fargate.template.yml  -i templates/dns.template.yml  -i templates/basic.template.yml  -i templates/versions.template.yml  -o network-fargate-dns-basic.yml
-py templates/cf_template_merge.py -i templates/choose_vpc.template.yml  -i templates/fargate.template.yml  -i templates/dns.template.yml  -i templates/basic.template.yml  -i templates/versions.template.yml  -o vpc-fargate-dns-basic.yml
-py templates/cf_template_merge.py -i templates/create_network.template.yml  -i templates/eks.template.yml  -i templates/r53.template.yml  -i templates/basic.template.yml  -i templates/versions.template.yml  -o network-eks-r53-basic.yml
-py templates/cf_template_merge.py -i templates/choose_vpc.template.yml  -i templates/eks.template.yml  -i templates/r53.template.yml  -i templates/basic.template.yml  -i templates/versions.template.yml  -o vpc-eks-r53-basic.yml
-py templates/cf_template_merge.py -i templates/create_network.template.yml  -i templates/eks.template.yml  -i templates/dns.template.yml  -i templates/basic.template.yml  -i templates/versions.template.yml  -o network-eks-dns-basic.yml
-py templates/cf_template_merge.py -i templates/choose_vpc.template.yml  -i templates/eks.template.yml  -i templates/dns.template.yml  -i templates/basic.template.yml  -i templates/versions.template.yml  -o vpc-eks-dns-basic.yml
-pause
+@echo off
+rem Windows twin of build.sh: {network,vpc} x {fargate,eks} x {r53,dns} x {basic,marketplace}.
+cd /d "%~dp0"
+for %%n in (network:create_network vpc:choose_vpc) do (
+  for /f "tokens=1,2 delims=:" %%a in ("%%n") do (
+    for %%c in (fargate eks) do (
+      for %%d in (r53 dns) do (
+        for %%o in (basic marketplace) do (
+          py templates/cf_template_merge.py -i templates/%%b.template.yml -i templates/common.template.yml -i templates/%%c.template.yml -i templates/%%d.template.yml -i templates/%%o.template.yml -i templates/versions.template.yml -o %%a-%%c-%%d-%%o.yml
+        )
+      )
+    )
+  )
+)

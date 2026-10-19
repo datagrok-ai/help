@@ -20,8 +20,8 @@ for storing files.
 
 This document contains instructions to deploy Datagrok using [CloudFormation](https://aws.amazon.com/cloudformation/)
 on [AWS EKS](https://aws.amazon.com/eks/) with [AWS RDS](https://aws.amazon.com/rds/) (PostgreSQL) and
-[AWS S3](https://aws.amazon.com/s3/). The template provisions the EKS cluster, managed node group,
-RDS instance, S3 bucket, IAM roles with [IRSA](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html),
+[AWS S3](https://aws.amazon.com/s3/). The template provisions the EKS cluster (or uses yours), RDS instance, S3 bucket,
+Application Load Balancer, IAM roles with [IRSA](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html),
 and installs the Datagrok [Helm chart](../k8s/install-helm-chart.md) on the cluster automatically.
 
 We considered a lot of typical security nuances during the CloudFormation template development. As a result, you will
@@ -35,52 +35,42 @@ More information about Datagrok design and components:
 
 :::tip Migrating from ECS?
 
-The EKS template is drop-in compatible with the [ECS template](deploy-amazon-ecs.mdx):
-it reuses the same logical IDs for RDS, S3, and their subnet/security groups. Replacing an ECS
-stack's template with the EKS template preserves your database and bucket. See
+The EKS templates share the database, bucket, secrets, and load balancer with the [ECS templates](deploy-amazon-ecs.mdx).
+Replacing an ECS stack's template with the matching EKS template keeps your data and your URL. See
 [Migrate from ECS](#migrate-from-ecs).
 
 :::
 
 ## Prerequisites
 
-1. Check that you have the [required permissions](https://github.com/datagrok-ai/public/blob/master/help/deploy/iam.list)
+1. Check that you have the [required permissions](https://github.com/datagrok-ai/help/blob/master/deploy/iam.list)
    on the AWS account to perform CloudFormation deployment to EKS.
+2. The private subnets need outbound internet access (NAT gateway). The cluster pulls Datagrok images from Docker Hub,
+   and the installer downloads Helm and the chart.
 
-2. **One-time per region:** activate the AWS QuickStart Kubernetes Helm CloudFormation extension in your account.
-   The template uses it to install the Helm chart declaratively.
-    1. Open [AWS CloudFormation → Registry → Public extensions](https://console.aws.amazon.com/cloudformation/home#/registry/public-extensions)
-       in the AWS region where you plan to deploy Datagrok.
-    2. Find `AWSQS::Kubernetes::Helm` and click **Activate**.
-    3. Repeat for `AWSQS::Kubernetes::Resource`.
+## New or existing cluster
 
-## Deployment profiles
+By default, the stack creates an EKS cluster with a managed node group (`NodeInstanceType`, `NodeGroupDesiredSize`)
+in the private subnets. Set `GpuRequired` to `true` to add a GPU node group for GPU plugins.
 
-| Profile | Description | Use when |
-|---------|-------------|----------|
-| **Full stack** (default) | Creates EKS cluster, node group, RDS, S3, IAM, and installs the Helm chart | Starting from scratch |
-| **Existing cluster** | Creates RDS, S3, IAM/IRSA, and secrets only — skips EKS cluster and node group | You already manage an EKS cluster |
+To install Datagrok on a cluster you already run, set `ExistingEksClusterName` to its name and use one of the
+`vpc-eks-*` templates with the cluster's VPC. The stack then skips the cluster and node groups, and:
 
-To use an existing cluster, set `UseExistingCluster=true` and provide your cluster
-details (`ExistingClusterName`, `ExistingClusterOIDCIssuerUrl`,
-`ExistingClusterSecurityGroupId`) when launching the stack. Gather them with:
+* adds the cluster's IAM OIDC provider if it has none;
+* opens RDS and the load balancer to the cluster security group;
+* installs the [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/)
+  only when the cluster does not run one;
+* installs Datagrok into the `HelmNamespace` namespace (`datagrok` by default).
 
-```bash
-CLUSTER=my-cluster
-aws eks describe-cluster --name $CLUSTER --query '{
-  OIDCIssuerUrl: cluster.identity.oidc.issuer,
-  SecurityGroupId: cluster.resourcesVpcConfig.clusterSecurityGroupId
-}'
-```
+The existing cluster must meet these requirements:
 
-The stack creates all supporting infrastructure (database, storage, IAM roles) and
-outputs the values needed for the Helm chart install. Follow the post-deploy steps
-in the [Helm chart guide](../k8s/install-helm-chart.md#using-an-existing-eks-cluster).
+* Its authentication mode is `API` or `API_AND_CONFIG_MAP`. The stack grants its installer access with an EKS access entry.
+* Its nodes use the cluster security group (the default for managed node groups) and have enough free capacity
+  for Datagrok (about 4 vCPU and 8 GiB).
+* Its API endpoint is reachable from the private subnets.
 
-> The stack does **not** create an EKS cluster, node group, or Fargate profile.
-> Ensure your existing cluster has sufficient node capacity and that the
-> [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/)
-> is already installed.
+The stack installs Datagrok with a CodeBuild project. If an install or an update fails, open the build log from the
+_DatagrokInstallerLogs_ stack output.
 
 ## Deploy Datagrok components
 
@@ -278,21 +268,24 @@ Use the same [deployment script](#deploy-datagrok-components) and an updated ver
 
 ## Migrate from ECS
 
-If you already run Datagrok on the [ECS CloudFormation template](deploy-amazon-ecs.mdx), you can migrate to
-EKS without re-creating RDS or S3. The EKS template uses the same logical IDs (`DatagrokDB`, `DatagrokS3`,
-`DatagrokDBSubnetGroup`, `DatagrokDBSecurityGroup`) and retains the same `DeletionPolicy` settings
-(`Snapshot` for RDS, `Retain` for S3), so CloudFormation treats them as continuing resources on stack update.
+If you run Datagrok on the [ECS CloudFormation template](deploy-amazon-ecs.mdx), you can move it to EKS by updating
+the stack. The ECS and EKS templates define the database, the bucket, the generated secrets, and the load balancer
+identically, so CloudFormation keeps them. Your users, files, settings, admin password, and URL stay the same, and
+external DNS records keep pointing at the same load balancer.
 
-1. Back up the RDS database and take a snapshot of the S3 bucket.
-2. In the existing stack, click **Update** > **Replace current template** and point at the matching EKS
-   template variant (same VPC / DNS choice as the original ECS stack).
-3. Review the change set. Fargate / ECS resources will be flagged for deletion; RDS and S3 should
-   show as "no change" or "modify" — **not** "replace".
-4. Apply the update.
-5. Once `UPDATE_COMPLETE`, the stack now runs on EKS with the same database and bucket.
+1. Back up the RDS database and the S3 bucket.
+2. In the existing stack, click **Update** > **Replace current template** and point at the EKS template with the same
+   VPC and DNS options: `vpc-fargate-r53-basic.yml` becomes `vpc-eks-r53-basic.yml`, and so on.
+3. Keep all parameter values, including the service versions. Change versions in a separate update.
+4. Review the change set before you execute it. `DatagrokDB`, `DatagrokS3`, and `DatagrokLoadBalancer` must not appear
+   in it with **Replacement** set to `True`. ECS services, task definitions, and the internal load balancer are removed,
+   and the EKS cluster and the installer are added.
+5. Execute the change set. The update takes about 30 minutes. ECS keeps serving until the Datagrok pods are ready.
+   The pods then take over the load balancer target group, and CloudFormation removes the ECS services. Expect up to
+   a minute of downtime during the switch.
 
-If the change set shows RDS or S3 flagged for replacement, stop and contact
-[support@datagrok.ai](mailto:support@datagrok.ai) — do not apply the update.
+If the change set replaces `DatagrokDB` or `DatagrokS3`, do not execute it. Contact
+[support@datagrok.ai](mailto:support@datagrok.ai).
 
 ## See also
 

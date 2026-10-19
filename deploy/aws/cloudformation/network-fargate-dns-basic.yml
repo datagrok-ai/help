@@ -96,12 +96,6 @@ Metadata:
       - InternetSubnetAllow2
       - InternetSubnetAllow3
     - Label:
-        default: GPU configuration
-      Parameters:
-      - GpuRequired
-      - GpuAMI
-      - GpuInstanceType
-    - Label:
         default: Docker Registry configuration
       Parameters:
       - EnableRegistryProxy
@@ -109,6 +103,12 @@ Metadata:
         default: Database configuration
       Parameters:
       - DBSnapshotIdentifier
+    - Label:
+        default: GPU configuration
+      Parameters:
+      - GpuRequired
+      - GpuAMI
+      - GpuInstanceType
     - Label:
         default: Client Endpoint configuration
       Parameters:
@@ -1560,7 +1560,7 @@ Resources:
         Fn::GetAtt:
         - DatagrokS3EmptyLambdaRole
         - Arn
-      Runtime: python3.10
+      Runtime: python3.13
       Timeout: 600
     Type: AWS::Lambda::Function
   DatagrokS3EmptyLambdaFunctionDatagrokLogGroup:
@@ -2794,6 +2794,7 @@ Resources:
     Condition: RegistryProxyEnabled
     DependsOn:
     - DatagrokTCP5000IntListener
+    - RegistryProxyListenerRule
     Properties:
       Cluster:
         Fn::GetAtt:

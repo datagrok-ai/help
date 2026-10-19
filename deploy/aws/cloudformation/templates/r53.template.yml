@@ -202,7 +202,7 @@ Resources:
                   print(type(e).__name__, e)
                   cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
       Handler: index.handler
-      Runtime: python3.10
+      Runtime: python3.13
       Role:
         Fn::GetAtt:
           - DatagrokR53CleanupLambdaRole
