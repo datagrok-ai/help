@@ -81,14 +81,11 @@ numerical property. An exact value gets the desirability of its point on the cur
 with `<` or `>` allows a range of values, so only a property mapped to a qualified-number
 column has the **Score as** option. It sets which desirability such a value gets:
 
-* **Least favorable value** (default): the lowest desirability in the range.
-* **Limit value**: the desirability of the limit, as if the value were exact.
-* **Most favorable value**: the highest desirability in the range.
-
-A value whose range lies on a flat part of the curve gets the same score with each option.
-
-To change the option, click the gear next to the property in the profile editor, or in
-**MPO Score** with **Design mode** on. The option is saved with the profile.
+| Option | Behavior |
+|:-------|:---------|
+| Least favorable value (default) | The lowest desirability in the range |
+| Limit value | The desirability of the limit, as if the value were exact |
+| Most favorable value | The highest desirability in the range |
 
 ![Score as for values with < or >](img/mpo-qnum-score-as.gif)
 
