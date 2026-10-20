@@ -70,9 +70,24 @@ You can configure how the profile handles missing property values:
 
 | Option | Behavior |
 |:-------|:---------|
-| Skip row | Exclude the compound from scoring |
-| Use fallback score | Assign a default desirability value |
-| Ignore property | Score the compound using the remaining properties |
+| Exclude row | Exclude the compound from scoring |
+| Use default score | Assign a default desirability value |
+| Skip property | Score the compound using the remaining properties |
+
+#### Values with < or >
+
+A column of qualified numbers holds values such as `<-5` or `>30`. MPO scores it as a
+numerical property. An exact value gets the desirability of its point on the curve. A value
+with `<` or `>` allows a range of values, so only a property mapped to a qualified-number
+column has the **Score as** option. It sets which desirability such a value gets:
+
+| Option | Behavior |
+|:-------|:---------|
+| Least favorable value (default) | The lowest desirability in the range |
+| Limit value | The desirability of the limit, as if the value were exact |
+| Most favorable value | The highest desirability in the range |
+
+![Score as for values with < or >](img/mpo-qnum-score-as.gif)
 
 ### Aggregation
 
