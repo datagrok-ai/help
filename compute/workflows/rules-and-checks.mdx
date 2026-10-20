@@ -654,24 +654,25 @@ then, until the rule sets it again.
 **The workflow's own checks.** A `to` alias flagged `(node)` addresses a
 workflow node instead of an input, and `error`, `warning`, and
 `notification` on it work as a
-[pipeline validator](./link-types#pipeline-validators). `$steps` is the
-number of steps of the node the rule is defined on:
+[pipeline validator](./link-types#pipeline-validators). A
+[`count`](./link-query-language#count-steps) query reads the number of
+steps:
 
 ```js
 {
   id: 'stepsRequired',
   type: 'rule',
-  from: [],
+  from: 'n:count()',
   to: 'scenarios(node)',
-  when: 'eq($steps, 0)',
+  when: 'eq(n, 0)',
   effects: ['error(scenarios, "Add a data step and a model step")'],
 }
 ```
 
-A rule link that reads `$steps` runs again after every change to the
-workflow's steps. Its value effects do so only after such changes, not
-when the workflow is created or loaded, which takes
-[`runOnInit`](#defaults-at-init) as usual.
+The count is an ordinary input: when the number of steps changes, the
+rule runs again, value effects included. A value effect that should not
+follow the count is a [separate effect](#separate-effects) that does not
+read it.
 
 ### Sources
 
@@ -1154,8 +1155,7 @@ own, named by its kind and position: `r::data:2` for a second effect of
 `r` that writes values.
 
 Besides `$all`, rule formulas read `$position`, the base step's index (in
-rules with a `base`), and `$steps`, the number of steps of the node the
-rule is defined on.
+rules with a `base`).
 
 ### Rule errors
 

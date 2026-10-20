@@ -69,6 +69,7 @@ empty path. These forms are equivalent:
 | `first`     | plain       | any path        | one node | First direct descendant whose id is in the OR-list. A bare id is this selector.<br/>*e.g.* `first(script1)` |
 | `last`      | plain       | any path        | one node | Last direct descendant whose id is in the OR-list.<br/>*e.g.* `last(script1\|script2)` |
 | `all`       | plain       | non-`base`      | many nodes | Every direct descendant whose id is in the OR-list; one query, many values.<br/>*e.g.* `all(metric)` |
+| `count`     | plain       | last segment of `from` | a number | Number of direct descendants whose id is in the OR-list, or of all of them when the list is empty. The link runs again when the number changes.<br/>*e.g.* `count()`, `reviews/count(review)` |
 | `expand`    | plain       | **`base` only** | one instance per node | Like `all`, but every match produces a separate link instance.<br/>*e.g.* `expand(workflow1\|workflow2)` |
 | `same`      | reference   | non-`base`      | one node | The node `@ref` matched at this segment. The id-list is optional and narrows the match.<br/>*e.g.* `same(@base)` or `same(@base, script1)` |
 | `before`    | reference   | non-`base`      | one node | First preceding sibling whose id matches, scanning backward from the base.<br/>*e.g.* `before(@base, prepData)` |
@@ -82,7 +83,7 @@ empty path. These forms are equivalent:
 
 - Reference selectors take the base query name as their first argument,
   prefixed with `@`. Plain selectors must not take one.
-- Every selector but `same` requires an id or tag list.
+- Every selector but `same` and `count` requires an id or tag list.
 - Id lists use OR (`|`), tag lists use AND (`&`).
 - Tag variants exist for `first`, `last`, `all`, `expand`, `same`,
   `before`, `before*`, `after` and `after*`. There is no `#before+` or
@@ -103,7 +104,7 @@ empty path. These forms are equivalent:
 
 | Field | Ends in | Flags |
 |---|---|---|
-| `from` of data, validator, meta, node meta and pipeline validator links | a script io, or a node with `call` | `optional`, `call` with `optional`, `template` |
+| `from` of data, validator, meta, node meta and pipeline validator links | a script io, a node with `call`, or a `count` | `optional`, `call` with `optional`, `template`; only `optional` with `count` |
 | `to` of data, validator and meta links | a script io | `optional`, `template` |
 | `to` of node meta and pipeline validator links | a node, or empty for the host workflow | `optional`; `node` on pipeline validators |
 | `base` | a node; `first`, `last`, `expand` and their tag variants only | none |
@@ -111,7 +112,7 @@ empty path. These forms are equivalent:
 | `actions` of validators, node meta links and rules | a node, any selector | `optional` |
 | `showWhen`, `hideWhen` of actions | a node; no io wildcards | `optional` |
 | `from` / `to` of `funccall` actions | a node with `call`, or a script io | `optional`, `call` |
-| `from` of rules | a script io | `optional`, `template` |
+| `from` of rules | a script io or a `count` | `optional`, `template`; only `optional` with `count` |
 | `to` of rules | a script io; a description field for `describe`; a node with `node` | `optional`, `template`, `node` |
 | `io`, `check.table` and `vars` values of checks | a script io | none; written without an alias |
 

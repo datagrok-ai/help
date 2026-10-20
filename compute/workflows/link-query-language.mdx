@@ -214,6 +214,29 @@ values. The handler reads them with `getAll`:
 This is one link that sees all reviews at once. When each review should
 get a link of its own, the advanced page's `expand` is the tool.
 
+### Count steps {#count-steps}
+
+`count` reads how many direct children of a node have one of the listed
+ids. With no ids, it counts all of them. It ends a `from` query, and its
+value is a number:
+
+```
+{
+  id: 'tooManyReviews',
+  type: 'pipelineValidator',
+  from: 'n:reviews/count(review)',
+  to: 'self',
+  handler: ({controller}) => {
+    const tooMany = controller.getFirst('n') > 5;
+    controller.setValidation('self', tooMany ? {warnings: ['More than five reviews']} : undefined);
+  },
+}
+```
+
+The link runs again when the number changes, and only then: moving a
+review, or adding a step with another id, leaves it alone. A count is
+always present, zero included, so it needs no `optional`.
+
 ### The host workflow
 
 A [pipeline validator](./link-types#pipeline-validators) targets a
