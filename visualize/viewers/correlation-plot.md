@@ -41,6 +41,7 @@ General:
 | Y Column Names | list | Columns to be put on the Y axis |
 | Correlation Type | correlationtype |  |
 | Show Coefficients | boolean | Shows the correlation coefficient (Pearson or Spearman, see Correlation Type) inside the corresponding cell. |
+| Auto Color Range | boolean | Spreads the colors over the coefficients present in the matrix, from the lowest to the highest, instead of the fixed -1..1 range. Shows the structure of a matrix whose coefficients are all alike. |
 | Show Tooltip | boolean | Shows the tooltip with the corresponding scatter plot inside. |
 | Ignore Double Click | boolean | Ignores double click behavior on the grid cells. |
 | Back Color | number |  |
