@@ -383,7 +383,9 @@ In a [workflow](../../workflows/workflows.mdx), inputs whose values are set by t
 the `disabled` or `restricted` [restriction](../../workflows/link-types.mdx#consistency) are
 hidden by default. A **Show linked inputs (N)** row on top of the form shows them. A link icon
 next to such an input says the value is the one the workflow set; once the value differs, the
-inconsistency icon replaces it. Inputs with `info` or no restriction stay visible.
+inconsistency icon replaces it. Inputs with `info` or no restriction stay visible. The
+standalone Rich Function View has no toggles and ignores `meta.inputToggles` and
+`meta.inputsHidden`.
 
 Set `meta.inputToggles` to choose which inputs are hidden and how the rows read. Each entry is
 one row, **Show &lt;caption&gt; (N)**, shown only while it hides something:
@@ -418,7 +420,7 @@ To hide every input, set `meta.inputsHidden` to `true`. All inputs then go behin
 Some inputs stay visible whatever the toggles say:
 
 - an input with errors or warnings, or with a value that differs from the one the workflow set;
-- an input with the `keepVisible` [UI metadata](../../workflows/link-types.mdx#ui-metadata).
+- an input with the `keepVisible: true` annotation, as in `//input: double x {keepVisible: true}`.
 
 An input with the `hidden` UI metadata stays hidden. The rows remember their state per function
 for the browser session, and apply to read-only steps too.
