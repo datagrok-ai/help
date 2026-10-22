@@ -608,6 +608,7 @@ input or output:
 | Key | Effect |
 |------|--------|
 | `hidden: true` | Hide the input from the script UI. If the input is a dataframe with one or more `viewer:` panels, those panels are hidden too. A hidden input is treated as optional regardless of its annotation: the default missing-value check and any validator link targeting it no longer block the run or show up in the UI, and the function is called with whatever value the input holds, possibly `null`. |
+| `keepVisible: true` | Keep the input visible when [input toggles](../scripting/advanced-scripting/rich-function-view.md#hide-inputs-behind-toggles) would hide it, for example a linked input. `hidden: true` still hides it. |
 | `items: string[]` | For choice inputs, replace the dropdown options. Example: `{ items: ['one', 'two', 'three'] }`. |
 | `emptyChoice: boolean` | For choice inputs, offer an empty option that clears the value, or remove it. Without the key, the input has an empty option when its annotation says `nullable: true` or `optional: true`. The key never changes the value itself. |
 

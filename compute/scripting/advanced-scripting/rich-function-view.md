@@ -377,21 +377,51 @@ Inside a workflow the flag controls the **Rerun** button in the step's navigatio
 (Back / Run / Next / Update). In standalone RichFunctionView the same flag keeps the in-form
 Run button visible after a completed run.
 
-#### Collapse the input form on open
+#### Hide inputs behind toggles
 
-Set `meta.inputsHidden` to `true` to start with the input form collapsed. A small chevron in the
-form panel header lets the user reveal it on demand and collapse it back later.
+In a [workflow](../../workflows/workflows.mdx), inputs whose values are set by the workflow with
+the `disabled` or `restricted` [restriction](../../workflows/link-types.mdx#consistency) are
+hidden by default. A **Show linked inputs (N)** row on top of the form shows them. A link icon
+next to such an input says the value is the one the workflow set; once the value differs, the
+inconsistency icon replaces it. Inputs with `info` or no restriction stay visible.
+
+Set `meta.inputToggles` to choose which inputs are hidden and how the rows read. Each entry is
+one row, **Show &lt;caption&gt; (N)**, shown only while it hides something:
+
+```javascript title="Your script header"
+//meta.inputToggles: [{"caption": "additional device params", "categories": ["Pump", "Valves"], "linked": true}, {"caption": "solver settings", "inputs": ["atol", "rtol"]}]
+//input: double pumpRate {category: Pump}
+//input: double atol = 1e-6
+//input: double rtol = 1e-4
+```
+
+| Field | Meaning |
+|------|--------|
+| `caption` | Text of the row. |
+| `categories` | Inputs whose `category` annotation is in the list. |
+| `inputs` | Inputs by name. With `categories`, an input matching either is selected; without both, every input is. |
+| `linked` | With `true`, only selected inputs with the `disabled` or `restricted` restriction are hidden. Otherwise the selected inputs are hidden whatever their restriction. |
+
+An input belongs to the first entry that selects it. Entries with the same caption share one
+row, so adding `{"caption": "linked inputs", "inputs": ["x"]}` after the default entry puts an
+input without a restriction under the linked inputs row. The meta replaces the default
+`[{"caption": "linked inputs", "linked": true}]`, and `[]` hides nothing.
+
+To hide every input, set `meta.inputsHidden` to `true`. All inputs then go behind the
+**Show linked inputs (N)** row, linked or not, as with `[{"caption": "linked inputs"}]`.
+`meta.inputToggles` takes precedence over it.
 
 ```javascript title="Your script header"
 //meta.inputsHidden: true
 ```
 
-The form stays collapsed even when validators emit warnings or errors. This is safe because:
+Some inputs stay visible whatever the toggles say:
 
-- A validation error blocks the **Run** button, so the user cannot start a run with invalid
-  inputs unnoticed.
-- In a [workflow](../../workflows/workflows.mdx), warnings and errors also appear on the
-  workflow navigation tree, surfacing issues even when the form is not visible.
+- an input with errors or warnings, or with a value that differs from the one the workflow set;
+- an input with the `keepVisible` [UI metadata](../../workflows/link-types.mdx#ui-metadata).
+
+An input with the `hidden` UI metadata stays hidden. The rows remember their state per function
+for the browser session, and apply to read-only steps too.
 
 ## Provide custom docs and export data
 
