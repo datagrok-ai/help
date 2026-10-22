@@ -354,6 +354,16 @@ script inputs that were set by the data link.
 - `none` no consistency is tracked at all, always set values directly
   to script io
 
+A `dataframe` input with the `mutateOnly: true` annotation is edited in its
+viewers only. Under `restricted` or `info`, its form input, which replaces
+the dataframe, is disabled. Use `info` when the viewers allow only edits that
+keep the data valid, so the edits are tracked without making it
+inconsistent:
+
+```
+//input: dataframe schedule {mutateOnly: true}
+```
+
 Consistency is tracked based on the value, stored separately from a
 script io.
 

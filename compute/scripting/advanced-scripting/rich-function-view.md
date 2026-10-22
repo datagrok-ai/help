@@ -422,6 +422,10 @@ Some inputs stay visible whatever the toggles say:
 - an input with errors or warnings, or with a value that differs from the one the workflow set;
 - an input with the `keepVisible: true` annotation, as in `//input: double x {keepVisible: true}`.
 
+A `dataframe` input with the `mutateOnly: true` annotation and the `restricted` or `info`
+restriction has its form input disabled, so it can be edited in its viewers but not replaced. See
+[Consistency](../../workflows/link-types.mdx#consistency).
+
 An input with the `hidden` UI metadata stays hidden. The rows remember their state per function
 for the browser session, and apply to read-only steps too.
 
