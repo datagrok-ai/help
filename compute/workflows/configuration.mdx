@@ -560,6 +560,7 @@ one row per workflow and step, in tree order. An `ExportSummaryItem` has
 the following fields:
 
 * kind: `'step' | 'workflow'`
+* uuid: `string`, the node in the workflow tree
 * path: `string[]`, the folders in the zip
 * name: `string`, title?: `string`
 * fileName?: `string`, the step workbook; absent for workflows and for

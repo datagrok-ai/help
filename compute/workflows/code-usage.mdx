@@ -1,7 +1,7 @@
 ---
 title: "Run from code"
 sidebar_position: 9
-description: Start a low-code workflow from code and receive a return value via the onReturn hook.
+description: Start a low-code workflow from code and receive a return value via the onReturn hook, or run it without UI and read its results.
 keywords:
   - startWorkflow
   - onReturn hook
@@ -9,6 +9,8 @@ keywords:
   - pipelineInstanceConfig
   - workflow return value
   - compute-api
+  - runWorkflow
+  - headless workflow run
 ---
 
 You can start a workflow from code and, if the top-level configuration defines an
@@ -89,3 +91,71 @@ const instanceConfig: PipelineInstanceConfig = {
   steps: [{id: 'load'}],
 };
 ```
+
+### Run without UI
+
+`runWorkflow` runs a workflow without opening it, for example to read its
+outputs in another app or to check a workflow in a test. It takes the same
+arguments as `startWorkflow`:
+
+```typescript
+import {runWorkflow, saveWorkflowRun} from '@datagrok-libraries/compute-api';
+
+const result = await runWorkflow('SomePackage:SomeWorkflow', '1.0', {
+  id: 'some_workflow',
+  steps: [{id: 'load', initialValues: {deviceClass: 'Bioreactor Class'}}],
+});
+```
+
+The workflow is created from the initial configuration, as in the editor. If a
+step that is ready to run has validation errors, nothing runs. Otherwise every
+step that can run runs in order, as **Run ready steps** does. A step that waits
+for earlier steps is checked once they have run, and is skipped if it still has
+errors.
+
+The result holds:
+
+* `isRun`: `false` when nothing ran because of validation errors.
+* `state`: the workflow tree in the shape of the initial configuration. Each
+  step has its `initialValues`, which hold the inputs and, once the step has
+  run, the outputs. It also has its `status` as the tree shows it,
+  `isOutputOutdated`, `runError`, and its `validations` and `consistency` by
+  input. Each workflow has the `validations` of its workflow validators.
+* `summary`: one row per workflow and step, as in the summary of a
+  [tree export](./configuration#custom-exports): errors, warnings and
+  inconsistent inputs, and for a workflow the counts of failed and outdated
+  steps below it.
+
+```typescript
+const steps = 'steps' in result.state ? result.state.steps : [result.state];
+const load = steps.find((step) => step.id === 'load');
+const table = load?.initialValues.table;
+```
+
+Tables in the initial configuration are copied, so a step that edits a table
+does not change yours.
+
+`state` is itself an initial configuration: passed to `runWorkflow` or
+`startWorkflow`, it starts the workflow with the steps that ran already run.
+A step with outputs in `initialValues` is not run again, even when you change
+its inputs; remove its outputs, and those of the steps after it that use
+them, to run them again.
+
+The run is not saved. `saveWorkflowRun` saves `state` to history as a new run,
+the way **Duplicate** copies a workflow, and the saved run opens in the
+editor. A step that failed is saved as not run, without its error.
+
+```typescript
+const run = await saveWorkflowRun('SomePackage:SomeWorkflow', '1.0', result.state, {title: 'Batch 7'});
+```
+
+Packages that don't use `compute-api` can call the `Compute2:RunWorkflow` and
+`Compute2:SaveWorkflowRun` functions with the same parameters.
+
+:::note
+
+A step input that a link writes takes the linked value: the link replaces the
+value given in `initialValues` without a warning, since the step hasn't run.
+Pass values only for inputs that no link writes.
+
+:::
