@@ -497,30 +497,38 @@ function.
 
 ### Workflow versioning
 
-There may be multiple workflow versions available, so to allow a
-user to launch different workflow versions directly, the following
-[provider](#workflow-providers) function annotation could be used.
+There may be multiple workflow versions available. To let users launch a
+specific workflow version directly, add this annotation to the
+[provider](#workflow-providers) function:
 
 ```
 //meta.versions: ["2.0", "1.0"]
 ```
 
-__Note__ that all versions must not be removed or altered in a
-non-compatible way, regardless of the meta-annotation, otherwise
-user's saved state of such workflows could not be
-loaded. Non-compatible here means that is not possible to get the same
-results with the same steps and inputs.
+All saved runs of a top-level workflow stay available across all its
+versions. For nested [references](#reusing-workflows), only the data of
+the referenced version is available.
 
-For a toplevel workflow all saved users's data across all versions is
-available.
+When you release a new version of a referenced workflow, every workflow
+that should use it must release a new version too.
 
-For nested [references](#reusing-workflows) items only a
-specific version workflow data is available.
+#### Saved runs
 
-When creating a new workflow version, all dependent workflows that need to use
-the updated dependency must also release new versions.
-This ensures proper version compatibility across the workflow ecosystem.
+Saved runs load only while the workflow and the functions of its steps
+stay compatible with them. A run that no longer matches fails to load
+with an error that names the step.
 
+- Don't remove a workflow version or change it in a non-compatible way,
+  whether or not `meta.versions` lists it. Non-compatible means the same
+  steps and inputs no longer give the same results.
+- Don't change the inputs and outputs of a function that a published
+  workflow's step calls, and don't delete or rename it. This includes
+  republishing the same package version, which changes its functions in
+  place.
+- To change a step function, add a new function and use it in a new
+  workflow version. Steps refer to functions by name, and a name always
+  resolves to the current package version. So an older workflow version
+  can't keep an older function signature.
 
 ### Custom exports
 
