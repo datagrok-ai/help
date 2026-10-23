@@ -986,10 +986,10 @@ plots with regression lines and an identity line to assess model quality.
 
 ### SAR Matrix
 
-SAR Matrix organizes a compound set into analog series and lays each one out as related cores (rows)
-against the substituents they share (columns), coloring every cell by potency. Combinations nobody has
-made are filled in with a local [Free-Wilson](https://en.wikipedia.org/wiki/Free-Wilson_analysis)
-prediction, so one grid shows both what you measured and what the SAR implies.
+SAR Matrix groups a compound set into analog series. Each series is a grid of related cores (rows) and
+the substituents they share (columns), with every cell colored by potency. Combinations nobody has made
+are filled in with a local [Free-Wilson](https://en.wikipedia.org/wiki/Free-Wilson_analysis) prediction,
+so one grid shows both what you measured and what the SAR predicts.
 
 The results let you:
 
@@ -1007,66 +1007,94 @@ To run SAR Matrix analysis:
 
 1. In the **Top Menu**, select **Chem** > **Analyze** > **SAR Matrix...** to open the analysis dialog.
 2. In the dialog, configure the analysis by selecting:
-    * **Table**: the dataset you want to analyze
-    * **Molecules**: the column containing molecules
-    * **Activity**: a numerical column representing activity or property values
-    * **Scaling**: _none_, _log10_, or _-log10_. Use _-log10_ for raw IC50 or Ki values so that higher
-      numbers mean more potent; for pre-computed pIC50 use _none_ and set **Direction** explicitly
-    * **Direction**: which end of the scaled activity counts as more potent
-    * **Use existing R-groups** (optional): build the matrices from core and R-group columns already
-      in the table instead of fragmenting the molecules. When it is off, the gear beside it holds
-      **Fragment cutoff**, **Series levels** and **Group leftovers by MCS**
-    * **Series** (optional): group by your own series instead of by structure
-    * **Predict analogs**: fill the combinations nobody has made with Free-Wilson predictions
-3. Click **OK**. The analysis opens with three tabs:
+    * **Table**: The dataset you want to analyze
+    * **Molecules**: The column containing molecules
+    * **Activity**: A numerical column with activity or property values
+    * **Scaling**: _none_, _lg_, or _-lg_ (use _-lg_ for raw IC50 or Ki values, and _none_ for
+      precomputed values such as pIC50)
+    * **Direction**: Which end of the activity scale is more potent (set it when **Scaling** is _none_)
+    * **Use existing R-groups** (optional): Build the matrices from the core and R-group columns of the
+      table instead of fragmenting the molecules
+    * The gear icon next to **Use existing R-groups**: **Fragment cutoff**, **Series levels**, and
+      **Group leftovers by MCS**, used when the molecules are fragmented
+    * **Series** (optional): Your own series column to group by instead of the structure
+    * **Predict analogs**: Fill in the combinations nobody has made with Free-Wilson predictions
+3. Click **OK**. The analysis opens with four tabs:
 
-![SAR Matrix walkthrough](img/sar_matrix_demo.gif)
+![Run a SAR Matrix analysis](img/run-a-sar-matrix-analysis.gif)
 
 <Tabs>
-<TabItem value="matrix" label="SAR Matrix" default>
+<TabItem value="summary" label="Summary" default>
 
-A ranked list of series sits on the left, the selected matrix on the right. Cores run down the rows and
-substituents across the columns, so every column reads against the same core. A solid cell is a compound you have in the data provided, a dashed one a molecule nobody has made.
+The **Summary** tab shows what the analysis found, and the analysis opens on it. The line at the top
+shows the activity scale and direction that every ranking uses. It also counts the compounds that were
+measured, the ones with no analog to compare with, and the ones never assayed.
 
-Click a card to open that series, and a cell to inspect the compound or predicted analog in the
+The tab has three parts:
+
+* **Key series**: The series to open first. Five squares show why a series is listed: most measured
+  compounds, widest range, best compound made, most analogs worth making, or best-validated fit. The
+  chips in the title (**All**, **L1**, **L2**, ...) show every ranking at one series level. Click a series
+  to see its best core.
+* **Best R-group**, **Best core**, and **What improves potency**: Which substituent wins, which core scores
+  highest, and which swap improves potency the most. Click one to see the evidence behind it. With
+  existing R-group columns, **What to change** takes their place and shows the spread, the best value,
+  and the best measured swap of each component.
+* **Worth making**: Analogs nobody has made, ranked by how much each one improves on the best compound
+  of its series. Click an analog to see the core and substituent its prediction is built from. The cart
+  icon adds it to the **Make list**.
+
+![Read the Summary](img/read-the-summary.gif)
+
+</TabItem>
+<TabItem value="matrix" label="SAR Matrix">
+
+The **SAR Matrix** tab lists the series on the left and shows the selected one as a matrix on the right.
+Cores run down the rows and substituents across the columns. A solid cell is a compound in your table,
+and a dashed cell is a predicted analog.
+
+Click a card to open that series. Click a cell to see its compound or predicted analog in the
 **Context Panel**.
 
-Series nest. **L1** is the finest view: one matrix per cut site, each row a single core with its
-substituents. **L2** folds the L1 matrices whose cores agree one cut deeper, **L3** folds those again.
-A **Scaffold** row gathers the series built on one scaffold; they are listed rather than merged, because each varies a different position.
+![Open a series and one of its cells](img/open-a-series-and-one-of-its-cells.gif)
 
-Use **Rank by** to reorder the series by potent compounds, SAR discontinuity or preferred substituent, and the funnel to narrow either the series or the cells.
+Series are nested. **L1** is the finest level, with one matrix per cut site. **L2** merges the L1
+matrices whose cores match one cut deeper, and **L3** merges those again. A **Scaffold** card groups the
+series built on one scaffold. They stay separate because each one varies a different position.
+
+To reorder the series, use **Rank by**: _Potent compounds_, _SAR discontinuity_, or _Preferred
+substituent_. To narrow the series or the cells, click the filter icon.
 
 </TabItem>
 <TabItem value="transfer" label="SAR Transfer">
 
 The **SAR Transfer** tab finds pairs of cores whose potency trends run in parallel across the
-substituents they have both explored. Where the trends track, an optimization learned on one scaffold
-is expected to carry to the other, and the pairing proposes the analogs one core has never made.
+substituents both cores have. When the trends match, an optimization that worked on one core is likely
+to work on the other. The tab then proposes the analogs that one core hasn't made yet.
 
-![SAR transfer](img/sar_matrix_transfer.png)
+Each card on the left is a source core, grouped under its series. If a source transfers to several
+targets, use the dropdown above the grid to switch between them. Columns captioned **predicted** hold
+substituents only one of the two cores has.
 
-Each card on the left is one source core, gathered under the series it belongs to. A source that
-transfers to several targets is one card: the dropdown above the grid switches between its targets
-while the source stays fixed. The columns captioned **predicted** are the ones only one core has tried.
+![Switch a transfer to its other target](img/switch-a-transfer-to-its-other-target.gif)
 
 </TabItem>
 <TabItem value="makelist" label="Make list">
 
-Everything you collect lands in the **Make list** tab, each compound with its potency, the support
-behind it, and the series, core and substituent it came from.
+The **Make list** tab collects the compounds you want to make. Each compound comes with its potency, the
+support behind it, and the series, core, and substituent it came from.
 
-![Make list](img/sar_matrix_make_list.png)
+To add a compound, click the cart icon on the **Summary**, **SAR Matrix**, or **SAR Transfer** tab. On
+the **Summary**, **Add all _N_ to Make list** adds every analog worth making.
 
-**Status** and **Method** are separate columns: Status says whether the compound exists (Synthesized,
-Untested or Virtual), Method says where its number came from (measured or predicted). An untested
-compound is made and predicted at once.
+![Collect an analog into the Make list](img/collect-an-analog-into-the-make-list.gif)
 
-To collect, click the cart icon on either the **SAR Matrix** or the **SAR Transfer** tab and the
-selected cell is added.
+**Status** shows whether a compound exists: _Synthesized_, _Untested_, or _Virtual_. **Method** shows
+where its value comes from: _measured_ or _predicted_. An untested compound exists, but its value is
+predicted.
 
-**Add to workspace** hands out a copy to save, export or join, **Remove** drops the
-selected compound, and **Clear** empties the list.
+To use the list elsewhere, click **Add to workspace**. To remove the selected compound, click
+**Remove**. To empty the list, click **Clear**.
 
 </TabItem>
 </Tabs>
@@ -1084,10 +1112,19 @@ the molecules:
 4. In **Matrix columns**, select the R-group to compare across the matrix columns. The core and the
    other R-groups form the rows.
 
-The dialog lists only columns whose values have attachment points, such as `[*:1]`, `[1*]` or `R1` in
-a molfile. Each core forms its own series, and a blank R-group means hydrogen. Cells for
-combinations the R-groups can't form are crossed out. If two rows have the same core and R-groups,
-the matrix shows one of them, preferring the one with a measured value.
+The dialog lists only columns whose values have attachment points, such as `[*:1]`, `[1*]`, or `R1` in
+a molfile. Each core forms its own series, and a blank R-group means hydrogen. Cells for combinations
+the R-groups can't form are crossed out. If two rows have the same core and R-groups, the matrix shows
+one of them and prefers the one with a measured value.
+
+This works well for molecules built from parts, such as PROTACs. A PROTAC table can hold the warhead,
+the linker, and the E3 ligand as separate columns. The analysis then ranks all three in one fit, so a
+single run shows which part to change.
+
+![Warhead, linker and E3 ligand in one run](img/warhead-linker-and-e3-ligand-in-one-run.gif)
+
+To try both, open **Browse** > **Apps** > **Demo** > **Cheminformatics**. **SAR Matrix** fragments the
+molecules, and **PROTAC SAR Matrix** uses the three parts as columns.
 
 </details>
 
