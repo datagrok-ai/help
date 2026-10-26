@@ -188,6 +188,8 @@ After scoring, you can use several tools to explore the results:
 * **Pareto front** toggle highlights compounds where no property can improve without
   worsening another. For details, see the
   [Pareto front viewer](../../../../visualize/viewers/pareto-front-viewer.md).
+* **Coverage Score** toggle adds a column with the number of profile parameters that have
+  a value for each compound.
 
 ## See also
 
