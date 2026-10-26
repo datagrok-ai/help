@@ -111,7 +111,8 @@ The workflow is created from the initial configuration, as in the editor. If a
 step that is ready to run has validation errors, nothing runs. Otherwise every
 step that can run runs in order, as **Run ready steps** does. A step that waits
 for earlier steps is checked once they have run, and is skipped if it still has
-errors.
+errors. Each step runs only after its validators have checked its inputs, and
+validator `debounce` doesn't delay the run.
 
 The result holds:
 

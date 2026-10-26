@@ -456,6 +456,12 @@ When omitted or set to `0`, the validator runs immediately and is
 eligible for batched execution with other validators, which reduces
 per-validator scheduling overhead.
 
+The delay applies to edits only. While the workflow loads, runs steps, or adds
+and removes them, a debounced validator runs at once. Until a validator has
+checked the latest values, including the debounce wait and an async handler,
+the workflow is busy: **Run** is disabled and **Run ready steps** waits, so a
+step never runs on values its validators haven't checked.
+
 Validation controller has the following additional methods:
 
 #### `setValidation`
