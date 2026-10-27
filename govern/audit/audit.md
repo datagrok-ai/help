@@ -147,6 +147,12 @@ Each event is associated with a fixed type and the user session that triggered i
 * admin-session-started
 * admin-session-ended
 * dev-key-generated
+* email-confirmation-requested
+* email-confirmed
+* email-confirmation-failed
+* password-reset-requested
+* password-changed
+* password-change-failed
 * settings-changed
 * log-settings-changed
 * group-members-changed
@@ -158,8 +164,9 @@ Each event is associated with a fixed type and the user session that triggered i
 
 </details>
 
-The eleven from `server-started` to `log-settings-changed` are the platform's own security trail — who
-logged in and out, whose login failed and why, impersonation, admin sessions, developer keys, settings
+The seventeen from `server-started` to `log-settings-changed` are the platform's own security trail — who
+logged in and out, whose login failed and why, impersonation, admin sessions, developer keys, e-mail
+confirmations, password resets and changes, settings
 changes, and server starts. They are listed on the **System Activity** tab of [Usage Analysis](usage-analysis.md).
 
 The last six record who can reach what: group membership changes (made in Datagrok or synced from an
