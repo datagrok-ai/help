@@ -69,8 +69,8 @@ When saving a layout, the columns of interest are determined as follows:
 
 * For layouts that include non-grid viewers, all data columns used in these
   viewers become the columns of interest.
-* For layouts that include only a [grid](viewers/grid.md), there are no columns of interest, so
-  these layouts are suggested for any table.
+* For layouts that include only a [grid](viewers/grid.md), the grid's visible columns become the
+  columns of interest, so these layouts are suggested only for tables that have those columns.
 
 ## Viewer layout
 
