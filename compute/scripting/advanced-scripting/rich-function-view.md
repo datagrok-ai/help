@@ -598,6 +598,10 @@ To load a saved run, click <i class="fas fa-history"></i> **Open runs panel** on
 * A search, tag or author filter finds runs in the selected space and all its subspaces, and the list shows
   where each run is. **Clear filters** goes back to the folder. In a space, each run shows its author, and
   the author filter appears when the runs have more than one author.
+* **Favorites** next to the search shows only your favorite runs, in the selected space and all its
+  subspaces.
+* To add a space to your favorites, hover over it in the tree and click the <i class="fas fa-star"></i> star.
+  The star next to **Spaces** shows only your favorite spaces and the spaces above them.
 
 Double-click a run, or select it and click **Open**.
 
