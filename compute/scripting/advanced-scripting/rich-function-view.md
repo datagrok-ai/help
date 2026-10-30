@@ -37,6 +37,9 @@ building a multi-step workflow, wrap it in a one-step
 `compactView: true`: it opens in the same compact layout with the workflow
 features enabled.
 
+When a form doesn't fit your model, build the view in code instead: see
+[Custom function view](custom-function-view.md).
+
 :::caution Package dependency
 
 Ensure that the `Compute2` and `WebComponents` packages are installed
@@ -560,73 +563,72 @@ signature (it receives the whole pipeline state, not a single call). See the wor
 
 ## Review and compare historical script runs
 
-### Save and access run history
+### Save a run
 
-When enabled (by default), the server saves each script run.
-The saved script run includes both the input and output values of the run.
-To review the history of runs, click on the <i class="fas fa-history"></i>
-**History** button on the top panel.
+To keep a run, click <i class="fas fa-save"></i> **Save run** on the top panel. In the **Save run**
+dialog:
 
-The history panel appears on the right side. To load the run into the UI, click on the corresponding card.
-The historical runs are immutable. Thus, if you load a historical run,
-change input values, and then rerun it,
-the platform will create a new historical run.
+1. Pick where to save: **My runs** or a space, in the tree on the left or by opening its folders on the
+   right. You can't save to a space you can only view.
+2. The right side shows what's already there: the space's subspaces as folders, then everything else in
+   it, or your runs of this model in **My runs**. Click a run of this model in a space to overwrite it:
+   **Use this name** takes its name, so saving replaces that run.
+3. Enter a **Name**, and optionally a **Description** and **Tags**, then click **Save**.
 
-![history](../_pics/history.png)
+**My runs** lists all your runs of the model, including the ones you saved to spaces, and names can
+repeat there. The step runs a workflow saves with it aren't listed: open the workflow run instead. In a space, names are unique, ignoring case. If the space already has a run with the
+name, you're asked to replace it: the new run takes its place in the space, and the old run stays in
+its author's **My runs** and in other spaces. A name taken by another item in the space, such as a
+folder, can't be used.
 
+After saving, the view title shows the model and the run name. It adds **(edited)** when you change an
+input. A saved run's inputs and results never change: saving again creates a new run.
 
+### Open a run
 
-To disable history, add the following line to your code:
+To load a saved run, click <i class="fas fa-history"></i> **Open runs panel** on the top panel. The
+**Runs** panel works like a file browser:
 
-```javascript title="Your script header"
-//meta.features: {"history": false}
-```
+* The tree shows **My runs** and the spaces. The number next to each space is how many runs of the model
+  are in it and in all its subspaces, each run counted once.
+* Selecting a space lists its subspaces as folders, then its own runs. Double-click a folder to open it, and
+  `..` or Backspace to go up. The path above the list leads back to any level.
+* A space linked into another space shows under both, with a <i class="fas fa-link"></i> link mark.
+  Going up returns the way you came.
+* A search, tag or author filter finds runs in the selected space and all its subspaces, and the list shows
+  where each run is. **Clear filters** goes back to the folder. In a space, each run shows its author, and
+  the author filter appears when the runs have more than one author.
 
-### Highlight key parameters in history cards
+Double-click a run, or select it and click **Open**.
 
-By default, history cards list all inputs and outputs in declaration order. Use `meta.mainParams`
-to pin a short list of names that should appear prominently on each card, making it easier to
-distinguish runs at a glance.
+In the panel, you can also:
 
-```javascript title="Your script header"
-//meta.mainParams: ["initTemp", "ambTemp", "timeToCool"]
-```
+* Click the <i class="fas fa-star"></i> star next to a run to add it to your favorites.
+* **Edit details**: change the name, description, and tags of a run you saved, or of a run in a space
+  you can edit. The run keeps its author and save date, and the details show who edited it last. Edit one
+  run at a time.
+* **Add to space...**: add a run from **My runs** to a space. The space links the same run, and it
+  stays in **My runs**. Ctrl+click to add several runs at once: each keeps its name, a run already in the
+  space is skipped, and a run with the same name as one in the space replaces it after a confirmation. A run
+  can't be added when the space has a folder or file with its name, or when another selected run has the same
+  name.
+* **Delete** a run in **My runs**, or **Remove from space** in a space you can edit, after a
+  confirmation. Ctrl+click to select several runs first. Runs found by a filter are removed from the space
+  each is in, so the selected runs have to be in the same space. A run deleted from **My runs** can't be restored there, and it stays in
+  the spaces it was added to. A run removed from a space doesn't change.
 
-Names refer to the script's `//input:` and `//output:` parameters. Other parameters are still
-saved and shown in the card details.
+To browse runs of all models, open the **Model Hub** and select **Tools** > **Browse Runs...**. It starts
+with **All models**, which lists the runs of every model in the Model Hub and shows each run's model. Pick a
+model to see only its runs. **Compare** takes runs of one model. To compare runs of different models, add
+them in the [run comparison](../../run-comparison.md) view. Ctrl+click several runs
+and click **Open** to open each of them in its own view. In the **Runs** panel of a model, **Open** loads one
+run into the view, so it's available only while one run is selected.
 
 ### Compare historical runs
 
-You may compare historical runs using history panel. Select the historical runs of the interest
-and click <i class="fas fa-exchange"></i> icon to open the comparison view.
-
-Datagrok provides defauls set of viewers to compare all kinds of the output data.
-
-:::tip
-
-Click on the column header with table data (e.g. `Temp. vs time`) to see convenient comparison chart.
-
-:::
-
-
-```mdx-code-block
-<Tabs>
-<TabItem value="result" label="Comparison">
-```
-
-![comparsion-view](../_pics/comparsion-view.png)
-
-```mdx-code-block
-</TabItem>
-<TabItem value="short" label="How to compare">
-```
-
-![call-compare](../_pics/call-compare.png)
-
-```mdx-code-block
-</TabItem>
-</Tabs>
-```
+To compare saved runs, Ctrl+click them in the **Runs** panel, then click **Compare**. They open in a new
+[run comparison](../../run-comparison.md) view. To add the current, unsaved state instead, click
+<i class="fas fa-exchange"></i> **Add the current state to a comparison** on the top panel.
 
 ## Model parameters optimization
 

@@ -256,8 +256,8 @@ With `compactView: true`, a static workflow whose only step is a single
 [script node](#script-nodes) (directly, or through a chain of one-step
 static workflows such as a [reference](#reusing-workflows)) opens in a
 compact view: no step tree, no
-Back/Next navigation, and one ribbon with save, share, history, help and
-export. Links, validators, actions, restrictions and run history all work as
+Back/Next navigation, and one ribbon with **Save run**, the **Runs** panel,
+help and export. Links, validators, actions, restrictions and run history all work as
 in any workflow. Use it to attach workflow logic to a single script while
 keeping the look of a
 [Rich Function View](../scripting/advanced-scripting/rich-function-view.md).
@@ -429,11 +429,11 @@ from mutating the supplied viewer.
 _Optional_
 
 A per-step flag on a FuncCall step (default `false`). When `true`, the
-step's review panel shows a "Save this step to history" icon and a
-history toggle. The history panel lists only the runs explicitly saved
-for this step (not every past run of the function). Picking a run
-replaces the step's FuncCall with the chosen run, leaving the rest of the
-workflow unchanged. This is independent of the workflow-level
+step's review panel shows the **Save run** icon and the **Runs** panel
+(see [Save a run](../scripting/advanced-scripting/rich-function-view.md#save-a-run)).
+The panel lists only the runs saved from this step (not every past run of
+the function). Opening a run replaces the step's FuncCall with the chosen
+run, leaving the rest of the workflow unchanged. This is independent of the workflow-level
 `disableHistory`.
 
 ### Additional stepTypes items options

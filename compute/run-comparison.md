@@ -10,8 +10,9 @@ keywords:
 ---
 
 Run comparison puts the results of several model runs side by side. Open the **Model Hub**,
-then select **Tools** > **Compare Runs...** on the ribbon. Pick a model, add its runs from
-the history list, and add workspace tables, such as measured data, if you need them. The
+then select **Tools** > **Compare Runs...** on the ribbon. Pick a model, or **All models** to see
+the runs of every model, add runs from My runs or a space, and add workspace tables, such as
+measured data, if you need them. Runs of different models can be compared together. The
 tool matches the values of all runs by name, and you pick what to chart.
 
 ## Comparing a value
