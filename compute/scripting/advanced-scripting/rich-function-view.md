@@ -630,9 +630,11 @@ run into the view, so it's available only while one run is selected.
 
 ### Compare historical runs
 
-To compare saved runs, Ctrl+click them in the **Runs** panel, then click **Compare**. They open in a new
-[run comparison](../../run-comparison.md) view. To add the current, unsaved state instead, click
-<i class="fas fa-exchange"></i> **Add the current state to a comparison** on the top panel.
+To compare saved runs, Ctrl+click them in the **Runs** panel, then click **Compare**. To add the current,
+unsaved state instead, click <i class="fas fa-exchange"></i> **Add the current state to a comparison** on the
+top panel. Both open the same dialog, where you can change the name of each run for this comparison. When other
+comparisons are open, the dialog also lets you pick one or start a new [run comparison](../../run-comparison.md).
+The dialog warns about outdated outputs of the current state. Saving the state later gives it its final name.
 
 ## Model parameters optimization
 
