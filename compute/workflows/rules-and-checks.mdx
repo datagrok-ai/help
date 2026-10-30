@@ -230,10 +230,6 @@ A `check` link takes these fields:
 | `when` | A formula over `value`, and `$table` for the `table` option |
 | `not`, `base`, `nodePriority` | The [common options](./link-types#common-options) |
 
-Expression checks (`validator` expressions and `visible`) and the
-`validators` an annotation declares need platform 1.28.0 or later, and are
-skipped on older clients.
-
 ## Rules
 
 ### Anatomy
@@ -800,8 +796,7 @@ function's form does: [defaults](../../datagrok/concepts/functions/func-params-a
 [choices](../../datagrok/concepts/functions/func-params-annotation.md#choices)
 and [lookup tables](../../datagrok/concepts/functions/func-params-annotation.md#lookup-tables)
 work without any links in the config, also in runs with no form on screen.
-Validation options are covered by [Checks](#checks). Computed defaults,
-evaluated choices and lookups need platform 1.28.0 or later.
+Validation options are covered by [Checks](#checks).
 
 A `choices` annotation, a literal list or one the platform evaluates from
 a function, a query or a file, makes the input a dropdown and gives its
@@ -1079,8 +1074,6 @@ matched values of a `from` query. Paths walk into platform objects, so
 `col.name`, `col.type` and `col.semType` are valid. An alias named `true`,
 `false` or `null` is read as `var("null")`. A kind is a platform column
 kind, a column type or a semantic type, as in the `type` check option.
-`script` and `scriptVerdict` need platform 1.28.0 or later.
-
 `when` follows JSON Logic truthiness, where an empty list is false, and a
 `when` that is omitted or `null` is always on.
 
@@ -1115,8 +1108,8 @@ the value of an input with no field, no longer marked. Without
 
 | Source | Caching | Value |
 |---|---|---|
-| `validators` | None | The verdicts of the validator functions, each called with the value of `input` as its single argument, following the [validator contract](../../datagrok/concepts/functions/func-params-annotation.md#validation): `null` or `true` pass, a string is the message, `false` fails with a message naming the function, and a thrown error becomes a warning. Without `names`, the validators the input's annotation declares run (platform 1.28.0 or later).<br/>*e.g.* `validators(input, names: [...])` |
-| `choices` | Until an `@` parameter changes | `{items, values, inList, row, rowErrors}`: the list the input's `choices` annotation evaluates to, the value of each item, whether the current value is in the list, the lookup row of the current value converted to the input types, and the cells that don't fit (platform 1.28.0 or later).<br/>*e.g.* `choices(input)` |
+| `validators` | None | The verdicts of the validator functions, each called with the value of `input` as its single argument, following the [validator contract](../../datagrok/concepts/functions/func-params-annotation.md#validation): `null` or `true` pass, a string is the message, `false` fails with a message naming the function, and a thrown error becomes a warning. Without `names`, the validators the input's annotation declares run.<br/>*e.g.* `validators(input, names: [...])` |
+| `choices` | Until an `@` parameter changes | `{items, values, inList, row, rowErrors}`: the list the input's `choices` annotation evaluates to, the value of each item, whether the current value is in the list, the lookup row of the current value converted to the input types, and the cells that don't fit.<br/>*e.g.* `choices(input)` |
 | `func` | Once if no argument reads an input, directly or through a source | The result of a platform function or package query, with each parameter set to its formula. The core `OpenFile` function with a literal `fullPath` loads a file-share table: `func("OpenFile", fullPath: "System:AppData/Pkg/presets.csv")`.<br/>*e.g.* `func("Pkg:Function", param: <formula>, ...)` |
 | `query` | Once if no argument reads an input, directly or through a source | The dataframe the SQL returns on the connection. `@name` binds the argument of that name. An argument the SQL does not declare with `--input:` gets its type from the value (`int`, `double`, `bool`, `dataframe`, `datetime`, otherwise `string`). Declare the ones that need another type.<br/>*e.g.* ``query("Pkg:Conn", `select ...`, name: <formula>, ...)`` |
 | `file` | Once | The table at a file-share path or a URL.<br/>*e.g.* `file("System:AppData/Pkg/presets.csv")` |
