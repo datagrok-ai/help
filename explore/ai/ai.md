@@ -295,6 +295,21 @@ container receives these values when it starts:
 To pin model versions, add `opusModel`, `sonnetModel`, or `haikuModel`. The credentials stay in a
 separate process inside the container that the assistant itself can't read.
 
+### Monitor AI usage
+
+Each completed AI turn is logged as a usage event with its user, feature, model, tokens, cost, and duration.
+To see the totals, go to **Usage Analysis** > **AI Usage**. The tab shows tokens over time and totals by user,
+group, and feature, for the date and groups you select. A user in several groups counts in each group, so group
+totals can add up to more than the overall total. Cost is empty for models whose price the AI runtime doesn't know.
+
+The text of AI chats isn't logged by default. To log it, an administrator turns on any of these **Grokky** package
+settings: **logPrompts**, **logResponses**, and **logToolCalls**. While any of them is on, the AI panel tells users
+that the content of their chats is logged. Administrators read the logged text under **AI Usage** > **Content**.
+
+The garbage collector keeps the logged text for 30 days (`aiContentRetention`) and usage events for 183 days
+(`logUsageRetention`). To change these periods, go to **Browse** > **Platform** > **Settings** > **Server** >
+**Admin**, and open the garbage collector settings.
+
 ---
 
 ## Examples
