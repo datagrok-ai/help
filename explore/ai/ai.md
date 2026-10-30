@@ -280,9 +280,7 @@ own governance and billing.
 
 ### Configure AI providers
 
-AI features use two provider settings. An administrator configures both.
-
-**Assistant provider.** The assistant runs in the `claude-runtime` container of the
+An administrator configures the assistant provider. The assistant runs in the `claude-runtime` container of the
 [Grokky](../../datagrok/plugins.md) plugin. To choose the provider, go to **Browse** >
 **Platform** > **Dockers**, right-click the container, and select **Credentials...**. The
 container receives these values when it starts:
@@ -296,21 +294,6 @@ container receives these values when it starts:
 
 To pin model versions, add `opusModel`, `sonnetModel`, or `haikuModel`. The credentials stay in a
 separate process inside the container that the assistant itself can't read.
-
-**Platform provider.** Entity indexing, semantic search, and plugins that call the platform AI
-API use the provider set in **Browse** >
-**Platform** > **Settings** > **Server** > **Admin** > **AI Providers**:
-
-| Setting              | Description                                                                                          |
-|----------------------|------------------------------------------------------------------------------------------------------|
-| **Provider**         | **OpenAI** (default), **Azure** (Azure OpenAI), or **Anthropic**                                      |
-| **Endpoint URL**     | For example, `https://api.openai.com` or `https://<resource>.openai.azure.com`                        |
-| **API key / Token**  | Stored encrypted and not shown after saving                                                            |
-| **Index entities**   | Generate embeddings for tables, columns, connections, and projects to improve search and suggestions. On by default |
-| **Indexing model**   | The embedding model, `text-embedding-3-small` by default. For Azure, a deployment name                |
-
-For Azure, also set the **Azure API mode** and the **Authentication header**, and map model names
-to deployment names in **Model to deployment mapping**.
 
 ---
 
