@@ -1,8 +1,7 @@
 # Contract for gitops/envs/<env>.yaml. The defaults are the production
-# profile: DEV, TEST and PROD use the same values, and the env files differ
-# only in name, hostname and version.
+# profile; an env file usually sets only name, hostname and version.
 
-env: ""                       # REQUIRED: dev | test | prod
+env: ""                       # REQUIRED: short name, feeds every resource name
 hostname: ""                  # REQUIRED: public hostname of this environment
 
 # Filled in by the bootstrap chart from Terraform outputs. Do not set by hand.

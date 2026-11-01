@@ -2,7 +2,7 @@
 title: "GitOps on EKS with ArgoCD and Crossplane"
 sidebar_label: "ArgoCD and Crossplane (GitOps)"
 sidebar_position: 6
-description: Run Datagrok environments on EKS from a Git repository. Terraform builds the cluster and installs ArgoCD, and ArgoCD creates RDS, S3, and IAM through Crossplane and deploys the Helm chart.
+description: Run Datagrok on EKS from a Git repository. Terraform builds the cluster and installs ArgoCD, and ArgoCD creates RDS, S3, and IAM through Crossplane and deploys the Helm chart.
 keywords:
   - gitops
   - argocd
@@ -13,8 +13,7 @@ keywords:
   - infrastructure as code
 ---
 
-This page describes how to run one or more Datagrok environments (for example DEV, TEST, and PROD) on
-Amazon EKS, with all infrastructure and the application described in a Git repository and kept in
+This page describes how to run Datagrok on Amazon EKS, with all infrastructure and the application described in a Git repository and kept in
 sync by ArgoCD. It complements the other paths in [Deployment](../deploy.md): use it when you want
 every change, to the application or to AWS, to be a reviewed pull request.
 
@@ -53,17 +52,19 @@ pattern runs Datagrok's own hosted instances.
 terraform/                    # bootstrap, one state per environment
   main.tf  variables.tf  outputs.tf
   argocd-values.yaml          # ArgoCD settings, including the health check for the environment
-  env/dev.tfvars
+  env/main.tfvars
 gitops/
   bootstrap/                  # app of apps, rendered with the facts Terraform passes in
   platform/                   # Crossplane providers, functions, XRD, and composition
   charts/datagrok-env/        # one environment: AWS resources, secrets, Datagrok chart
   envs/
-    dev.yaml  test.yaml  prod.yaml
+    main.yaml                 # one file per environment
 ```
 
-The three `envs/*.yaml` files are the only per-environment configuration. Everything else is shared,
-so DEV, TEST, and PROD get identical infrastructure.
+The templates define one environment, `main`. Its `envs/main.yaml` file is the only
+environment-specific configuration. To run more environments, for example a staging copy, see
+[Add an environment](#add-an-environment). Everything else is shared, so every environment gets
+identical infrastructure.
 
 ## How the layers connect
 
@@ -117,7 +118,7 @@ resource "helm_release" "root" {
 ```
 
 The Crossplane role is limited to the resources of its own environment: the `datagrok-<env>` RDS
-instance, bucket, log group, and application role. A provider in DEV can't change PROD.
+instance, bucket, log group, and application role. A provider in one environment can't change another.
 
 ## Crossplane composition
 
@@ -143,17 +144,17 @@ db:
 
 ## Environment files
 
-An environment file sets the name, hostname, and version. A PROD release is a pull request that
-changes two lines:
+An environment file sets the name, hostname, and version. A release is a pull request that changes
+two lines:
 
-```yaml title="gitops/envs/prod.yaml"
-env: prod
+```yaml title="gitops/envs/main.yaml"
+env: main
 hostname: datagrok.example.com
 datagrok:
   chartVersion: 1.27.6-helm
   imageTag: 1.27.6
 db:
-  host: datagrok-prod.abcdefghijkl.us-east-1.rds.amazonaws.com
+  host: datagrok-main.abcdefghijkl.us-east-1.rds.amazonaws.com
 ```
 
 Any value of the Datagrok Helm chart can be overridden per environment under `appValues`. See
@@ -167,15 +168,15 @@ Any value of the Datagrok Helm chart can be overridden per environment under `ap
 
    ```bash
    cd terraform
-   terraform init -backend-config="bucket=<state-bucket>" -backend-config="key=datagrok/dev.tfstate" \
+   terraform init -backend-config="bucket=<state-bucket>" -backend-config="key=datagrok/main.tfstate" \
      -backend-config="region=us-east-1"
-   terraform apply -var-file=env/dev.tfvars
+   terraform apply -var-file=env/main.tfvars
    ```
 
 1. Give ArgoCD read access to the config repo:
 
    ```bash
-   aws eks update-kubeconfig --name datagrok-dev --region us-east-1
+   aws eks update-kubeconfig --name datagrok-main --region us-east-1
    kubectl -n argocd create secret generic config-repo \
      --from-literal=type=git --from-literal=url=git@github.com:acme/datagrok-config.git \
      --from-file=sshPrivateKey=./deploy-key
@@ -201,9 +202,8 @@ The endpoint is set by hand only once per environment. It doesn't change afterwa
 |------|-----|
 | Release to an environment | Pull request that changes `chartVersion` and `imageTag` in `envs/<env>.yaml` |
 | Roll back | Revert the pull request |
-| Refresh DEV on `bleeding-edge` | A scheduled job resolves the tag to its digest and commits it to `datagrok.imageDigest` in `envs/dev.yaml` |
-| Change RDS or S3 settings | Pull request to the composition or the environment file. Merge for DEV, then TEST, then PROD |
-| Add an environment | New `tfvars` file, `terraform apply`, and a new `envs/<env>.yaml` |
+| Follow `bleeding-edge` | Set `imageTag: bleeding-edge`. A scheduled job resolves the tag to its digest and commits it to `datagrok.imageDigest` |
+| Change RDS or S3 settings | Pull request to the composition or the environment file |
 | Preview a change | `terraform plan` for the cluster. `argocd app diff` and `crossplane render` for Applications and AWS resources |
 
 To resolve the current `bleeding-edge` digest for the refresh job:
@@ -222,9 +222,20 @@ not whether AWS modifies, restarts, or replaces a resource. The templates protec
 * The bucket isn't force-destroyed, so a non-empty bucket can't be deleted.
 * Generated passwords are created once and kept in Secrets Manager under `datagrok/<env>`. Neither
   ArgoCD nor a resync regenerates them.
-* Provider and chart versions are pinned. Upgrade them in DEV first.
-* Apply every change to DEV, then TEST, then PROD. Because the environments are identical, a change
-  that worked twice is safe for PROD.
+* Provider and chart versions are pinned. If you run a second environment, upgrade it first.
+
+## Add an environment
+
+Each environment gets its own cluster, ArgoCD, and AWS resources, built from the same templates:
+
+1. Copy `terraform/env/main.tfvars` to `terraform/env/<env>.tfvars`. Set `env` and a VPC CIDR that
+   doesn't overlap with other environments.
+1. Copy `gitops/envs/main.yaml` to `gitops/envs/<env>.yaml`. Set `env`, `hostname`, and the version.
+1. Run the [deploy steps](#deploy-an-environment) with the new file and a new state key, for example
+   `key=datagrok/<env>.tfstate`.
+
+Changes to the composition or the environment chart reach every environment. To try a change on one
+environment first, point its root Application at a branch with `config_repo_revision`.
 
 ## Troubleshooting
 

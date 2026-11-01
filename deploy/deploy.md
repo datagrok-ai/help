@@ -61,7 +61,7 @@ infrastructure-isolated installs.
 [Terraform on AWS](aws/deploy-amazon-terraform.md) and [Terraform on GCP](GCP/deploy-gcp-gke-terraform.md)
 are available for teams that integrate Datagrok into existing infrastructure-as-code pipelines.
 
-[GitOps with ArgoCD and Crossplane](k8s/deploy-argocd-crossplane.md) runs DEV, TEST, and PROD on EKS from a
+[GitOps with ArgoCD and Crossplane](k8s/deploy-argocd-crossplane.md) runs Datagrok on EKS from a
 Git repository: Terraform builds the cluster and installs ArgoCD, which creates RDS, S3, and IAM
 through Crossplane and deploys the Helm chart.
 

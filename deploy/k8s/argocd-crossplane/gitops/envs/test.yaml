@@ -1,8 +1,0 @@
-# TEST runs the release candidate before PROD gets it.
-env: test
-hostname: test.datagrok.example.com
-datagrok:
-  chartVersion: 1.27.6-helm
-  imageTag: 1.27.6
-db:
-  host: ""            # after the first sync: kubectl get dge datagrok-test

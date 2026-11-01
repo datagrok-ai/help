@@ -1,4 +1,5 @@
-# Bootstrap layer for one Datagrok environment (dev, test or prod).
+# Bootstrap layer for one Datagrok environment. Run it again with another
+# tfvars file and state key for each additional environment.
 #
 # Terraform owns only what must exist before Kubernetes can manage the rest:
 # the network, the EKS cluster, the IAM roles of the in-cluster controllers,
@@ -6,8 +7,8 @@
 # the Datagrok chart) is synced by ArgoCD from the config repo.
 #
 # Run once per environment with its own state:
-#   terraform init -backend-config=env/dev.backend.hcl
-#   terraform apply -var-file=env/dev.tfvars
+#   terraform init -backend-config=env/main.backend.hcl
+#   terraform apply -var-file=env/main.tfvars
 
 terraform {
   required_version = ">= 1.6"
@@ -109,7 +110,7 @@ data "aws_iam_policy_document" "crossplane_trust" {
 }
 
 # Scoped to this environment's resources: the datagrok-<env> RDS instance,
-# bucket, log group and app role. A provider in DEV cannot touch PROD.
+# bucket, log group and app role. A provider in one environment cannot touch another.
 data "aws_iam_policy_document" "crossplane" {
   statement {
     sid       = "Rds"

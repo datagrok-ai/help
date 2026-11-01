@@ -1,5 +1,5 @@
 variable "env" {
-  description = "Environment name: dev, test or prod. Feeds every resource name (datagrok-<env>)."
+  description = "Short environment name, e.g. main. Feeds every resource name (datagrok-<env>)."
   type        = string
 }
 
