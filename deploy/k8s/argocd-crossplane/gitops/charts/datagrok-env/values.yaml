@@ -1,0 +1,43 @@
+# Contract for gitops/envs/<env>.yaml. The defaults are the production
+# profile; an env file usually sets only name, hostname and version.
+
+env: ""                       # REQUIRED: short name, feeds every resource name
+hostname: ""                  # REQUIRED: public hostname of this environment
+
+# Filled in by the bootstrap chart from Terraform outputs. Do not set by hand.
+aws: {}
+
+datagrok:
+  chartVersion: 1.27.6-helm
+  imageTag: 1.27.6
+  # Optional sha256 digest. Set it to pin a mutable tag such as bleeding-edge
+  # to one build; a new digest in Git is a normal, revertible rollout.
+  imageDigest: ""
+
+db:
+  # RDS address, known after the first sync: kubectl get dge. The Datagrok
+  # chart is not rendered until it is set.
+  host: ""
+  instanceClass: db.m7g.large
+  engineVersion: "17.9"
+  allocatedStorage: 100
+  maxAllocatedStorage: 500
+  multiAz: true
+  deletionProtection: true
+  skipFinalSnapshot: false
+  backupRetentionDays: 35
+
+storage:
+  noncurrentVersionDays: 30
+  forceDestroy: false
+
+logging:
+  retentionDays: 365
+
+ingress:
+  # Empty: the ALB controller finds an issued ACM certificate matching the hostname.
+  certificateArn: ""
+
+# Deep-merged over the computed Datagrok chart values; any chart value can be
+# overridden per environment here.
+appValues: {}

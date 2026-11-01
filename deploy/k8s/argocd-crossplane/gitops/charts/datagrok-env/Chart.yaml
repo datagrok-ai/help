@@ -1,0 +1,4 @@
+apiVersion: v2
+name: datagrok-env
+description: One Datagrok environment - AWS resources through Crossplane, secrets, and the Datagrok chart
+version: 1.0.0

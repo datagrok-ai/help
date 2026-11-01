@@ -23,6 +23,9 @@ template — it provisions the cluster, RDS, S3, and IAM, and installs this char
 automatically. This page covers manual Helm installs for any Kubernetes cluster
 (on-prem, GKE, AKS, kind, k3s, MicroK8s).
 
+To manage several environments from Git, see
+[GitOps on EKS with ArgoCD and Crossplane](deploy-argocd-crossplane.md).
+
 :::
 
 ## Prerequisites

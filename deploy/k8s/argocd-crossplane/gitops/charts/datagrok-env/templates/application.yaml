@@ -1,0 +1,83 @@
+{{- if .Values.db.host }}
+{{- $name := include "env.name" . }}
+# Creates datagrok_admin for RDS IAM auth. Runs after the AWS resources are
+# Ready and before the Datagrok chart; safe to re-run on every sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: datagrok-db-bootstrap
+  namespace: {{ $name }}
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: bootstrap
+        image: postgres:17-alpine
+        env:
+        - {name: PGHOST, value: {{ .Values.db.host }}}
+        - {name: PGUSER, value: postgres}
+        - {name: PGDATABASE, value: postgres}
+        - {name: PGSSLMODE, value: require}
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef: {name: datagrok-seed, key: pgAdminPassword}
+        command: ["/bin/sh", "-ec"]
+        args:
+        - |
+          until pg_isready -t 5 >/dev/null 2>&1; do sleep 10; done
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          SELECT 'CREATE USER datagrok_admin' WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'datagrok_admin')\gexec
+          GRANT rds_superuser TO datagrok_admin;
+          ALTER ROLE datagrok_admin CREATEDB CREATEROLE;
+          GRANT rds_iam TO datagrok_admin;
+          SELECT 'GRANT datagrok TO datagrok_admin' WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'datagrok')\gexec
+          SQL
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $name }}-app
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: registry-1.docker.io/datagrok
+    chart: datagrok
+    targetRevision: {{ .Values.datagrok.chartVersion }}
+    helm:
+      releaseName: datagrok
+      valuesObject:
+        {{- $computed := include "env.computedAppValues" . | fromYaml }}
+        {{- toYaml (mustMergeOverwrite $computed (deepCopy .Values.appValues)) | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $name }}
+  ignoreDifferences:
+  - group: networking.k8s.io
+    kind: Ingress
+    jsonPointers: [/status]
+  - group: external-secrets.io
+    kind: ExternalSecret
+    jqPathExpressions:
+    - '.spec.data[].remoteRef.conversionStrategy'
+    - '.spec.data[].remoteRef.decodingStrategy'
+    - '.spec.data[].remoteRef.metadataPolicy'
+    - '.spec.data[].remoteRef.nullBytePolicy'
+    - '.spec.target.deletionPolicy'
+  syncPolicy:
+    automated:
+      # The chart's ExternalSecret creates a tracked Secret that pruning would delete.
+      prune: false
+      selfHeal: true
+    syncOptions: [ServerSideApply=true, RespectIgnoreDifferences=true]
+{{- end }}

@@ -1,0 +1,52 @@
+{{- $name := include "env.name" . }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+---
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: aws-secrets-manager
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: {{ .Values.aws.region }}
+---
+# The AWS resources. ArgoCD waits for this to report Ready (health check in
+# terraform/argocd-values.yaml) before it moves on to the later waves.
+apiVersion: platform.datagrok.ai/v1alpha1
+kind: DatagrokEnvironment
+metadata:
+  name: {{ $name }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  env: {{ .Values.env }}
+  aws:
+    accountId: {{ .Values.aws.accountId | quote }}
+    region: {{ .Values.aws.region }}
+    vpcId: {{ .Values.aws.vpcId }}
+    dbSubnetGroup: {{ .Values.aws.dbSubnetGroup }}
+    nodeSecurityGroupId: {{ .Values.aws.nodeSecurityGroupId }}
+    oidcProvider: {{ .Values.aws.oidcProvider }}
+  db:
+    instanceClass: {{ .Values.db.instanceClass }}
+    engineVersion: {{ .Values.db.engineVersion | quote }}
+    allocatedStorage: {{ .Values.db.allocatedStorage }}
+    maxAllocatedStorage: {{ .Values.db.maxAllocatedStorage }}
+    multiAz: {{ .Values.db.multiAz }}
+    deletionProtection: {{ .Values.db.deletionProtection }}
+    skipFinalSnapshot: {{ .Values.db.skipFinalSnapshot }}
+    backupRetentionDays: {{ .Values.db.backupRetentionDays }}
+  storage:
+    {{- toYaml .Values.storage | nindent 4 }}
+  logging:
+    {{- toYaml .Values.logging | nindent 4 }}

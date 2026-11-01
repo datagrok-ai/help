@@ -1,0 +1,280 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: datagrokenvironment-aws
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  compositeTypeRef:
+    apiVersion: platform.datagrok.ai/v1alpha1
+    kind: DatagrokEnvironment
+  mode: Pipeline
+  pipeline:
+  - step: render
+    functionRef:
+      name: function-go-templating
+    input:
+      apiVersion: gotemplating.fn.crossplane.io/v1beta1
+      kind: GoTemplate
+      source: Inline
+      inline:
+        template: |
+          {{- $spec := .observed.composite.resource.spec }}
+          {{- $env := $spec.env }}
+          {{- $name := printf "datagrok-%s" $env }}
+          {{- $aws := $spec.aws }}
+          {{- $region := $aws.region }}
+          {{- $account := $aws.accountId }}
+          {{- $db := $spec.db }}
+          {{- $storage := $spec.storage }}
+          {{- $tags := dict "Service" "Datagrok" "Environment" $env "ManagedBy" "crossplane" }}
+          {{/* The RDS resource id is known only after the instance exists, so the
+               rds-db:connect statement appears one reconcile after RDS does. */}}
+          {{- $observed := .observed.resources | default dict }}
+          {{- $dbiResourceId := "" }}
+          {{- $dbEndpoint := "" }}
+          {{- $dbStatus := "" }}
+          {{- if hasKey $observed "rds" }}
+          {{- $rds := (index $observed "rds").resource }}
+          {{- if $rds.status }}{{- if $rds.status.atProvider }}
+          {{- $dbiResourceId = $rds.status.atProvider.resourceId | default "" }}
+          {{- $dbEndpoint = $rds.status.atProvider.address | default "" }}
+          {{- $dbStatus = $rds.status.atProvider.status | default "" }}
+          {{- end }}{{- end }}
+          {{- end }}
+          ---
+          apiVersion: ec2.aws.upbound.io/v1beta1
+          kind: SecurityGroup
+          metadata:
+            name: {{ $name }}-db
+            annotations:
+              {{ setResourceNameAnnotation "db-sg" }}
+          spec:
+            forProvider:
+              region: {{ $region }}
+              vpcId: {{ $aws.vpcId }}
+              name: {{ $name }}-db
+              description: PostgreSQL access from the {{ $env }} cluster
+              tags: {{ toYaml $tags | nindent 16 }}
+          ---
+          apiVersion: ec2.aws.upbound.io/v1beta1
+          kind: SecurityGroupRule
+          metadata:
+            name: {{ $name }}-db-5432
+            annotations:
+              {{ setResourceNameAnnotation "db-sg-rule" }}
+          spec:
+            forProvider:
+              region: {{ $region }}
+              type: ingress
+              protocol: tcp
+              fromPort: 5432
+              toPort: 5432
+              sourceSecurityGroupId: {{ $aws.nodeSecurityGroupId }}
+              securityGroupIdRef:
+                name: {{ $name }}-db
+          ---
+          apiVersion: rds.aws.upbound.io/v1beta3
+          kind: Instance
+          metadata:
+            name: {{ $name }}
+            annotations:
+              {{ setResourceNameAnnotation "rds" }}
+          spec:
+            forProvider:
+              region: {{ $region }}
+              identifier: {{ $name }}
+              engine: postgres
+              engineVersion: {{ $db.engineVersion | quote }}
+              instanceClass: {{ $db.instanceClass }}
+              username: postgres
+              passwordSecretRef:
+                namespace: {{ $name }}
+                name: datagrok-seed
+                key: pgAdminPassword
+              dbSubnetGroupName: {{ $aws.dbSubnetGroup }}
+              vpcSecurityGroupIdRefs:
+              - name: {{ $name }}-db
+              storageType: gp3
+              allocatedStorage: {{ $db.allocatedStorage }}
+              maxAllocatedStorage: {{ $db.maxAllocatedStorage }}
+              multiAz: {{ $db.multiAz }}
+              publiclyAccessible: false
+              storageEncrypted: true
+              iamDatabaseAuthenticationEnabled: true
+              backupRetentionPeriod: {{ $db.backupRetentionDays }}
+              autoMinorVersionUpgrade: true
+              copyTagsToSnapshot: true
+              applyImmediately: false
+              deletionProtection: {{ $db.deletionProtection }}
+              skipFinalSnapshot: {{ $db.skipFinalSnapshot }}
+              {{- if not $db.skipFinalSnapshot }}
+              finalSnapshotIdentifier: {{ $name }}-final
+              {{- end }}
+              tags: {{ toYaml $tags | nindent 16 }}
+          ---
+          apiVersion: s3.aws.upbound.io/v1beta1
+          kind: Bucket
+          metadata:
+            name: {{ $name }}
+            annotations:
+              {{ setResourceNameAnnotation "bucket" }}
+              crossplane.io/external-name: {{ $name }}
+          spec:
+            forProvider:
+              region: {{ $region }}
+              forceDestroy: {{ $storage.forceDestroy }}
+              tags: {{ toYaml $tags | nindent 16 }}
+          ---
+          apiVersion: s3.aws.upbound.io/v1beta1
+          kind: BucketVersioning
+          metadata:
+            name: {{ $name }}
+            annotations:
+              {{ setResourceNameAnnotation "bucket-versioning" }}
+          spec:
+            forProvider:
+              region: {{ $region }}
+              bucketRef:
+                name: {{ $name }}
+              versioningConfiguration:
+              - status: Enabled
+          ---
+          apiVersion: s3.aws.upbound.io/v1beta1
+          kind: BucketLifecycleConfiguration
+          metadata:
+            name: {{ $name }}
+            annotations:
+              {{ setResourceNameAnnotation "bucket-lifecycle" }}
+          spec:
+            forProvider:
+              region: {{ $region }}
+              bucketRef:
+                name: {{ $name }}
+              rule:
+              - id: noncurrent-expiry
+                status: Enabled
+                filter:
+                - prefix: ""
+                noncurrentVersionExpiration:
+                - noncurrentDays: {{ $storage.noncurrentVersionDays }}
+                abortIncompleteMultipartUpload:
+                - daysAfterInitiation: 7
+          ---
+          apiVersion: s3.aws.upbound.io/v1beta1
+          kind: BucketServerSideEncryptionConfiguration
+          metadata:
+            name: {{ $name }}
+            annotations:
+              {{ setResourceNameAnnotation "bucket-sse" }}
+          spec:
+            # Create and observe only: GetBucketEncryption returns a server-computed
+            # field the provider cannot reconcile, and full management loops on it.
+            managementPolicies: ["Observe", "Create", "Delete"]
+            forProvider:
+              region: {{ $region }}
+              bucketRef:
+                name: {{ $name }}
+              rule:
+              - applyServerSideEncryptionByDefault:
+                - sseAlgorithm: AES256
+          ---
+          apiVersion: s3.aws.upbound.io/v1beta1
+          kind: BucketPublicAccessBlock
+          metadata:
+            name: {{ $name }}
+            annotations:
+              {{ setResourceNameAnnotation "bucket-pab" }}
+          spec:
+            forProvider:
+              region: {{ $region }}
+              bucketRef:
+                name: {{ $name }}
+              blockPublicAcls: true
+              blockPublicPolicy: true
+              ignorePublicAcls: true
+              restrictPublicBuckets: true
+          ---
+          apiVersion: cloudwatchlogs.aws.upbound.io/v1beta1
+          kind: Group
+          metadata:
+            name: {{ $name }}
+            annotations:
+              {{ setResourceNameAnnotation "log-group" }}
+              crossplane.io/external-name: /datagrok/{{ $env }}
+          spec:
+            forProvider:
+              region: {{ $region }}
+              retentionInDays: {{ $spec.logging.retentionDays }}
+              tags: {{ toYaml $tags | nindent 16 }}
+          ---
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: Role
+          metadata:
+            name: {{ $name }}-app
+            annotations:
+              {{ setResourceNameAnnotation "app-role" }}
+          spec:
+            forProvider:
+              description: Datagrok {{ $env }} pods (S3, RDS IAM auth, CloudWatch, server keys)
+              assumeRolePolicy: |
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [{
+                    "Effect": "Allow",
+                    "Principal": {"Federated": "arn:aws:iam::{{ $account }}:oidc-provider/{{ $aws.oidcProvider }}"},
+                    "Action": "sts:AssumeRoleWithWebIdentity",
+                    "Condition": {"StringEquals": {
+                      "{{ $aws.oidcProvider }}:aud": "sts.amazonaws.com",
+                      "{{ $aws.oidcProvider }}:sub": "system:serviceaccount:{{ $name }}:datagrok"
+                    }}
+                  }]
+                }
+              tags: {{ toYaml $tags | nindent 16 }}
+          ---
+          apiVersion: iam.aws.upbound.io/v1beta1
+          kind: RolePolicy
+          metadata:
+            name: {{ $name }}-app
+            annotations:
+              {{ setResourceNameAnnotation "app-role-policy" }}
+          spec:
+            forProvider:
+              roleRef:
+                name: {{ $name }}-app
+              policy: |
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [{
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket", "s3:GetBucketLocation"],
+                    "Resource": ["arn:aws:s3:::{{ $name }}", "arn:aws:s3:::{{ $name }}/*"]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["logs:CreateLogStream", "logs:PutLogEvents", "logs:FilterLogEvents"],
+                    "Resource": ["arn:aws:logs:{{ $region }}:{{ $account }}:log-group:/datagrok/{{ $env }}", "arn:aws:logs:{{ $region }}:{{ $account }}:log-group:/datagrok/{{ $env }}:*"]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["secretsmanager:CreateSecret", "secretsmanager:GetSecretValue", "secretsmanager:PutSecretValue", "secretsmanager:DescribeSecret", "secretsmanager:TagResource"],
+                    "Resource": "arn:aws:secretsmanager:{{ $region }}:{{ $account }}:secret:datagrok/server-keys/{{ $env }}/*"
+                  }{{- if $dbiResourceId }},
+                  {
+                    "Effect": "Allow",
+                    "Action": "rds-db:connect",
+                    "Resource": ["arn:aws:rds-db:{{ $region }}:{{ $account }}:dbuser:{{ $dbiResourceId }}/datagrok", "arn:aws:rds-db:{{ $region }}:{{ $account }}:dbuser:{{ $dbiResourceId }}/datagrok_admin"]
+                  }{{- end }}]
+                }
+          ---
+          apiVersion: platform.datagrok.ai/v1alpha1
+          kind: DatagrokEnvironment
+          status:
+            bucket: {{ $name }}
+            roleArn: arn:aws:iam::{{ $account }}:role/{{ $name }}-app
+            dbEndpoint: {{ $dbEndpoint | quote }}
+            dbStatus: {{ $dbStatus | quote }}
+  - step: ready
+    functionRef:
+      name: function-auto-ready

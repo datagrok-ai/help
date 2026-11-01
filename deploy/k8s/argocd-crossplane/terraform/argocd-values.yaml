@@ -1,0 +1,23 @@
+# Helm values for ArgoCD itself (chart argo-cd). Terraform installs ArgoCD with
+# this file; afterwards it is changed with `terraform apply`.
+configs:
+  cm:
+    # ArgoCD has no built-in health check for our own composite resource, so
+    # without this the Datagrok chart would start before RDS and S3 exist.
+    # The environment chart puts the XR in an earlier sync wave; ArgoCD waits
+    # for a wave to be Healthy before it starts the next one.
+    resource.customizations.health.platform.datagrok.ai_DatagrokEnvironment: |
+      hs = {status = "Progressing", message = "Waiting for AWS resources"}
+      if obj.status ~= nil and obj.status.conditions ~= nil then
+        for _, c in ipairs(obj.status.conditions) do
+          if c.type == "Synced" and c.status == "False" then
+            hs.status = "Degraded"
+            hs.message = c.message
+          end
+          if c.type == "Ready" and c.status == "True" then
+            hs.status = "Healthy"
+            hs.message = "AWS resources ready"
+          end
+        end
+      end
+      return hs

@@ -1,0 +1,4 @@
+apiVersion: v2
+name: bootstrap
+description: App of apps for one Datagrok environment cluster
+version: 1.0.0
