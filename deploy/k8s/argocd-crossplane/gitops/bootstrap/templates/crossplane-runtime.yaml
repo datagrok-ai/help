@@ -1,0 +1,15 @@
+# Gives every Upbound AWS provider pod the Crossplane IRSA role created by
+# Terraform. Annotation only: each provider keeps its generated ServiceAccount
+# name, which the role's trust policy matches with upbound-provider-aws-*.
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: aws-irsa
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  serviceAccountTemplate:
+    metadata:
+      annotations:
+        eks.amazonaws.com/role-arn: {{ .Values.aws.crossplaneRoleArn }}

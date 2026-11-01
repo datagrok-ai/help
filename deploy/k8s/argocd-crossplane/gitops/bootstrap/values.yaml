@@ -1,0 +1,23 @@
+# Filled in by Terraform (helm_release.root in terraform/main.tf). Nothing here
+# is edited by hand: the cluster facts come from the cluster that was built.
+env: ""
+repo:
+  url: ""
+  revision: main
+aws:
+  accountId: ""
+  region: ""
+  vpcId: ""
+  vpcCidr: ""
+  dbSubnetGroup: ""
+  nodeSecurityGroupId: ""
+  oidcProvider: ""
+  clusterName: ""
+  crossplaneRoleArn: ""
+  lbControllerRoleArn: ""
+  externalSecretsRoleArn: ""
+
+versions:
+  crossplane: 2.3.3
+  externalSecrets: 2.6.0
+  awsLoadBalancerController: 3.4.0

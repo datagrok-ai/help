@@ -1,0 +1,148 @@
+{{- $retry := dict "limit" -1 "backoff" (dict "duration" "30s" "factor" 2 "maxDuration" "5m") }}
+# Wave 0: controllers. Crossplane, External Secrets and the ALB controller.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://charts.crossplane.io/stable
+    chart: crossplane
+    targetRevision: {{ .Values.versions.crossplane }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ toJson $retry }}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-secrets
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://charts.external-secrets.io
+    chart: external-secrets
+    targetRevision: {{ .Values.versions.externalSecrets }}
+    helm:
+      valuesObject:
+        serviceAccount:
+          name: external-secrets
+          annotations:
+            eks.amazonaws.com/role-arn: {{ .Values.aws.externalSecretsRoleArn }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-secrets
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ toJson $retry }}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aws-load-balancer-controller
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+  source:
+    repoURL: https://aws.github.io/eks-charts
+    chart: aws-load-balancer-controller
+    targetRevision: {{ .Values.versions.awsLoadBalancerController }}
+    helm:
+      valuesObject:
+        clusterName: {{ .Values.aws.clusterName }}
+        region: {{ .Values.aws.region }}
+        vpcId: {{ .Values.aws.vpcId }}
+        serviceAccount:
+          name: aws-load-balancer-controller
+          annotations:
+            eks.amazonaws.com/role-arn: {{ .Values.aws.lbControllerRoleArn }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ toJson $retry }}
+    syncOptions: [ServerSideApply=true]
+---
+# Wave 1: Crossplane providers, functions, the XRD and the Composition.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repo.url }}
+    targetRevision: {{ .Values.repo.revision }}
+    path: gitops/platform
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    # The manifests reference CRDs that Crossplane and the providers install
+    # asynchronously; the first bring-up converges by retrying.
+    retry: {{ toJson $retry }}
+    syncOptions: [ServerSideApply=true]
+---
+# Wave 2: the environment itself: AWS resources, secrets and the Datagrok chart.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: datagrok-{{ .Values.env }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  sources:
+  - repoURL: {{ .Values.repo.url }}
+    targetRevision: {{ .Values.repo.revision }}
+    path: gitops/charts/datagrok-env
+    helm:
+      valueFiles:
+      - $values/gitops/envs/{{ .Values.env }}.yaml
+      valuesObject:
+        aws: {{ toJson .Values.aws }}
+  - repoURL: {{ .Values.repo.url }}
+    targetRevision: {{ .Values.repo.revision }}
+    ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ toJson $retry }}
+    syncOptions: [ServerSideApply=true, RespectIgnoreDifferences=true]
+  ignoreDifferences:
+  - group: external-secrets.io
+    kind: ExternalSecret
+    jqPathExpressions:
+    - '.spec.data[].remoteRef.conversionStrategy'
+    - '.spec.data[].remoteRef.decodingStrategy'
+    - '.spec.data[].remoteRef.metadataPolicy'
+    - '.spec.data[].remoteRef.nullBytePolicy'
+    - '.spec.dataFrom[].sourceRef.generatorRef.kind'
+    - '.spec.target.deletionPolicy'
+  - group: external-secrets.io
+    kind: PushSecret
+    jqPathExpressions:
+    - '.spec.data[].conversionStrategy'
+    - '.spec.data[].match.remoteRef.property'

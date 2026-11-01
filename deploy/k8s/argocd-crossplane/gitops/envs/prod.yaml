@@ -1,0 +1,8 @@
+# PROD. A release is a PR that changes datagrok.chartVersion and imageTag here.
+env: prod
+hostname: datagrok.example.com
+datagrok:
+  chartVersion: 1.27.6-helm
+  imageTag: 1.27.6
+db:
+  host: ""            # after the first sync: kubectl get dge datagrok-prod

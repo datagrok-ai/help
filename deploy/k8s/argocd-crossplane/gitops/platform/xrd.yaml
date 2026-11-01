@@ -1,0 +1,85 @@
+# DatagrokEnvironment: one per cluster. Composed of the RDS instance and its
+# security group, the S3 bucket, the IAM role of the Datagrok ServiceAccount,
+# and the CloudWatch log group. The `aws` block carries the cluster facts that
+# Terraform passed to the bootstrap chart.
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: datagrokenvironments.platform.datagrok.ai
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  scope: Cluster
+  group: platform.datagrok.ai
+  names:
+    kind: DatagrokEnvironment
+    plural: datagrokenvironments
+    shortNames: [dge]
+  defaultCompositionRef:
+    name: datagrokenvironment-aws
+  versions:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required: [env, aws]
+            properties:
+              env:
+                type: string
+                pattern: '^[a-z][a-z0-9-]{1,20}$'
+              aws:
+                type: object
+                required: [accountId, region, vpcId, dbSubnetGroup, nodeSecurityGroupId, oidcProvider]
+                properties:
+                  accountId: {type: string}
+                  region: {type: string}
+                  vpcId: {type: string}
+                  dbSubnetGroup: {type: string}
+                  nodeSecurityGroupId: {type: string}
+                  oidcProvider: {type: string}
+              db:
+                type: object
+                default: {}
+                properties:
+                  instanceClass: {type: string, default: db.m7g.large}
+                  engineVersion: {type: string, default: "17.9"}
+                  allocatedStorage: {type: integer, default: 100}
+                  maxAllocatedStorage: {type: integer, default: 500}
+                  multiAz: {type: boolean, default: true}
+                  deletionProtection: {type: boolean, default: true}
+                  skipFinalSnapshot: {type: boolean, default: false}
+                  backupRetentionDays: {type: integer, default: 35, minimum: 1, maximum: 35}
+              storage:
+                type: object
+                default: {}
+                properties:
+                  noncurrentVersionDays: {type: integer, default: 30}
+                  forceDestroy: {type: boolean, default: false}
+              logging:
+                type: object
+                default: {}
+                properties:
+                  retentionDays: {type: integer, default: 365}
+          status:
+            type: object
+            properties:
+              dbEndpoint: {type: string}
+              dbStatus: {type: string}
+              bucket: {type: string}
+              roleArn: {type: string}
+    additionalPrinterColumns:
+    - name: DB
+      type: string
+      jsonPath: .status.dbStatus
+    - name: ENDPOINT
+      type: string
+      jsonPath: .status.dbEndpoint
+    - name: READY
+      type: string
+      jsonPath: .status.conditions[?(@.type=='Ready')].status
