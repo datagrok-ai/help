@@ -499,9 +499,7 @@ units, and even viewers' screenshots.
 
 To save the run's visible tables with their viewers as a
 [project](../../../datagrok/concepts/project/dashboard.md#saving-a-dashboard), select
-**Save as project...** in the same menu. To share the inputs, select **Copy link with inputs**: the
-link opens the function with the current input values. A table or file input is included only
-when it is stored on the server.
+**Save as project...** in the same menu.
 
 This feature is available for all scripts using the RichFunctionView.
 To disable it, add the `meta.features` tag to the script header.
