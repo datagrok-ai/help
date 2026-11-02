@@ -302,9 +302,9 @@ To see the totals, go to **Usage Analysis** > **AI Usage**. The tab shows tokens
 group, and feature, for the date and groups you select. A user in several groups counts in each group, so group
 totals can add up to more than the overall total. Cost is empty for models whose price the AI runtime doesn't know.
 
-The text of AI chats isn't logged by default. To log it, an administrator turns on any of these **Grokky** package
-settings: **logPrompts**, **logResponses**, and **logToolCalls**. While any of them is on, the AI panel tells users
-that the content of their chats is logged. Administrators read the logged text under **AI Usage** > **Content**.
+Prompts are logged by default. To stop that, an administrator turns off the **logPrompts** **Grokky** package setting.
+To also log answers and tool calls, turn on **logResponses** and **logToolCalls**. While any of them is on, the AI
+panel tells users that the content of their chats is logged. The logged text is under **AI Usage** > **Content**.
 
 The garbage collector keeps the logged text for 30 days (`aiContentRetention`) and usage events for 183 days
 (`logUsageRetention`). To change these periods, go to **Browse** > **Platform** > **Settings** > **Server** >
