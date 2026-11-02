@@ -26,16 +26,16 @@ and so forth.
 
 To view column properties, right-click a column header and select
 **Properties...** The [Context Panel](../navigation/panels/panels.md#context-panel) updates to show the column's properties.
+To edit the column's name and tags, right-click the column header and select **Column Properties...**, or press <kbd>F2</kbd>.
 
 ## Metadata
 
 Like columns, each table can be annotated with attributes in the form of
 key-value pairs. Datagrok automatically annotates certain tables with metadata
-(such as the source of the table, or time of import, etc). To edit metadata
-manually, right-click a column header and select
-**Column Properties...**.
-
-<!--TODO: revise when this feature (manually add metadata) is updated. Possibly merge Column Properties and Properties context menu options -->
+(such as the source of the table, or time of import, etc). Table metadata is
+shown in the **General** pane of the
+[Context Panel](../navigation/panels/panels.md#context-panel), and can be changed
+through the JS API (`df.tags`).
 
 ## Filtering
 

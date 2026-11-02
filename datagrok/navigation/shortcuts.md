@@ -49,22 +49,22 @@ different actions. For details, see the documentation for such tool or viewer.
 * <kbd>Ctrl + A</kbd>: <b>Viewers</b> | Select all
 * <kbd>Ctrl + C</kbd>: <b>Viewers | Grid</b> | Copy cell
 * <kbd>Ctrl + H</kbd>: <b>Viewers | Grid </b>| Open the <b>Find and replace</b> dialog 
-* <kbd>Ctrl + L</kbd>: <b>Table View | Layouts</b> | Open Gallery (requires an open Table View)
+* <kbd>Ctrl + L</kbd>: <b>View | Layout</b> | Open Gallery, which shows layout and viewer suggestions (requires an open Table View)
 * <kbd>Ctrl + O</kbd>: <b>Browse</b> | Open the <b>Open File</b> dialog
-* <kbd>Ctrl + S</kbd>: <b>Table View | Layouts</b> | Save to Gallery (requires an open Table View)
+* <kbd>Ctrl + S</kbd>: <b>View | Layout</b> | Save to Gallery (requires an open Table View)
 * <kbd>Ctrl + V</kbd>: <b>Viewers | Grid</b> | Paste into cell
 * <kbd>Ctrl + Z</kbd>: <b>Edit</b> | [Undo](undo.md). Reverses the last operation on the table or view
   you are looking at. Multiple operations can be undone in turn.
 
 * <kbd>Ctrl + Shift + A</kbd>: <b>Viewers</b> | Deselect all
 * <kbd>Ctrl + Shift + C</kbd>: <b>Viewers | Grid</b> | Copy a rendered cell, such as a molecule, as an image
-* <kbd>Ctrl + Shift + R</kbd>: <b>Table View | Layouts</b> | Clear everything from a **Table View** except the grid
+* <kbd>Ctrl + Shift + R</kbd>: <b>View | Layout</b> | Clear everything from a **Table View** except the grid
 * <kbd>Ctrl + Shift + V</kbd>: <b>Table View</b> | Open a new view that is attached to the same table
 * <kbd>Ctrl + Shift + Z</kbd>: <b>Edit</b> | [Redo](undo.md) (<kbd>Ctrl + Y</kbd> does the same)
 
 <br/>
 
-* <kbd>Alt + C</kbd>: <b>Table View | Colum Manager</b> | Toggle
+* <kbd>Alt + C</kbd>: <b>Table View | Column Manager</b> | Toggle
 * <kbd>Alt + F</kbd>: <b>Full screen mode</b> | Open
 * <kbd>Alt + S</kbd>: <b>Sidebar | Settings</b> | Open
 * <kbd>Alt + T</kbd>: <b>Table Manager</b> | Toggle
