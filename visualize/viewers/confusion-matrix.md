@@ -23,6 +23,13 @@ To add the viewer programmatically from the console, use:
 
 ![Confusion Matrix](img/confusion-matrix.gif)
 
+## Filtering
+
+Click a cell to filter the table to the rows of that cell. The filter applies together with the
+[filter panel](filters.md) and stays when the panel changes. Click the same cell again to remove the
+filter, or click another cell to replace it. The filter is also removed when you close the viewer,
+change its columns, or reset the filters.
+
 ## Properties
 
 | Property | Type | Description |

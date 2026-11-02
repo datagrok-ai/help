@@ -24,11 +24,15 @@ General:
 |----------------------|-----------------------|
 | Right click          | Context menu          |
 | Alt+F                | Show in full screen   |
-| Click on date        | Filter by date        |
-| Click on year        | Filter by year        |
-| Click on day of week | Filter by day of week |
-| Click on month       | Filter by month       |
-| Click on week        | Filter by week        |
+| Click on date        | Select rows of that date |
+| Click on day of week | Select rows of that day of week |
+| Click on month       | Select rows of that month |
+
+To filter instead of select, set **On Click** to **Filter** in the viewer's properties. The filter
+applies together with the [filter panel](filters.md) and stays when the panel changes. Click the same
+date, month, or day of week again to remove the filter, or click another one to replace it. The
+filter is also removed when you close the viewer, set **On Click** back to **Select**, or reset the
+filters.
 
 ![Calendar](../../uploads/viewers/calendar.png "Calendar")
 
