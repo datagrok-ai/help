@@ -86,8 +86,8 @@ The primary use case for Polytool notation is storing company-specific rules-bas
 2. In the dialog, select the column containing your sequences
 3. Configure conversion options:
    * **Get HELM**: Add a column with HELM representation of the sequences
-   * **Chirality Engine**: Specify how to handle chirality and enhanced stereochemistry
    * **Linearize**: Use linear conversion engine for more readable 2D depiction (without 3D optimization)
+   * **Highlight monomers**: Color each molecule's atoms by the monomer they come from
 4. At the bottom of the dialog, select which rule set to use for conversion
 5. Hover over rule sets to see a summary of their contents in the tooltip
 6. Click **OK** to perform the conversion
@@ -101,13 +101,13 @@ After conversion, a new column with molecular structures is added to the table. 
 **Get HELM**  
 Adds an additional column with HELM representation of the sequences. This is useful for compatibility with other tools and platforms that support HELM format.
 
-**Chirality Engine**  
-Controls how stereochemistry is handled during conversion:
-* Standard chirality rules
-* Enhanced stereochemistry support
-
 **Linearize**  
 When enabled, uses a linear conversion engine that depicts linear molecules in a more human-readable 2D layout without 3D optimization. This is ideal for visualization and documentation purposes.
+
+**Highlight monomers**  
+Colors each molecule's atoms by the monomer they come from (the monomer's color in the library).
+
+Stereochemistry needs no option: every stereocenter the monomers define is written as absolute.
 
 ### Technical Details
 
