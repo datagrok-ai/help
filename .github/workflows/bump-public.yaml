@@ -1,7 +1,9 @@
 name: Bump help in public
 
-# Points public's `help` submodule at help master; that push deploys the site.
-# Pushes with WRITE_TOKEN, since a GITHUB_TOKEN push would not trigger public's workflows.
+# Gets help master onto the site. While public nests help as a submodule, points it at help
+# master; that push deploys the site. In the datagrok umbrella layout (datagrok-src.md, one pin
+# per repo) public no longer nests help and the umbrella pins it, so this dispatches public's
+# Docusaurus build instead. WRITE_TOKEN: a GITHUB_TOKEN push/dispatch would not reach public.
 
 on:
   push:
@@ -36,12 +38,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
+          WRITE_TOKEN: ${{ secrets.WRITE_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
 
-          # Until the cutover commit lands, public/help is a plain folder: do nothing.
+          # Umbrella layout: public has no help submodule (no .gitmodules entry), help is its
+          # sibling. Nothing to bump; rebuild and deploy the site from help master directly.
+          if ! git config --file .gitmodules --get submodule.help.path >/dev/null 2>&1; then
+            echo "::notice::public does not nest help (umbrella layout): dispatching public's Docusaurus build"
+            GH_TOKEN="$WRITE_TOKEN" gh workflow run docusaurus.yaml -R datagrok-ai/public --ref master -f force=no
+            exit 0
+          fi
+          # Before the cutover commit, public/help was a plain folder: do nothing.
           if [ "$(git ls-files -s help | awk 'NR==1 {print $1}')" != "160000" ]; then
             echo "::notice::public/help is not a submodule yet, skipping"
             exit 0
