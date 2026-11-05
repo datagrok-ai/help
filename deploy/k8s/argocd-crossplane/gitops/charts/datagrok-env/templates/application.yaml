@@ -58,7 +58,8 @@ spec:
       releaseName: datagrok
       valuesObject:
         {{- $computed := include "env.computedAppValues" . | fromYaml }}
-        {{- toYaml (mustMergeOverwrite $computed (deepCopy .Values.appValues)) | nindent 8 }}
+        {{- $images := include "env.imageValues" . | fromYaml }}
+        {{- toYaml (mustMergeOverwrite $computed $images (deepCopy .Values.appValues)) | nindent 8 }}
   destination:
     server: https://kubernetes.default.svc
     namespace: {{ $name }}
