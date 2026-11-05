@@ -3,7 +3,7 @@ kind: Composition
 metadata:
   name: datagrokenvironment-aws
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Prune=false,Delete=false
     argocd.argoproj.io/sync-wave: "4"
 spec:
   compositeTypeRef:
@@ -29,6 +29,10 @@ spec:
           {{- $db := $spec.db }}
           {{- $storage := $spec.storage }}
           {{- $tags := dict "Service" "Datagrok" "Environment" $env "ManagedBy" "crossplane" }}
+          {{/* Resources holding data are orphaned on delete unless the XR opted in
+               (allowDataDeletion): removing the XR, the XRD or the package, or
+               renaming a composed resource in a later version, keeps them in AWS. */}}
+          {{- $dataDeletionPolicy := ternary "Delete" "Orphan" ($spec.allowDataDeletion | default false) }}
           {{/* The RDS resource id is known only after the instance exists, so the
                rds-db:connect statement appears one reconcile after RDS does. */}}
           {{- $observed := .observed.resources | default dict }}
@@ -82,6 +86,7 @@ spec:
             annotations:
               {{ setResourceNameAnnotation "rds" }}
           spec:
+            deletionPolicy: {{ $dataDeletionPolicy }}
             forProvider:
               region: {{ $region }}
               identifier: {{ $name }}
@@ -112,6 +117,8 @@ spec:
               {{- if not $db.skipFinalSnapshot }}
               finalSnapshotIdentifier: {{ $name }}-final
               {{- end }}
+              # Keep automated backups for their retention period after a deletion.
+              deleteAutomatedBackups: false
               tags: {{ toYaml $tags | nindent 16 }}
           ---
           apiVersion: s3.aws.upbound.io/v1beta1
@@ -122,6 +129,7 @@ spec:
               {{ setResourceNameAnnotation "bucket" }}
               crossplane.io/external-name: {{ $name }}
           spec:
+            deletionPolicy: {{ $dataDeletionPolicy }}
             forProvider:
               region: {{ $region }}
               forceDestroy: {{ $storage.forceDestroy }}
@@ -134,6 +142,7 @@ spec:
             annotations:
               {{ setResourceNameAnnotation "bucket-versioning" }}
           spec:
+            deletionPolicy: {{ $dataDeletionPolicy }}
             forProvider:
               region: {{ $region }}
               bucketRef:
@@ -204,6 +213,7 @@ spec:
               {{ setResourceNameAnnotation "log-group" }}
               crossplane.io/external-name: /datagrok/{{ $env }}
           spec:
+            deletionPolicy: {{ $dataDeletionPolicy }}
             forProvider:
               region: {{ $region }}
               retentionInDays: {{ $spec.logging.retentionDays }}

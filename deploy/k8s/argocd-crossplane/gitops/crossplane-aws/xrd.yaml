@@ -7,7 +7,8 @@ kind: CompositeResourceDefinition
 metadata:
   name: datagrokenvironments.platform.datagrok.ai
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    # Deleting the XRD deletes every DatagrokEnvironment, so ArgoCD never removes it.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Prune=false,Delete=false
     argocd.argoproj.io/sync-wave: "3"
 spec:
   scope: Cluster
@@ -29,10 +30,36 @@ spec:
           spec:
             type: object
             required: [env, aws]
+            # Safety switch: a guard on the environment's data can be weakened only
+            # once allowDataDeletion is ALREADY true on the stored object, so dropping
+            # data always takes two separate syncs. One update doing both is rejected.
+            x-kubernetes-validations:
+            - rule: oldSelf.allowDataDeletion || self.db.deletionProtection || !oldSelf.db.deletionProtection
+              message: db.deletionProtection can be turned off only after allowDataDeletion=true has synced
+            - rule: oldSelf.allowDataDeletion || !self.db.skipFinalSnapshot || oldSelf.db.skipFinalSnapshot
+              message: db.skipFinalSnapshot can be turned on only after allowDataDeletion=true has synced
+            - rule: oldSelf.allowDataDeletion || self.db.backupRetentionDays >= oldSelf.db.backupRetentionDays
+              message: db.backupRetentionDays can be lowered only after allowDataDeletion=true has synced
+            - rule: oldSelf.allowDataDeletion || !self.storage.forceDestroy || oldSelf.storage.forceDestroy
+              message: storage.forceDestroy can be turned on only after allowDataDeletion=true has synced
+            - rule: oldSelf.allowDataDeletion || self.storage.noncurrentVersionDays >= oldSelf.storage.noncurrentVersionDays
+              message: storage.noncurrentVersionDays can be lowered only after allowDataDeletion=true has synced
             properties:
               env:
                 type: string
                 pattern: '^[a-z][a-z0-9-]{1,20}$'
+                # Every AWS resource name derives from it; a rename would orphan the data.
+                x-kubernetes-validations:
+                - rule: self == oldSelf
+                  message: env is immutable
+              allowDataDeletion:
+                type: boolean
+                default: false
+                description: >-
+                  false: the RDS instance, the S3 bucket and its versioning, and the
+                  log group are orphaned, never deleted, when the environment is
+                  removed, and their guards can't be weakened. true: removal deletes
+                  them; set it on its own and sync before lowering any guard.
               aws:
                 type: object
                 required: [accountId, region, vpcId, dbSubnetGroup, nodeSecurityGroupId, oidcProvider]
