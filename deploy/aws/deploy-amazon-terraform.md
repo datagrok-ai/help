@@ -28,8 +28,9 @@ More information about Datagrok design and components:
 :::tip Terraform on EKS
 
 This module runs Datagrok on ECS. To run it on EKS with Terraform, use
-[GitOps with ArgoCD and Crossplane](../k8s/deploy-argocd-crossplane.md): Terraform builds the VPC, the
-EKS cluster, and ArgoCD, and ArgoCD keeps RDS, S3, and Datagrok in sync with a Git repository.
+[GitOps with ArgoCD and Crossplane](../k8s/deploy-argocd-crossplane.md): Terraform builds the VPC and the
+EKS cluster, or uses [yours](../k8s/deploy-argocd-crossplane.md#existing-vpc-or-eks-cluster), and installs
+ArgoCD, which keeps RDS, S3, and Datagrok in sync with a Git repository.
 
 :::
 

@@ -44,7 +44,9 @@ Replacing an ECS stack's template with the matching EKS template keeps your data
 :::tip Manage EKS from Git instead?
 
 [GitOps with ArgoCD and Crossplane](../k8s/deploy-argocd-crossplane.md) builds a similar EKS, RDS, and
-S3 stack from a Git repository. Terraform creates the cluster once. After that, releases, database
+S3 stack from a Git repository, in a new cluster or
+[one you already run](../k8s/deploy-argocd-crossplane.md#existing-vpc-or-eks-cluster). Terraform sets up
+the cluster once. After that, releases, database
 settings, and the version of each service are pull requests, and ArgoCD applies them. It suits teams
 that review every infrastructure change or run several environments, such as staging and production,
 from the same templates.

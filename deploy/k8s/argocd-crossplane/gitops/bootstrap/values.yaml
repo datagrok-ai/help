@@ -29,6 +29,10 @@ datagrok:
   # false: install the XRD and composition from gitops/platform instead.
   crossplanePackage: true
 
+# Set by Terraform (install_lb_controller): false when the cluster already runs one.
+controllers:
+  awsLoadBalancerController: true
+
 versions:
   crossplane: 2.3.3
   externalSecrets: 2.6.0

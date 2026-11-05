@@ -21,7 +21,7 @@ The approach has three layers:
 
 | Layer | Tool | Owns | Changes |
 |-------|------|------|---------|
-| Bootstrap | Terraform | VPC, EKS, node groups, IAM roles of the in-cluster controllers, ArgoCD, and one root Application | When a cluster is created or resized |
+| Bootstrap | Terraform | VPC, EKS, and node groups, or [your existing ones](#existing-vpc-or-eks-cluster), plus IAM roles of the in-cluster controllers, ArgoCD, and one root Application | When a cluster is created or resized |
 | Delivery | ArgoCD, in each cluster | Crossplane, External Secrets, AWS Load Balancer Controller, and the Datagrok [Helm chart](install-helm-chart.md) | Every pull request to the config repo |
 | AWS resources | Crossplane, in each cluster | RDS, S3, the application IAM role, and the CloudWatch log group | Every pull request to the config repo |
 
@@ -36,11 +36,11 @@ RDS, S3, IAM roles with IRSA, a load balancer, and the Helm chart) as one CloudF
 you update in the AWS console. Choose the GitOps templates on this page when every change should be
 a reviewed pull request, or when you run several environments from the same templates.
 
-The GitOps templates always create a new VPC and cluster. To install Datagrok into an EKS cluster you
-already run, use the CloudFormation template with
-[an existing cluster](../aws/deploy-amazon-eks.mdx#new-or-existing-cluster), or
-[install the Helm chart](install-helm-chart.md) directly. To move an existing stack on
-[ECS](../aws/deploy-amazon-ecs.mdx) to EKS, see
+Both can create the VPC and the cluster or use ones you already run: see
+[Existing VPC or EKS cluster](#existing-vpc-or-eks-cluster) here, and
+[New or existing cluster](../aws/deploy-amazon-eks.mdx#new-or-existing-cluster) for CloudFormation. If
+your database and storage exist too, [install the Helm chart](install-helm-chart.md) directly. To move
+an existing stack on [ECS](../aws/deploy-amazon-ecs.mdx) to EKS, see
 [Migrate from ECS](../aws/deploy-amazon-eks.mdx#migrate-from-ecs).
 
 :::
@@ -78,7 +78,9 @@ the development branch every day. See [Follow bleeding-edge](#follow-bleeding-ed
 
 ## Prerequisites
 
-* An AWS account and an IAM principal that can create VPC, EKS, and IAM resources
+* An AWS account and an IAM principal that can create VPC, EKS, and IAM resources. With an
+  [existing cluster](#existing-vpc-or-eks-cluster), it needs IAM and administrator access to the
+  cluster instead of VPC and EKS rights
 * Terraform 1.6+ (or OpenTofu), Helm 3.8+, `kubectl`, and the AWS CLI
 * A Git repository for the configuration, with a read-only deploy key for ArgoCD
 * An S3 bucket for the Terraform state
@@ -91,7 +93,9 @@ the development branch every day. See [Follow bleeding-edge](#follow-bleeding-ed
 terraform/                    # bootstrap, one state per environment
   main.tf  variables.tf  outputs.tf
   argocd-values.yaml          # ArgoCD settings, including the health check for the environment
-  env/main.tfvars
+  env/main.tfvars             # a new VPC and cluster
+  env/existing-vpc.tfvars.example
+  env/existing-cluster.tfvars.example
 gitops/
   bootstrap/                  # app of apps, rendered with the facts Terraform passes in
   platform/                   # Crossplane providers and functions, with their versions
@@ -111,7 +115,7 @@ environment-specific configuration. To run more environments, for example a stag
 
 ## How the layers connect
 
-1. Terraform creates the cluster, then installs ArgoCD and a root Application that points at
+1. Terraform creates the cluster, or reads the one you name, then installs ArgoCD and a root Application that points at
    `gitops/bootstrap`. It passes the cluster facts (account, region, VPC, database subnet group,
    node security group, OIDC provider, and controller role ARNs) and the environment file as Helm
    values of that Application.
@@ -152,9 +156,9 @@ resource "helm_release" "root" {
               env = var.env
               aws = {
                 region            = var.region
-                vpcId             = module.vpc.vpc_id
-                dbSubnetGroup     = module.vpc.database_subnet_group_name
-                oidcProvider      = module.eks.oidc_provider
+                vpcId             = local.vpc_id
+                dbSubnetGroup     = local.db_subnet_group
+                oidcProvider      = local.oidc_provider
                 crossplaneRoleArn = aws_iam_role.crossplane.arn
                 # ...
               }
@@ -167,6 +171,9 @@ resource "helm_release" "root" {
   })]
 }
 ```
+
+The `local.*` facts come from the VPC and cluster Terraform creates, or from the ones you name. See
+[Existing VPC or EKS cluster](#existing-vpc-or-eks-cluster).
 
 The Crossplane role is limited to the resources of its own environment: the `datagrok-<env>` RDS
 instance, bucket, log group, and application role. A provider in one environment can't change another.
@@ -216,8 +223,9 @@ The rest of the file is optional. See [Customize the installation](#customize-th
 ## Deploy an environment
 
 1. Push the `terraform/` and `gitops/` folders to your config repo and set `config_repo_url` in
-   `terraform/env/<env>.tfvars`.
-1. Create the cluster and ArgoCD:
+   `terraform/env/<env>.tfvars`. To use your own VPC or cluster, start from one of the
+   `.tfvars.example` files instead. See [Existing VPC or EKS cluster](#existing-vpc-or-eks-cluster).
+1. Create the cluster, or connect to yours, and install ArgoCD:
 
    ```bash
    cd terraform
@@ -229,7 +237,7 @@ The rest of the file is optional. See [Customize the installation](#customize-th
 1. Give ArgoCD read access to the config repo:
 
    ```bash
-   aws eks update-kubeconfig --name datagrok-main --region us-east-1
+   $(terraform output -raw kubeconfig_command)
    kubectl -n argocd create secret generic config-repo \
      --from-literal=type=git --from-literal=url=git@github.com:acme/datagrok-config.git \
      --from-file=sshPrivateKey=./deploy-key
@@ -248,6 +256,81 @@ The rest of the file is optional. See [Customize the installation](#customize-th
    `kubectl -n datagrok-<env> get ingress`.
 
 The endpoint is set by hand only once per environment. It doesn't change afterwards.
+
+## Existing VPC or EKS cluster
+
+By default Terraform creates a VPC with public, private, and database subnets in three availability
+zones, and an EKS cluster in it. It can use a VPC or a cluster you already run instead. Everything
+after Terraform, including RDS, S3, the IAM role of Datagrok, and the Datagrok chart, works the same.
+
+| Variable | Description |
+|----------|-------------|
+| `existing_vpc_id` | Create the cluster in this VPC |
+| `existing_private_subnet_ids` | With `existing_vpc_id`: subnets for the cluster nodes |
+| `existing_cluster_name` | Install into this EKS cluster. Its VPC is used too |
+| `existing_node_security_group_id` | With `existing_cluster_name`: the security group of the nodes, allowed to reach RDS. Default: the cluster security group |
+| `db_subnet_ids` | With either option: subnets for RDS. Terraform creates the `datagrok-<env>` DB subnet group from them |
+| `install_lb_controller` | `false` if the cluster already runs the AWS Load Balancer Controller |
+
+With either option, `vpc_cidr` is ignored. With an existing cluster, so are `kubernetes_version` and
+the node group variables. `terraform destroy` removes only what Terraform created, never your VPC
+or cluster.
+
+### Existing VPC
+
+```hcl title="terraform/env/main.tfvars"
+env                         = "main"
+existing_vpc_id             = "vpc-0123"
+existing_private_subnet_ids = ["subnet-0aaa", "subnet-0bbb", "subnet-0ccc"]
+db_subnet_ids               = ["subnet-0ddd", "subnet-0eee"]
+config_repo_url             = "git@github.com:acme/datagrok-config.git"
+```
+
+The VPC needs:
+
+* Private subnets for the nodes, in at least two availability zones, with a route to a NAT gateway.
+  The nodes pull images from Docker Hub.
+* Private subnets for RDS in at least two availability zones. They can be the node subnets.
+* For an internet-facing load balancer, public subnets tagged `kubernetes.io/role/elb: 1`, so the
+  [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/subnet_discovery/)
+  finds them. Or name the subnets in the environment file:
+
+  ```yaml title="gitops/envs/main.yaml (excerpt)"
+  appValues:
+    ingress:
+      annotations:
+        alb.ingress.kubernetes.io/subnets: subnet-0fff,subnet-0ggg
+  ```
+
+### Existing cluster
+
+```hcl title="terraform/env/main.tfvars"
+env                   = "main"
+existing_cluster_name = "my-cluster"
+db_subnet_ids         = ["subnet-0aaa", "subnet-0bbb"]
+install_lb_controller = false   # if the cluster already runs one
+config_repo_url       = "git@github.com:acme/datagrok-config.git"
+```
+
+Terraform reads the cluster, its VPC, and its IAM OIDC provider, creates the IAM roles of the
+controllers, and installs ArgoCD. The cluster needs:
+
+* An [IAM OIDC provider](https://docs.aws.amazon.com/eks/latest/userguide/enable-iam-roles-for-service-accounts.html),
+  which IRSA requires. Terraform reads it and stops if it doesn't exist. To create it:
+  `eksctl utils associate-iam-oidc-provider --cluster my-cluster --approve`.
+* Administrator access for the principal that runs Terraform, for example an
+  [access entry](https://docs.aws.amazon.com/eks/latest/userguide/access-entries.html) with
+  `AmazonEKSClusterAdminPolicy`, and an API endpoint reachable from where Terraform runs.
+* Free capacity for Datagrok, about 4 vCPU and 8 GiB, and for ArgoCD, Crossplane with its six AWS
+  providers, and External Secrets.
+* Nodes in the security group that RDS allows. Managed node groups use the cluster security group,
+  which is the default. For other nodes, set `existing_node_security_group_id`.
+* No ArgoCD, Crossplane, or External Secrets of its own. The templates install all three, ArgoCD in
+  the `argocd` namespace.
+* If it runs the AWS Load Balancer Controller, a controller that handles the `alb` ingress class,
+  which is its default.
+
+The VPC requirements above apply to the cluster's VPC too.
 
 ## Customize the installation
 
@@ -347,7 +430,8 @@ To run a different Datagrok chart than the release, set `datagrok.chartVersion`,
 ### Cluster
 
 The cluster is set by the Terraform variables in `terraform/env/<env>.tfvars` and changes with
-`terraform apply`:
+`terraform apply`. To use your own VPC or cluster, see
+[Existing VPC or EKS cluster](#existing-vpc-or-eks-cluster).
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -467,7 +551,8 @@ not whether AWS modifies, restarts, or replaces a resource. The templates protec
 Each environment gets its own cluster, ArgoCD, and AWS resources, built from the same templates:
 
 1. Copy `terraform/env/main.tfvars` to `terraform/env/<env>.tfvars`. Set `env` and a VPC CIDR that
-   doesn't overlap with other environments.
+   doesn't overlap with other environments, or [another existing VPC or cluster](#existing-vpc-or-eks-cluster).
+   A cluster holds one environment, because each environment installs its own ArgoCD.
 1. Copy `gitops/envs/main.yaml` to `gitops/envs/<env>.yaml`. Set `env`, `hostname`, and the version.
 1. Run the [deploy steps](#deploy-an-environment) with the new file and a new state key, for example
    `key=datagrok/<env>.tfstate`.
@@ -482,7 +567,10 @@ Each environment has its own `datagrok.version`, so you can release to one envir
 | `DatagrokEnvironment` kind is unknown | `kubectl get configuration datagrok-aws` shows whether the `crossplane-aws` package installed. A version that isn't published fails to pull |
 | `DatagrokEnvironment` stays not `Ready` | `kubectl describe datagrokenvironment` and `kubectl get managed` show the AWS error for each resource |
 | AWS API returns `AccessDenied` | The Crossplane role policy in `terraform/main.tf` is scoped to `datagrok-<env>` names. A renamed resource needs the policy updated |
-| Datagrok can't connect to the database | `db.host` in the environment file must match the RDS endpoint, and the `datagrok-db-bootstrap` job must have completed |
+| Datagrok can't connect to the database | `db.host` in the environment file must match the RDS endpoint, and the `datagrok-db-bootstrap` job must have completed. In an existing cluster, the nodes must be in the security group RDS allows: set `existing_node_security_group_id` |
+| `terraform apply` can't find an OIDC provider | The existing cluster has no IAM OIDC provider. Create it with `eksctl utils associate-iam-oidc-provider` |
+| `terraform apply` is denied by Kubernetes | The principal running Terraform has no administrator access to the existing cluster. Add an access entry |
+| The ingress gets no load balancer | The AWS Load Balancer Controller finds no public subnets. Tag them `kubernetes.io/role/elb: 1`, or set `alb.ingress.kubernetes.io/subnets` |
 
 ## See also
 
