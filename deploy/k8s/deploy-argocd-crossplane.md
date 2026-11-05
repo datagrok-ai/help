@@ -290,19 +290,39 @@ The values that connect Datagrok to the AWS resources, such as `postgres.externa
 `storage.s3.bucket`, and the ServiceAccount role, are computed from the environment. Override them
 only if you replace the resources they point to.
 
-### Datagrok version
+### Service versions
 
-`datagrok.version` deploys the Datagrok chart and image of the same release. To run a different
-chart or image, for example a patch built for you, set them explicitly:
+`datagrok.version` deploys the Datagrok Helm chart of that release, and every service runs the image
+version that chart sets by default (see [Images and versions](../images.md)). To run another
+version of a service, for example a fix built for you or a connector update, pin it under `images`
+with a tag or a `sha256:` digest:
 
 ```yaml title="gitops/envs/main.yaml (excerpt)"
 datagrok:
   version: 1.28.0
-  chartVersion: 1.28.0-helm
-  imageTag: 1.28.1
-  # Optional: pin a moving tag such as bleeding-edge to one build
-  imageDigest: sha256:...
+images:
+  datagrok: 1.28.1
+  grokConnect: 2.8.7
+  # A digest pins one build, also of a moving tag such as bleeding-edge
+  grokPipe: sha256:3f1c...
 ```
+
+| Key | Service |
+|-----|---------|
+| `datagrok` | Datagrok server and web application |
+| `grokConnect` | Database connectors (JDBC) |
+| `grokConnectAdbc` | Database connectors (ADBC) |
+| `grokConnectExtended` | Amazon Neptune and Cloudera Impala connectors |
+| `grokPipe` | Streaming proxy |
+| `spawner` | Starts the containers of Datagrok packages |
+| `rabbitmq` | Message queue |
+
+A service that isn't listed follows the chart, so it moves to the new default with every release.
+A pinned service stays on its version until you change or remove the pin. A key that isn't in the
+table fails the sync with the list of valid keys.
+
+To run a different Datagrok chart than the release, set `datagrok.chartVersion`, for example
+`1.28.1-helm`.
 
 ### Cluster
 
@@ -333,8 +353,7 @@ where they work.
      version: 1.28.0
      # Deploy the environment chart from this repo instead of the published one
      envChartPath: gitops/charts/datagrok-env
-     chartVersion: 1.28.0-helm   # a chart from Git has no release defaults
-     imageTag: 1.28.0
+     chartVersion: 1.28.0-helm   # a chart from Git has no release default
      # Don't install the crossplane-aws package
      crossplanePackage: false
    ```
@@ -351,7 +370,7 @@ A composition that creates resources with other names needs the Crossplane role 
 |------|-----|
 | Release to an environment | Pull request that changes `datagrok.version` in `envs/<env>.yaml` |
 | Roll back | Revert the pull request |
-| Follow `bleeding-edge` | Set `datagrok.version: 0.0.3-bleeding-edge`. The `bleeding-edge` image tag moves with every build. To roll out each build as a recorded change, a scheduled job resolves the tag to its digest and commits it to `datagrok.imageDigest` |
+| Follow `bleeding-edge` | Set `datagrok.version: 0.0.3-bleeding-edge`. The `bleeding-edge` image tag moves with every build. To roll out each build as a recorded change, a scheduled job resolves the tag to its digest and commits it to `images.datagrok` |
 | Change RDS or S3 settings | Pull request to the environment file |
 | Preview a change | `terraform plan` for the cluster. `argocd app diff` and `crossplane render` for Applications and AWS resources |
 

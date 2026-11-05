@@ -11,14 +11,27 @@ datagrok-{{ required "env is required" .Values.env }}
 - spawnerApiKey
 {{- end -}}
 
+{{- define "env.imageValues" -}}
+{{- $services := list "datagrok" "grokConnect" "grokConnectAdbc" "grokConnectExtended" "grokPipe" "spawner" "rabbitmq" }}
+{{- range $service, $ref := .Values.images }}
+{{- if $ref }}
+{{- if not (has $service $services) }}
+{{- fail (printf "images.%s: unknown service. Use one of: %s" $service (join ", " $services)) }}
+{{- end }}
+{{ $service }}:
+  image:
+    {{- if hasPrefix "sha256:" (toString $ref) }}
+    digest: {{ $ref }}
+    {{- else }}
+    tag: {{ toString $ref | quote }}
+    {{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
 {{- define "env.computedAppValues" -}}
 {{- $name := include "env.name" . }}
 datagrok:
-  image:
-    tag: {{ .Values.datagrok.imageTag }}
-{{- if .Values.datagrok.imageDigest }}
-    digest: {{ .Values.datagrok.imageDigest }}
-{{- end }}
   grokParametersExtra:
     keyStorageBackend: aws_secrets_manager
     keyStorageSecretPrefix: datagrok/server-keys/{{ .Values.env }}

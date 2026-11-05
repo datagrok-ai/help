@@ -8,13 +8,21 @@ hostname: ""                  # REQUIRED: public hostname of this environment
 aws: {}
 
 datagrok:
-  # The published chart sets both to its own release. Override them only to
-  # run a different Datagrok version, or when deploying this chart from Git.
+  # The Datagrok chart. The published chart sets it to its own release; set it
+  # only to run a different one, or when deploying this chart from Git.
   chartVersion: 1.27.6-helm
-  imageTag: 1.27.6
-  # Optional sha256 digest. Set it to pin a mutable tag such as bleeding-edge
-  # to one build; a new digest in Git is a normal, revertible rollout.
-  imageDigest: ""
+
+# Image of each service: a tag, or a sha256: digest that pins one build (a new
+# digest in Git is a normal, revertible rollout). A service that isn't listed
+# runs the default of the Datagrok chart above.
+images: {}
+#  datagrok: 1.28.1
+#  grokConnect: 2.8.7
+#  grokConnectAdbc:
+#  grokConnectExtended:
+#  grokPipe:
+#  spawner:
+#  rabbitmq:
 
 db:
   # RDS address, known after the first sync: kubectl get dge. The Datagrok
