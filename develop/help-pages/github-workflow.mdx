@@ -153,6 +153,8 @@ we use [markdownlint](https://github.com/DavidAnson/markdownlint).
 The source code and READMEs are located in our
 [public repository on GitHub](https://github.com/datagrok-ai/public/tree/master).
 This section helps you to set up this repository and install all required packages.
+Clone [public](https://github.com/datagrok-ai/public) and [help](https://github.com/datagrok-ai/help)
+side by side: the commands below run from the directory that contains both.
 
 1. Install commit linting tools as described in the [Git policy](../dev-process/git-policy#commit-linting)
 
@@ -192,7 +194,7 @@ from the Git policy.
 ```
 
 ```cmd
-cd ..\docusaurus
+cd public\docusaurus
 npm run start-debug
 ```
 
@@ -202,7 +204,7 @@ npm run start-debug
 ```
 
 ```shell
-cd ../docusaurus
+cd public/docusaurus
 npm run start-debug
 ```
 
@@ -241,10 +243,10 @@ Note that the build step will take some time.
 ```
 
 ```cmd
-cd docusaurus
+cd public\docusaurus
 npm run build
 
-hyperlink --check-anchors build --sources ..\help
+hyperlink --check-anchors build --sources ..\..\help
 ```
 
 ```mdx-code-block
@@ -253,10 +255,10 @@ hyperlink --check-anchors build --sources ..\help
 ```
 
 ```bash
-cd docusaurus
+cd public/docusaurus
 npm run build
 
-hyperlink --check-anchors build/ --sources ../help/
+hyperlink --check-anchors build/ --sources ../../help/
 ```
 
 ```mdx-code-block
@@ -273,7 +275,9 @@ Finally, create a pull request to merge your changes to the master branch.
 
 ## GitHub Actions Docusaurus workflow
 
-[GitHub Actions Docusaurus workflow](https://github.com/datagrok-ai/public/actions/workflows/docusaurus.yaml) includes:
+[GitHub Actions Docusaurus workflow](https://github.com/datagrok-ai/public/actions/workflows/docusaurus.yaml)
+runs in the public repository. Every change on help `master` starts it on public `master`: the help
+repository's `bump-public` workflow dispatches it. It includes:
 
 * Lint checks using [markdownlint](https://github.com/DavidAnson/markdownlint-cli2) linter.
 * If the checks are finished successfully, GitHub will convert the markdown files to HTML
