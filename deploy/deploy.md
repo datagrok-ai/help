@@ -79,6 +79,9 @@ based on what infrastructure you already manage:
 * Use the **Helm chart directly** if your cluster, database, and object storage already exist, or
   if the cluster is not on AWS (GKE, AKS, on-prem). The chart ships ready-made overlays for EKS
   (`values-eks.yaml`) and GKE (`values-gke.yaml`).
+* Use **[GitOps with ArgoCD and Crossplane](k8s/deploy-argocd-crossplane.md)** if every change to the
+  application or to AWS should be a reviewed pull request, or if you run several environments from
+  the same templates. Terraform creates a new cluster, and ArgoCD deploys the same Helm chart.
 
 ## Complete the setup
 

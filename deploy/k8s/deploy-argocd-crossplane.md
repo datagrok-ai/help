@@ -29,6 +29,22 @@ After the bootstrap, Terraform steps back. Releases, database and bucket changes
 are commits to the config repo. Each cluster manages only its own environment, so there's no
 central management cluster that can change all of them.
 
+:::info Which AWS path?
+
+The [AWS CloudFormation (EKS)](../aws/deploy-amazon-eks.mdx) template builds a similar stack (EKS,
+RDS, S3, IAM roles with IRSA, a load balancer, and the Helm chart) as one CloudFormation stack that
+you update in the AWS console. Choose the GitOps templates on this page when every change should be
+a reviewed pull request, or when you run several environments from the same templates.
+
+The GitOps templates always create a new VPC and cluster. To install Datagrok into an EKS cluster you
+already run, use the CloudFormation template with
+[an existing cluster](../aws/deploy-amazon-eks.mdx#new-or-existing-cluster), or
+[install the Helm chart](install-helm-chart.md) directly. To move an existing stack on
+[ECS](../aws/deploy-amazon-ecs.mdx) to EKS, see
+[Migrate from ECS](../aws/deploy-amazon-eks.mdx#migrate-from-ecs).
+
+:::
+
 :::tip Ready-made templates
 
 The [argocd-crossplane](https://github.com/datagrok-ai/help/tree/master/deploy/k8s/argocd-crossplane)
@@ -56,7 +72,7 @@ The environment file names one version, for example `1.28.0`, and that selects a
 
 Release versions of `datagrok-env` and `crossplane-aws` are published starting with the first
 Datagrok release after November 2026. Until then, use `0.0.3-bleeding-edge`, which is rebuilt from
-the development branch every day.
+the development branch every day. See [Follow bleeding-edge](#follow-bleeding-edge).
 
 :::
 
@@ -66,7 +82,8 @@ the development branch every day.
 * Terraform 1.6+ (or OpenTofu), Helm 3.8+, `kubectl`, and the AWS CLI
 * A Git repository for the configuration, with a read-only deploy key for ArgoCD
 * An S3 bucket for the Terraform state
-* An issued ACM certificate for each environment's hostname, or a wildcard certificate
+* An issued [ACM certificate](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html)
+  for each environment's hostname, or a wildcard certificate
 
 ## Repository layout
 
@@ -107,7 +124,10 @@ environment-specific configuration. To run more environments, for example a stag
    and deploys the Datagrok chart.
 
 No AWS credentials are stored in the cluster or in Git. Every controller, and Datagrok itself, uses
-IAM Roles for Service Accounts (IRSA). Generated passwords are kept in AWS Secrets Manager.
+[IAM Roles for Service Accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)
+(IRSA), and RDS has
+[IAM database authentication](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.IAMDBAuth.html)
+enabled for the Datagrok admin role. Generated passwords are kept in AWS Secrets Manager.
 
 ## Bootstrap with Terraform
 
@@ -370,15 +390,63 @@ A composition that creates resources with other names needs the Crossplane role 
 |------|-----|
 | Release to an environment | Pull request that changes `datagrok.version` in `envs/<env>.yaml` |
 | Roll back | Revert the pull request |
-| Follow `bleeding-edge` | Set `datagrok.version: 0.0.3-bleeding-edge`. The `bleeding-edge` image tag moves with every build. To roll out each build as a recorded change, a scheduled job resolves the tag to its digest and commits it to `images.datagrok` |
+| Follow the development builds | See [Follow bleeding-edge](#follow-bleeding-edge) |
 | Change RDS or S3 settings | Pull request to the environment file |
 | Preview a change | `terraform plan` for the cluster. `argocd app diff` and `crossplane render` for Applications and AWS resources |
 
-To resolve the current `bleeding-edge` digest for the refresh job:
+### Follow bleeding-edge
 
-```bash
-docker buildx imagetools inspect datagrok/datagrok:bleeding-edge --format '{{.Manifest.Digest}}'
+`bleeding-edge` is the current state of Datagrok development. Datagrok builds it from the `master`
+branch every night, sometimes also during the day, and publishes everything under moving tags: the `bleeding-edge` service images, the Datagrok chart `0.0.3-bleeding-edge-helm`, and the
+`datagrok-env` and `crossplane-aws` packages `0.0.3-bleeding-edge` (see
+[Tag conventions](../images.md#tag-conventions)). It isn't a tested release. Use it for a development
+or evaluation environment that tries new features before they ship, not for production: database
+migrations only run forward, so an environment that ran `bleeding-edge` can't go back to an older
+release.
+
+Set the version in the environment file:
+
+```yaml title="gitops/envs/dev.yaml (excerpt)"
+datagrok:
+  version: 0.0.3-bleeding-edge
 ```
+
+A moving tag doesn't redeploy anything by itself. Crossplane checks the `crossplane-aws` package for a
+new build, but ArgoCD treats a chart version as fixed and can serve a cached copy for up to a day, and
+running pods keep the image they started with. To get each night's build, refresh the environment
+daily with a scheduled job that resolves the moving image tags to digests and commits them under
+`images`. Every refresh is then a commit that ArgoCD rolls out, and that you can revert. For example,
+with GitHub Actions in the config repo:
+
+```yaml title=".github/workflows/refresh-bleeding-edge.yaml"
+name: Refresh bleeding-edge
+on:
+  schedule:
+    - cron: "0 7 * * *"   # after the nightly build
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin the latest bleeding-edge images
+        run: |
+          file=gitops/envs/dev.yaml
+          for pair in datagrok:datagrok grokPipe:grok_pipe spawner:grok_spawner grokConnectAdbc:grok_connect_adbc; do
+            digest=$(docker buildx imagetools inspect "datagrok/${pair#*:}:bleeding-edge" --format '{{.Manifest.Digest}}')
+            yq -i ".images.${pair%%:*} = \"$digest\"" "$file"
+          done
+          git diff --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "Refresh bleeding-edge images" && git push
+```
+
+The job pins the services whose chart default is `bleeding-edge`. Services that the chart pins to a
+version, such as `grokConnect`, follow the chart. After a refresh that changes the chart or the
+composition, run `argocd app get datagrok-<env> --hard-refresh` to pick up the new build right away.
 
 ## Safeguards
 
@@ -418,6 +486,8 @@ Each environment has its own `datagrok.version`, so you can release to one envir
 
 ## See also
 
-* [Install Datagrok with Helm](install-helm-chart.md)
-* [AWS CloudFormation (EKS)](../aws/deploy-amazon-eks.mdx)
-* [Images and versions](../images.md)
+* [Install Datagrok with Helm](install-helm-chart.md): the chart this page deploys, and all its values
+* [AWS CloudFormation (EKS)](../aws/deploy-amazon-eks.mdx): EKS, RDS, and S3 as one CloudFormation stack, also on an existing cluster
+* [AWS CloudFormation (ECS)](../aws/deploy-amazon-ecs.mdx): for existing ECS stacks
+* [Images and versions](../images.md): image tags, chart tags, and the default version of each service
+* [Upgrade](../upgrade.md)
