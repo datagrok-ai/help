@@ -91,6 +91,7 @@ sync with AD groups, drive the platform from a script using the
 This is the preferred and most powerful way to integrate with an external identity provider.  
 Datagrok supports the OpenID protocol to allow users to be authenticated using OpenID providers
 such as Azure AD, Google, Okta, Auth0, and any other OIDC-compliant identity provider.
+For a step-by-step Microsoft Entra ID setup, including group sync, see [Set up Microsoft Entra ID](configure-entra.md).
 
 1. Go to the Datagrok Settings section `Users and Sessions`; this section contains all authentication settings.
 2. Enable `Open Id authentication` to use the OpenID method
@@ -196,6 +197,8 @@ shows the groups the sync currently manages for that user. Click **Sync now** to
 the saved settings right away.
 
 ### Microsoft Entra ID
+
+For the full walkthrough, see [Set up Microsoft Entra ID](configure-entra.md).
 
 Datagrok reads group names from the login token's `groups` claim. Entra ID usually puts object IDs
 there, or no claim at all for users with many groups, so Datagrok reads the user's transitive group
