@@ -1,9 +1,10 @@
-# One environment. A release is a PR that changes datagrok.chartVersion and imageTag here.
+# One environment. A release is a PR that changes datagrok.version here.
 # To run another environment, copy this file with a new env and hostname.
 env: main
 hostname: datagrok.example.com
 datagrok:
-  chartVersion: 1.27.6-helm
-  imageTag: 1.27.6
+  # A Datagrok release, e.g. 1.28.0. It selects the datagrok-env chart and the
+  # crossplane-aws package, which deploy the Datagrok chart and image of that release.
+  version: 0.0.3-bleeding-edge
 db:
   host: ""            # after the first sync: kubectl get dge datagrok-main

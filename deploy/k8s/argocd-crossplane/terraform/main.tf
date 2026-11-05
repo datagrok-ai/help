@@ -274,6 +274,8 @@ resource "helm_release" "root" {
           targetRevision = var.config_repo_revision
           path           = "gitops/bootstrap"
           helm = {
+            # datagrok.version: the environment file is the one place a release changes.
+            valueFiles = ["../envs/${var.env}.yaml"]
             valuesObject = {
               env = var.env
               repo = { url = var.config_repo_url, revision = var.config_repo_revision }

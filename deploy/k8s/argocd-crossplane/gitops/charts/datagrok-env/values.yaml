@@ -8,6 +8,8 @@ hostname: ""                  # REQUIRED: public hostname of this environment
 aws: {}
 
 datagrok:
+  # The published chart sets both to its own release. Override them only to
+  # run a different Datagrok version, or when deploying this chart from Git.
   chartVersion: 1.27.6-helm
   imageTag: 1.27.6
   # Optional sha256 digest. Set it to pin a mutable tag such as bleeding-edge

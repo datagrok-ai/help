@@ -32,9 +32,31 @@ central management cluster that can change all of them.
 :::tip Ready-made templates
 
 The [argocd-crossplane](https://github.com/datagrok-ai/help/tree/master/deploy/k8s/argocd-crossplane)
-folder contains a complete config repo: Terraform, the ArgoCD applications, the Crossplane
-composition, and the environment chart. The examples on this page are excerpts from it. The same
-pattern runs Datagrok's own hosted instances.
+folder contains a complete config repo: Terraform, the ArgoCD applications, and an environment
+file. The parts that every installation shares, the environment chart and the Crossplane
+composition, are published by Datagrok with each release, so your repo refers to them by version
+instead of copying them. The examples on this page are excerpts from the folder.
+
+:::
+
+## Published packages
+
+Datagrok publishes three artifacts on Docker Hub for every release. They always have the same
+version:
+
+| Artifact | Contents |
+|----------|----------|
+| `oci://registry-1.docker.io/datagrok/datagrok`, tag `<version>-helm` | The Datagrok [Helm chart](install-helm-chart.md). It shares the repository with the `datagrok/datagrok` image, and the `-helm` suffix keeps chart and image tags apart |
+| `oci://registry-1.docker.io/datagrok/datagrok-env`, tag `<version>` | The environment chart. From an environment file it creates the AWS resources, the secrets, and an ArgoCD Application that deploys the Datagrok chart of the same version |
+| `registry-1.docker.io/datagrok/crossplane-aws`, tag `<version>` | A Crossplane package with the `DatagrokEnvironment` API and the composition that turns it into AWS resources |
+
+The environment file names one version, for example `1.28.0`, and that selects all three.
+
+:::note
+
+Release versions of `datagrok-env` and `crossplane-aws` are published starting with the first
+Datagrok release after November 2026. Until then, use `0.0.3-bleeding-edge`, which is rebuilt from
+the development branch every day.
 
 :::
 
@@ -55,24 +77,30 @@ terraform/                    # bootstrap, one state per environment
   env/main.tfvars
 gitops/
   bootstrap/                  # app of apps, rendered with the facts Terraform passes in
-  platform/                   # Crossplane providers, functions, XRD, and composition
-  charts/datagrok-env/        # one environment: AWS resources, secrets, Datagrok chart
+  platform/                   # Crossplane providers and functions, with their versions
   envs/
     main.yaml                 # one file per environment
+  charts/datagrok-env/        # source of the published environment chart
+  crossplane-aws/             # source of the published Crossplane package
 ```
+
+Your config repo needs `terraform/` and the first three `gitops/` folders. The last two are the
+sources Datagrok publishes the packages from. Keep them only if you
+[modify the environment chart or the composition](#modify-the-environment-chart-or-the-composition).
 
 The templates define one environment, `main`. Its `envs/main.yaml` file is the only
 environment-specific configuration. To run more environments, for example a staging copy, see
-[Add an environment](#add-an-environment). Everything else is shared, so every environment gets
-identical infrastructure.
+[Add an environment](#add-an-environment).
 
 ## How the layers connect
 
 1. Terraform creates the cluster, then installs ArgoCD and a root Application that points at
    `gitops/bootstrap`. It passes the cluster facts (account, region, VPC, database subnet group,
-   node security group, OIDC provider, and controller role ARNs) as Helm values of that Application.
+   node security group, OIDC provider, and controller role ARNs) and the environment file as Helm
+   values of that Application.
 2. The bootstrap chart creates the other Applications in sync waves: the controllers first, then the
-   Crossplane platform, then the environment.
+   Crossplane providers, functions, and the `crossplane-aws` package, then the environment from the
+   `datagrok-env` chart.
 3. The environment chart creates a `DatagrokEnvironment` resource. Crossplane expands it into the
    AWS resources through the composition.
 4. ArgoCD waits until the `DatagrokEnvironment` reports `Ready`, then creates the database admin role
@@ -98,17 +126,20 @@ resource "helm_release" "root" {
         source = {
           repoURL = var.config_repo_url
           path    = "gitops/bootstrap"
-          helm = { valuesObject = {
-            env = var.env
-            aws = {
-              region            = var.region
-              vpcId             = module.vpc.vpc_id
-              dbSubnetGroup     = module.vpc.database_subnet_group_name
-              oidcProvider      = module.eks.oidc_provider
-              crossplaneRoleArn = aws_iam_role.crossplane.arn
-              # ...
+          helm = {
+            valueFiles = ["../envs/${var.env}.yaml"]
+            valuesObject = {
+              env = var.env
+              aws = {
+                region            = var.region
+                vpcId             = module.vpc.vpc_id
+                dbSubnetGroup     = module.vpc.database_subnet_group_name
+                oidcProvider      = module.eks.oidc_provider
+                crossplaneRoleArn = aws_iam_role.crossplane.arn
+                # ...
+              }
             }
-          } }
+          }
         }
         # ...
       }
@@ -125,7 +156,7 @@ instance, bucket, log group, and application role. A provider in one environment
 The composite resource exposes only what differs between deployments. The composition turns it into
 about a dozen AWS resources:
 
-```yaml title="gitops/platform/xrd.yaml (excerpt)"
+```yaml title="gitops/crossplane-aws/xrd.yaml (excerpt)"
 db:
   properties:
     instanceClass: {type: string, default: db.m7g.large}
@@ -142,27 +173,29 @@ db:
 | IAM role and policy | Assumed by the `datagrok` ServiceAccount. Grants S3 on the bucket, `rds-db:connect`, writing to the log group, and server keys in Secrets Manager |
 | CloudWatch log group | `/datagrok/<env>`, where Datagrok exports audit, usage, and error logs |
 
+The bootstrap chart installs the composition as the `crossplane-aws` package of the environment's
+version. The providers and functions it uses are installed from `gitops/platform`, with the versions
+the package was built against.
+
 ## Environment files
 
 An environment file sets the name, hostname, and version. A release is a pull request that changes
-two lines:
+one line:
 
 ```yaml title="gitops/envs/main.yaml"
 env: main
 hostname: datagrok.example.com
 datagrok:
-  chartVersion: 1.27.6-helm
-  imageTag: 1.27.6
+  version: 1.28.0
 db:
   host: datagrok-main.abcdefghijkl.us-east-1.rds.amazonaws.com
 ```
 
-Any value of the Datagrok Helm chart can be overridden per environment under `appValues`. See
-`gitops/charts/datagrok-env/values.yaml` for the full contract.
+The rest of the file is optional. See [Customize the installation](#customize-the-installation).
 
 ## Deploy an environment
 
-1. Push the `gitops/` folder to your config repo and set `config_repo_url` in
+1. Push the `terraform/` and `gitops/` folders to your config repo and set `config_repo_url` in
    `terraform/env/<env>.tfvars`.
 1. Create the cluster and ArgoCD:
 
@@ -196,14 +229,130 @@ Any value of the Datagrok Helm chart can be overridden per environment under `ap
 
 The endpoint is set by hand only once per environment. It doesn't change afterwards.
 
+## Customize the installation
+
+Most changes are values in the environment file. They survive upgrades: a new `datagrok.version`
+brings a new chart and composition, and your values are applied on top of them. The full list of
+environment file values, with their defaults, is in
+[`charts/datagrok-env/values.yaml`](https://github.com/datagrok-ai/help/tree/master/deploy/k8s/argocd-crossplane/gitops/charts/datagrok-env/values.yaml).
+
+### AWS resources
+
+| Value | Default | Description |
+|-------|---------|-------------|
+| `db.instanceClass` | `db.m7g.large` | RDS instance class |
+| `db.engineVersion` | `17.9` | PostgreSQL version |
+| `db.allocatedStorage`, `db.maxAllocatedStorage` | `100`, `500` | Initial storage and the storage autoscaling limit, in GB |
+| `db.multiAz` | `true` | Standby instance in a second availability zone |
+| `db.backupRetentionDays` | `35` | Days of automated RDS backups |
+| `db.deletionProtection`, `db.skipFinalSnapshot` | `true`, `false` | Keep them for production. See [Safeguards](#safeguards) |
+| `storage.noncurrentVersionDays` | `30` | Days S3 keeps overwritten and deleted file versions |
+| `logging.retentionDays` | `365` | Retention of the CloudWatch log group |
+| `ingress.certificateArn` | empty | ACM certificate for the load balancer. Empty: the controller finds an issued certificate that matches `hostname` |
+
+A smaller, cheaper environment, for example for evaluation:
+
+```yaml title="gitops/envs/eval.yaml"
+env: eval
+hostname: datagrok-eval.example.com
+datagrok:
+  version: 1.28.0
+db:
+  instanceClass: db.t4g.medium
+  multiAz: false
+  backupRetentionDays: 7
+```
+
+Changing the instance class or storage of an existing database makes AWS modify the instance, which
+can restart it. Change it in a maintenance window.
+
+### Datagrok settings
+
+Any value of the [Datagrok Helm chart](install-helm-chart.md) can be set under `appValues`. It's
+merged over the values the environment chart computes, so it also overrides them. For example,
+single sign-on, more resources for the server, and the extended database connectors:
+
+```yaml title="gitops/envs/main.yaml (excerpt)"
+appValues:
+  datagrok:
+    openId:
+      enabled: true
+      configEndpoint: https://login.example.com/.well-known/openid-configuration
+      clientId: datagrok
+    resources:
+      requests: {cpu: "4", memory: 8Gi}
+      limits: {cpu: "8", memory: 16Gi}
+  grokConnectExtended:
+    enabled: true
+```
+
+The values that connect Datagrok to the AWS resources, such as `postgres.external.host`,
+`storage.s3.bucket`, and the ServiceAccount role, are computed from the environment. Override them
+only if you replace the resources they point to.
+
+### Datagrok version
+
+`datagrok.version` deploys the Datagrok chart and image of the same release. To run a different
+chart or image, for example a patch built for you, set them explicitly:
+
+```yaml title="gitops/envs/main.yaml (excerpt)"
+datagrok:
+  version: 1.28.0
+  chartVersion: 1.28.0-helm
+  imageTag: 1.28.1
+  # Optional: pin a moving tag such as bleeding-edge to one build
+  imageDigest: sha256:...
+```
+
+### Cluster
+
+The cluster is set by the Terraform variables in `terraform/env/<env>.tfvars` and changes with
+`terraform apply`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `region` | `us-east-1` | AWS region |
+| `vpc_cidr` | `10.0.0.0/16` | Address range of the new VPC. It must not overlap with other environments you connect to |
+| `kubernetes_version` | `1.33` | EKS version |
+| `node_instance_types` | `["m6i.xlarge"]` | Instance types of the node group |
+| `node_min_size`, `node_max_size` | `2`, `5` | Node group size limits |
+| `config_repo_revision` | `main` | Branch or tag of the config repo that ArgoCD syncs |
+
+### Modify the environment chart or the composition
+
+If values aren't enough, you can deploy your own copy of the environment chart, the composition, or
+both. With a copy, you merge the changes of each new release into it yourself, so prefer values
+where they work.
+
+1. Keep `gitops/charts/datagrok-env/` or `gitops/crossplane-aws/`, from the template folder of the
+   release you run, in your config repo, and change them there.
+1. Tell the bootstrap chart to use them, in the environment file:
+
+   ```yaml title="gitops/envs/main.yaml (excerpt)"
+   datagrok:
+     version: 1.28.0
+     # Deploy the environment chart from this repo instead of the published one
+     envChartPath: gitops/charts/datagrok-env
+     chartVersion: 1.28.0-helm   # a chart from Git has no release defaults
+     imageTag: 1.28.0
+     # Don't install the crossplane-aws package
+     crossplanePackage: false
+   ```
+
+1. With `crossplanePackage: false`, move `xrd.yaml` and `composition.yaml` into `gitops/platform/`,
+   which ArgoCD applies as they are.
+
+A composition that creates resources with other names needs the Crossplane role policy in
+`terraform/main.tf` updated, because the policy only allows `datagrok-<env>` names.
+
 ## Day-to-day operations
 
 | Task | How |
 |------|-----|
-| Release to an environment | Pull request that changes `chartVersion` and `imageTag` in `envs/<env>.yaml` |
+| Release to an environment | Pull request that changes `datagrok.version` in `envs/<env>.yaml` |
 | Roll back | Revert the pull request |
-| Follow `bleeding-edge` | Set `imageTag: bleeding-edge`. A scheduled job resolves the tag to its digest and commits it to `datagrok.imageDigest` |
-| Change RDS or S3 settings | Pull request to the composition or the environment file |
+| Follow `bleeding-edge` | Set `datagrok.version: 0.0.3-bleeding-edge`. The `bleeding-edge` image tag moves with every build. To roll out each build as a recorded change, a scheduled job resolves the tag to its digest and commits it to `datagrok.imageDigest` |
+| Change RDS or S3 settings | Pull request to the environment file |
 | Preview a change | `terraform plan` for the cluster. `argocd app diff` and `crossplane render` for Applications and AWS resources |
 
 To resolve the current `bleeding-edge` digest for the refresh job:
@@ -222,7 +371,9 @@ not whether AWS modifies, restarts, or replaces a resource. The templates protec
 * The bucket isn't force-destroyed, so a non-empty bucket can't be deleted.
 * Generated passwords are created once and kept in Secrets Manager under `datagrok/<env>`. Neither
   ArgoCD nor a resync regenerates them.
-* Provider and chart versions are pinned. If you run a second environment, upgrade it first.
+* Every version is pinned: the Datagrok release by `datagrok.version`, and the providers,
+  functions, and controllers in `gitops/platform` and `gitops/bootstrap`. If you run a second
+  environment, upgrade it first.
 
 ## Add an environment
 
@@ -234,14 +385,14 @@ Each environment gets its own cluster, ArgoCD, and AWS resources, built from the
 1. Run the [deploy steps](#deploy-an-environment) with the new file and a new state key, for example
    `key=datagrok/<env>.tfstate`.
 
-Changes to the composition or the environment chart reach every environment. To try a change on one
-environment first, point its root Application at a branch with `config_repo_revision`.
+Each environment has its own `datagrok.version`, so you can release to one environment first.
 
 ## Troubleshooting
 
 | Symptom | Check |
 |---------|-------|
 | `platform` Application is `OutOfSync` on first deploy | Normal for a few minutes. Crossplane installs CRDs asynchronously, and the Application retries until they exist |
+| `DatagrokEnvironment` kind is unknown | `kubectl get configuration datagrok-aws` shows whether the `crossplane-aws` package installed. A version that isn't published fails to pull |
 | `DatagrokEnvironment` stays not `Ready` | `kubectl describe datagrokenvironment` and `kubectl get managed` show the AWS error for each resource |
 | AWS API returns `AccessDenied` | The Crossplane role policy in `terraform/main.tf` is scoped to `datagrok-<env>` names. A renamed resource needs the policy updated |
 | Datagrok can't connect to the database | `db.host` in the environment file must match the RDS endpoint, and the `datagrok-db-bootstrap` job must have completed |
