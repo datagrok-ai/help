@@ -41,6 +41,18 @@ Replacing an ECS stack's template with the matching EKS template keeps your data
 
 :::
 
+:::tip Manage EKS from Git instead?
+
+[GitOps with ArgoCD and Crossplane](../k8s/deploy-argocd-crossplane.md) builds a similar EKS, RDS, and
+S3 stack from a Git repository, in a new cluster or
+[one you already run](../k8s/deploy-argocd-crossplane.md#existing-vpc-or-eks-cluster). Terraform sets up
+the cluster once. After that, releases, database
+settings, and the version of each service are pull requests, and ArgoCD applies them. It suits teams
+that review every infrastructure change or run several environments, such as staging and production,
+from the same templates.
+
+:::
+
 ## Prerequisites
 
 1. Check that you have the [required permissions](https://github.com/datagrok-ai/help/blob/master/deploy/iam.list)
@@ -290,5 +302,6 @@ If the change set replaces `DatagrokDB` or `DatagrokS3`, do not execute it. Cont
 ## See also
 
 * [Install Datagrok with Helm](../k8s/install-helm-chart.md) — manual Helm-only install for any Kubernetes cluster
+* [GitOps with ArgoCD and Crossplane](../k8s/deploy-argocd-crossplane.md) — EKS, RDS, and S3 managed from a Git repository
 * [AWS CloudFormation (ECS)](deploy-amazon-ecs.mdx) — supported alternative for existing ECS stacks; targeted for deprecation in a future release
 * [Terraform](deploy-amazon-terraform.md)

@@ -1,5 +1,6 @@
-# Filled in by Terraform (helm_release.root in terraform/main.tf). Nothing here
-# is edited by hand: the cluster facts come from the cluster that was built.
+# env, repo and aws are filled in by Terraform (helm_release.root in
+# terraform/main.tf) from the cluster that was built. Terraform also passes
+# gitops/envs/<env>.yaml, which sets datagrok.version.
 env: ""
 repo:
   url: ""
@@ -16,6 +17,21 @@ aws:
   crossplaneRoleArn: ""
   lbControllerRoleArn: ""
   externalSecretsRoleArn: ""
+
+datagrok:
+  # Version of the datagrok-env chart and the crossplane-aws package. Set it in
+  # gitops/envs/<env>.yaml, so that each environment is released on its own.
+  version: ""
+  registry: registry-1.docker.io/datagrok
+  # A chart path in this repo, e.g. gitops/charts/datagrok-env, to deploy a
+  # modified copy of the environment chart instead of the published one.
+  envChartPath: ""
+  # false: install the XRD and composition from gitops/platform instead.
+  crossplanePackage: true
+
+# Set by Terraform (install_lb_controller): false when the cluster already runs one.
+controllers:
+  awsLoadBalancerController: true
 
 versions:
   crossplane: 2.3.3

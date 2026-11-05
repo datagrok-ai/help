@@ -47,6 +47,7 @@ spec:
     automated: {prune: true, selfHeal: true}
     retry: {{ toJson $retry }}
     syncOptions: [CreateNamespace=true, ServerSideApply=true]
+{{- if .Values.controllers.awsLoadBalancerController }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -77,8 +78,10 @@ spec:
     automated: {prune: true, selfHeal: true}
     retry: {{ toJson $retry }}
     syncOptions: [ServerSideApply=true]
+{{- end }}
 ---
-# Wave 1: Crossplane providers, functions, the XRD and the Composition.
+# Wave 1: Crossplane providers and functions. The XRD and the Composition come
+# from the crossplane-aws package (crossplane-package.yaml).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -113,9 +116,15 @@ metadata:
 spec:
   project: default
   sources:
+  {{- if .Values.datagrok.envChartPath }}
   - repoURL: {{ .Values.repo.url }}
     targetRevision: {{ .Values.repo.revision }}
-    path: gitops/charts/datagrok-env
+    path: {{ .Values.datagrok.envChartPath }}
+  {{- else }}
+  - repoURL: {{ .Values.datagrok.registry }}
+    chart: datagrok-env
+    targetRevision: {{ .Values.datagrok.version }}
+  {{- end }}
     helm:
       valueFiles:
       - $values/gitops/envs/{{ .Values.env }}.yaml

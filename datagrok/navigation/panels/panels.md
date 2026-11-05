@@ -48,7 +48,11 @@ The **Context Panel** consists of distinct [info panes](info-panels.md), each
 serving a specific purpose. For example, the **Actions** info pane shows
 available commands, while the **Details** info pane shows the object's metadata.
 Depending on your privileges, individual info panes can be hidden or detached to
-float independently in a separate window. To toggle the visibility of the entire
+float independently in a separate window. A detached pane computed from a table
+cell or a semantic value, such as a molecule's **Gasteiger Partial Charges**, becomes
+a viewer: it recalculates for each value of that type you click and ignores everything
+else until you close it. While hidden, it waits and shows the latest value once visible
+again. Over a table view, you can dock it there, and it is saved with the layout. To toggle the visibility of the entire
 **Context Panel**, press <kbd>F4</kbd>. The same info panes are also one click
 away without the panel: the right end of the **Top Menu** shows the current
 object, and clicking it opens them in a dropdown

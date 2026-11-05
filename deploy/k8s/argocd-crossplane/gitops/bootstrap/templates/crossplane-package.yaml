@@ -1,0 +1,21 @@
+{{- if .Values.datagrok.crossplanePackage }}
+# The DatagrokEnvironment XRD and its AWS composition, published by Datagrok with
+# the same version as the environment chart. Providers and functions are installed
+# by gitops/platform, under the names the composition refers to, so the package
+# doesn't install its own copies.
+apiVersion: pkg.crossplane.io/v1
+kind: Configuration
+metadata:
+  name: datagrok-aws
+  annotations:
+    # Removing the package removes the XRD, which deletes the environment's XR.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Prune=false,Delete=false
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  package: {{ .Values.datagrok.registry }}/crossplane-aws:{{ .Values.datagrok.version }}
+  skipDependencyResolution: true
+  {{- if not (regexMatch "^[0-9]+\\.[0-9]+\\.[0-9]+$" .Values.datagrok.version) }}
+  # bleeding-edge and other moving tags: pick up every new build.
+  packagePullPolicy: Always
+  {{- end }}
+{{- end }}

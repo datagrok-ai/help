@@ -30,6 +30,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "-1"
 spec:
   env: {{ .Values.env }}
+  allowDataDeletion: {{ .Values.allowDataDeletion | default false }}
   aws:
     accountId: {{ .Values.aws.accountId | quote }}
     region: {{ .Values.aws.region }}

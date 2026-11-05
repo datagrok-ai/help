@@ -1,0 +1,10 @@
+# Datagrok in an EKS cluster you already run. Copy to <env>.tfvars and fill in.
+# Terraform reads the cluster, its VPC, and its IAM OIDC provider, and installs
+# ArgoCD, Crossplane, and External Secrets into it.
+env                   = "main"
+region                = "us-east-1"
+existing_cluster_name = "my-cluster"
+db_subnet_ids         = ["subnet-0aaa", "subnet-0bbb"] # private, two availability zones
+# existing_node_security_group_id = "sg-0ccc"          # default: the cluster security group
+# install_lb_controller           = false              # the cluster already runs one
+config_repo_url = "git@github.com:acme/datagrok-config.git"
