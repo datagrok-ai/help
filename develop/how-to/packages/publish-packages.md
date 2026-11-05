@@ -61,4 +61,7 @@ grok publish <HOST>
 
 If you want to use this package with other users, share the package with the [group](../../../govern/access-control/users-and-groups#groups).
 
+To manage your organization's packages in one repository with CI, through your own npm registry or
+directly to Datagrok, see [Set up a private package repository](private-package-repository.md).
+
 ![Share package](share-package.png)
