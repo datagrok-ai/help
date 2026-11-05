@@ -91,6 +91,7 @@ sync with AD groups, drive the platform from a script using the
 This is the preferred and most powerful way to integrate with an external identity provider.  
 Datagrok supports the OpenID protocol to allow users to be authenticated using OpenID providers
 such as Azure AD, Google, Okta, Auth0, and any other OIDC-compliant identity provider.
+For a step-by-step Microsoft Entra ID setup, including group sync, see [Set up Microsoft Entra ID](configure-entra.md).
 
 1. Go to the Datagrok Settings section `Users and Sessions`; this section contains all authentication settings.
 2. Enable `Open Id authentication` to use the OpenID method
@@ -174,21 +175,36 @@ Package code can also pass the kept token to other services through
 ## Group synchronization
 
 Datagrok can mirror the groups a user belongs to in your identity provider into Datagrok groups.
-Synchronization runs when a user logs in and on a schedule for every active user: groups are matched by
-name, missing groups are created, and memberships the user no longer has on the provider side are
-removed. Groups created by the sync are owned by the **Administrators** role and are deleted when their
-last synced member leaves. Groups and memberships that an administrator created by hand are never
-removed, and roles such as **Administrators** are never matched. A user the provider has no record
-of keeps their groups.
+Groups are matched by name, missing groups are created, and memberships the user no longer has on the
+provider side are removed. Groups created by the sync are owned by the **Administrators** role and are
+deleted when their last synced member leaves. Groups and memberships that an administrator created by
+hand are never removed, and roles such as **Administrators** are never matched.
 
-To enable it, go to **Settings** > **Users and Sessions** > **Group Sync**, turn on **Sync Groups**,
-and choose the **Provider**:
+Synchronization runs:
 
-| Setting       | Description                                                                                                                    |
-|---------------|--------------------------------------------------------------------------------------------------------------------------------|
-| Provider      | **Azure Entra** or **Google**                                                                                                  |
-| Group Filter  | A regular expression, matched case-insensitively against group names. Only matching groups are synced. Empty syncs all groups |
-| Sync Interval | How often, in minutes, every user's membership is re-read. `0` syncs on login only                                             |
+* When a user logs in, for that user.
+* On a schedule, for every active user, so a user removed from a group loses it without logging in.
+* When an administrator clicks **Sync now**, for every active user.
+
+If the provider has no record of a user, or can't be reached, the user keeps their groups.
+
+### Settings
+
+Group sync settings are in **Settings** > **Users and Sessions** > **Group Sync**. Turn on
+**Sync Groups** to show the rest of the settings:
+
+| Setting                      | Shown when                | Description                                                                                                                 |
+|------------------------------|---------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| Sync Groups                  | Always                    | Turns group synchronization on or off                                                                                       |
+| Provider                     | **Sync Groups** is on     | **Azure Entra** (Microsoft Entra ID through OpenID) or **Google** (Google Workspace)                                        |
+| Group Filter                 | **Sync Groups** is on     | A regular expression, matched case-insensitively against group names. Only matching groups are synced. Empty syncs all groups |
+| Sync Interval                | **Sync Groups** is on     | How often, in minutes, every user's groups are re-read. `0` syncs on login only. The default is `60`                       |
+| Google Group Service Account | **Provider** is **Google** | The service account key JSON. See [Google Workspace](#google-workspace)                                                     |
+| Google Delegated Admin Email | **Provider** is **Google** | The Workspace super-admin the service account impersonates                                                                   |
+
+Settings saved before this layout carry over. A server that had **Sync Google Groups** on gets
+**Sync Groups** on with **Provider** set to **Google**. A server that had **Sync Groups** on gets
+**Azure Entra**.
 
 To check the settings before you save them, enter a user's email next to **Test for user** and click
 **Test**. Datagrok lists the user's groups on the provider, greys out the ones the filter excludes, and
@@ -211,9 +227,12 @@ with the app's own token. To set it up:
 3. Append `GroupMember.Read.All` to the OpenID **Scopes**, for example
    `openid profile email GroupMember.Read.All`.
 4. Set **Login Claim** to `preferred_username`. Entra ID tokens carry no `udn` claim.
+5. In **Group Sync**, turn on **Sync Groups** and set **Provider** to **Azure Entra**.
 
 Group display names must be unique in the tenant for matching to work. Use **Group Filter** to keep
 unrelated groups out of Datagrok, for example `^datagrok-`.
+
+For the full walkthrough, see [Set up Microsoft Entra ID](configure-entra.md).
 
 ### Google Workspace
 
@@ -222,7 +241,7 @@ a service account. This works with Google OpenID login and with [IAP](#iap-authe
 
 1. Create a service account, enable domain-wide delegation for the scope
    `https://www.googleapis.com/auth/cloud-identity.groups.readonly`, and download its key JSON.
-2. In Datagrok, set **Provider** to **Google**, paste the key JSON into
+2. In **Group Sync**, turn on **Sync Groups**, set **Provider** to **Google**, paste the key JSON into
    **Google Group Service Account**, and set **Google Delegated Admin Email** to a Workspace
    super-admin the service account impersonates.
 
