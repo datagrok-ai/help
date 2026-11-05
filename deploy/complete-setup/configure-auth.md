@@ -174,34 +174,46 @@ Package code can also pass the kept token to other services through
 ## Group synchronization
 
 Datagrok can mirror the groups a user belongs to in your identity provider into Datagrok groups.
-Synchronization runs on every login: groups are matched by name, missing groups are created, and
-memberships the user no longer has on the provider side are removed. Groups created by the sync are
-owned by the **Administrators** role and are deleted when their last synced member leaves. Groups and
-memberships that an administrator created by hand are never removed, and roles such as
-**Administrators** are never matched.
+Synchronization runs when a user logs in and on a schedule for every active user: groups are matched by
+name, missing groups are created, and memberships the user no longer has on the provider side are
+removed. Groups created by the sync are owned by the **Administrators** role and are deleted when their
+last synced member leaves. Groups and memberships that an administrator created by hand are never
+removed, and roles such as **Administrators** are never matched. A user the provider has no record
+of keeps their groups.
 
-To enable it, go to **Settings > Users and Sessions > Group Sync** and turn on **Sync Groups**
-(OpenID providers) or **Sync Google Groups** (Google Workspace).
+To enable it, go to **Settings** > **Users and Sessions** > **Group Sync**, turn on **Sync Groups**,
+and choose the **Provider**:
 
-### OpenID providers
+| Setting       | Description                                                                                                                    |
+|---------------|--------------------------------------------------------------------------------------------------------------------------------|
+| Provider      | **Azure Entra** or **Google**                                                                                                  |
+| Group Filter  | A regular expression, matched case-insensitively against group names. Only matching groups are synced. Empty syncs all groups |
+| Sync Interval | How often, in minutes, every user's membership is re-read. `0` syncs on login only                                             |
 
-With **Sync Groups** enabled, Datagrok reads the `groups` claim from the login token. Providers that
-put group names into that claim, such as Keycloak with a group membership mapper, need nothing else.
+To check the settings before you save them, enter a user's email next to **Test for user** and click
+**Test**. Datagrok lists the user's groups on the provider, greys out the ones the filter excludes, and
+shows the groups the sync currently manages for that user. Click **Sync now** to sync every user with
+the saved settings right away.
 
-Microsoft Entra ID (Azure AD) does not put group names into tokens: cloud groups arrive as object IDs,
-and users with many groups get no claim at all. Datagrok then reads the user's transitive group
-membership from Microsoft Graph with the login access token. To set it up:
+### Microsoft Entra ID
+
+Datagrok reads group names from the login token's `groups` claim. Entra ID usually puts object IDs
+there, or no claim at all for users with many groups, so Datagrok reads the user's transitive group
+membership from Microsoft Graph. Scheduled sync and the test run have no user token and call Graph
+with the app's own token. To set it up:
 
 1. In the app registration, add the delegated Microsoft Graph permissions `User.Read` and
-   `GroupMember.Read.All`, and grant admin consent.
-2. In Datagrok, append `GroupMember.Read.All` to the OpenID **Scopes**, for example
+   `GroupMember.Read.All`, and the application permissions `User.Read.All` and
+   `GroupMember.Read.All`. Grant admin consent.
+2. In Datagrok, configure OpenID authentication with a configuration endpoint on
+   `login.microsoftonline.com` and a client secret or certificate. Other hosts are treated as
+   generic OpenID providers: only the token claim is read at login, and scheduled sync skips users.
+3. Append `GroupMember.Read.All` to the OpenID **Scopes**, for example
    `openid profile email GroupMember.Read.All`.
-3. Set **Login Claim** to `preferred_username`. Entra ID tokens carry no `udn` claim.
-4. Use a configuration endpoint on `login.microsoftonline.com`. Other hosts are treated as generic
-   OpenID providers, and only the token claim is read.
+4. Set **Login Claim** to `preferred_username`. Entra ID tokens carry no `udn` claim.
 
-Every group the user belongs to becomes a Datagrok group, so a user in many groups creates many
-groups. Group display names must be unique in the tenant for matching to work.
+Group display names must be unique in the tenant for matching to work. Use **Group Filter** to keep
+unrelated groups out of Datagrok, for example `^datagrok-`.
 
 ### Google Workspace
 
@@ -210,14 +222,12 @@ a service account. This works with Google OpenID login and with [IAP](#iap-authe
 
 1. Create a service account, enable domain-wide delegation for the scope
    `https://www.googleapis.com/auth/cloud-identity.groups.readonly`, and download its key JSON.
-2. In Datagrok, turn on **Sync Google Groups**, paste the key JSON into
+2. In Datagrok, set **Provider** to **Google**, paste the key JSON into
    **Google Group Service Account**, and set **Google Delegated Admin Email** to a Workspace
    super-admin the service account impersonates.
 
 :::note
-Synchronization happens at login only. A user removed from a group keeps the Datagrok membership until
-the next login. When Keycloak synchronization is enabled on the server, login-time group sync is
-skipped.
+When Keycloak synchronization is enabled on the server, group sync is skipped.
 :::
 
 ## SAML authentication
