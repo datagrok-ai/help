@@ -8,7 +8,8 @@ kind: Configuration
 metadata:
   name: datagrok-aws
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    # Removing the package removes the XRD, which deletes the environment's XR.
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,Prune=false,Delete=false
     argocd.argoproj.io/sync-wave: "1"
 spec:
   package: {{ .Values.datagrok.registry }}/crossplane-aws:{{ .Values.datagrok.version }}

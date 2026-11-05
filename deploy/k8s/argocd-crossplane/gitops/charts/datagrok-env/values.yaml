@@ -24,6 +24,11 @@ images: {}
 #  spawner:
 #  rabbitmq:
 
+# Safety switch. false: removing the environment keeps the database, the bucket
+# and the log group in AWS, and the db/storage guards below can't be weakened.
+# To delete the data: set true on its own, sync, then lower the guards.
+allowDataDeletion: false
+
 db:
   # RDS address, known after the first sync: kubectl get dge. The Datagrok
   # chart is not rendered until it is set.

@@ -348,6 +348,7 @@ environment file values, with their defaults, is in
 | `db.allocatedStorage`, `db.maxAllocatedStorage` | `100`, `500` | Initial storage and the storage autoscaling limit, in GB |
 | `db.multiAz` | `true` | Standby instance in a second availability zone |
 | `db.backupRetentionDays` | `35` | Days of automated RDS backups |
+| `allowDataDeletion` | `false` | `true` lets removal delete the database, bucket and log group. See [Safeguards](#safeguards) |
 | `db.deletionProtection`, `db.skipFinalSnapshot` | `true`, `false` | Keep them for production. See [Safeguards](#safeguards) |
 | `storage.noncurrentVersionDays` | `30` | Days S3 keeps overwritten and deleted file versions |
 | `logging.retentionDays` | `365` | Retention of the CloudWatch log group |
@@ -537,9 +538,18 @@ composition, run `argocd app get datagrok-<env> --hard-refresh` to pick up the n
 Crossplane has no plan step that asks AWS what a change will do. A preview shows which fields change,
 not whether AWS modifies, restarts, or replaces a resource. The templates protect data against that:
 
-* RDS has deletion protection and takes a final snapshot. Removing the `DatagrokEnvironment` doesn't
-  delete the database.
-* The bucket isn't force-destroyed, so a non-empty bucket can't be deleted.
+* Removing the environment never deletes its data. The RDS instance, the S3 bucket and the log group
+  are created with `deletionPolicy: Orphan`, so deleting the `DatagrokEnvironment`, the
+  `datagrok-<env>` application, the crossplane-aws package or its XRD leaves them in AWS. Restoring
+  the environment with the same `env` adopts them again.
+* `allowDataDeletion` is the safety switch. Until it is `true` on the running environment, Kubernetes
+  rejects any change that turns off `db.deletionProtection`, turns on `db.skipFinalSnapshot` or
+  `storage.forceDestroy`, or lowers `db.backupRetentionDays` or `storage.noncurrentVersionDays`. Set
+  it in its own commit and sync it before you lower a guard: a commit that does both is rejected. The
+  `env` of an environment can't be changed.
+* Behind the switch, RDS has deletion protection and takes a final snapshot, automated backups are
+  kept for their retention period after the instance is deleted, and a non-empty bucket can't be
+  deleted.
 * Generated passwords are created once and kept in Secrets Manager under `datagrok/<env>`. Neither
   ArgoCD nor a resync regenerates them.
 * Every version is pinned: the Datagrok release by `datagrok.version`, and the providers,
