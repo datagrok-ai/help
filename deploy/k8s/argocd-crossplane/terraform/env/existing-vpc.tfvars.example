@@ -1,0 +1,7 @@
+# A new EKS cluster in a VPC you already run. Copy to <env>.tfvars and fill in.
+env                         = "main"
+region                      = "us-east-1"
+existing_vpc_id             = "vpc-0123"
+existing_private_subnet_ids = ["subnet-0aaa", "subnet-0bbb", "subnet-0ccc"] # nodes; need a NAT route
+db_subnet_ids               = ["subnet-0ddd", "subnet-0eee"]                # RDS, two availability zones
+config_repo_url             = "git@github.com:acme/datagrok-config.git"

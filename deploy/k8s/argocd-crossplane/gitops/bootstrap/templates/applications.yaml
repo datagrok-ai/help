@@ -47,6 +47,7 @@ spec:
     automated: {prune: true, selfHeal: true}
     retry: {{ toJson $retry }}
     syncOptions: [CreateNamespace=true, ServerSideApply=true]
+{{- if .Values.controllers.awsLoadBalancerController }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -77,6 +78,7 @@ spec:
     automated: {prune: true, selfHeal: true}
     retry: {{ toJson $retry }}
     syncOptions: [ServerSideApply=true]
+{{- end }}
 ---
 # Wave 1: Crossplane providers and functions. The XRD and the Composition come
 # from the crossplane-aws package (crossplane-package.yaml).
