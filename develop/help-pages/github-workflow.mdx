@@ -154,19 +154,14 @@ The source code and READMEs are located in our
 [public repository on GitHub](https://github.com/datagrok-ai/public/tree/master).
 This section helps you to set up this repository and install all required packages.
 Clone [public](https://github.com/datagrok-ai/public) and [help](https://github.com/datagrok-ai/help)
-side by side: the commands below run from the directory that contains both.
+side by side: each command block below starts in the directory that contains both.
 
 1. Install commit linting tools as described in the [Git policy](../dev-process/git-policy#commit-linting)
 
-1. Open the Docusaurus folder in the _Datagrok public_ repository:
+1. Install the package dependencies of the Docusaurus folder in the _Datagrok public_ repository:
 
     ```shell
     cd public/docusaurus
-    ```
-
-1. Install package dependencies:
-
-    ```shell
     npm install
     ```
 
@@ -175,7 +170,7 @@ the repository's pnpm workspace, so run this once at the repository root (`corep
 pnpm is not installed yet):
 
 ```shell
-cd ..
+cd public
 pnpm install
 ```
 
