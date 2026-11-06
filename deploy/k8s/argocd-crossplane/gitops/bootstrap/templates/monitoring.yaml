@@ -1,0 +1,273 @@
+{{- $m := .Values.monitoring }}
+{{- /* An unquoted off in YAML is the boolean false. */}}
+{{- $mode := toString $m.mode | replace "false" "off" }}
+{{- if ne $mode "off" }}
+{{- if not (has $mode (list "local" "external")) }}
+{{- fail (printf "monitoring.mode: %s. Use off, local or external" $mode) }}
+{{- end }}
+{{- if and (eq $mode "external") (not $m.external.url) }}
+{{- fail "monitoring.mode external needs monitoring.external.url" }}
+{{- end }}
+{{- if not .Values.aws.cloudwatchExporterRoleArn }}
+{{- fail "monitoring needs the IAM role Terraform creates when monitoring_mode is not off" }}
+{{- end }}
+{{- $retry := dict "limit" -1 "backoff" (dict "duration" "30s" "factor" 2 "maxDuration" "5m") }}
+{{- $local := eq $mode "local" }}
+{{- $cluster := $m.external.cluster | default (printf "datagrok-%s" .Values.env) }}
+{{- if $local }}
+{{- $stack := dict
+  "crds" (dict "enabled" true)
+  "kubeControllerManager" (dict "enabled" false)
+  "kubeScheduler" (dict "enabled" false)
+  "kubeEtcd" (dict "enabled" false)
+  "kubeProxy" (dict "enabled" false)
+  "alertmanager" (dict "alertmanagerSpec" (dict "storage" (dict "volumeClaimTemplate" (dict "spec" (dict
+      "storageClassName" "datagrok-gp3"
+      "accessModes" (list "ReadWriteOnce")
+      "resources" (dict "requests" (dict "storage" "2Gi")))))))
+  "grafana" (dict
+    "testFramework" (dict "enabled" false)
+    "admin" (dict "existingSecret" "grafana-admin" "userKey" "admin-user" "passwordKey" "admin-password"))
+  "prometheus" (dict "prometheusSpec" (dict
+    "scrapeInterval" "30s"
+    "retention" $m.retention
+    "externalLabels" (dict "cluster" $cluster)
+    "ruleSelectorNilUsesHelmValues" false
+    "serviceMonitorSelectorNilUsesHelmValues" false
+    "podMonitorSelectorNilUsesHelmValues" false
+    "probeSelectorNilUsesHelmValues" false
+    "scrapeConfigSelectorNilUsesHelmValues" false
+    "storageSpec" (dict "volumeClaimTemplate" (dict "spec" (dict
+      "storageClassName" "datagrok-gp3"
+      "accessModes" (list "ReadWriteOnce")
+      "resources" (dict "requests" (dict "storage" $m.storageSize))))))) }}
+{{- with $m.grafana.hostname }}
+{{- $annotations := dict
+      "alb.ingress.kubernetes.io/scheme" "internet-facing"
+      "alb.ingress.kubernetes.io/target-type" "ip"
+      "alb.ingress.kubernetes.io/listen-ports" "[{\"HTTP\":80},{\"HTTPS\":443}]"
+      "alb.ingress.kubernetes.io/ssl-redirect" "443"
+      "alb.ingress.kubernetes.io/ssl-policy" "ELBSecurityPolicy-TLS13-1-2-2021-06" }}
+{{- with $m.grafana.certificateArn }}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/certificate-arn" . }}
+{{- end }}
+{{- $_ := set $stack.grafana "ingress" (dict "enabled" true "ingressClassName" "alb" "hosts" (list .) "annotations" $annotations) }}
+{{- $_ := set $stack.grafana "grafana.ini" (dict "server" (dict "root_url" (printf "https://%s" .))) }}
+{{- end }}
+# Wave 1: Prometheus, Alertmanager and Grafana (kube-prometheus-stack).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: {{ .Values.versions.kubePrometheusStack }}
+    helm:
+      releaseName: monitoring
+      valuesObject:
+        {{- toYaml (mustMergeOverwrite $stack (deepCopy $m.values)) | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ toJson $retry }}
+    # The operator CRDs are too large for client-side apply.
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+{{- else }}
+{{- $remoteWrite := dict "url" $m.external.url }}
+{{- with $m.external.username }}
+{{- $_ := set $remoteWrite "basic_auth" (dict "username" . "password_file" "/etc/remote-write/password") }}
+{{- end }}
+{{- $forwarder := dict
+  "server" (dict
+    "retention" "2h"
+    "persistentVolume" (dict "enabled" false)
+    "global" (dict "scrape_interval" "30s" "external_labels" (dict "cluster" $cluster))
+    "remoteWrite" (list $remoteWrite)
+    "resources" (dict
+      "requests" (dict "cpu" "100m" "memory" "512Mi")
+      "limits" (dict "cpu" "1" "memory" "3Gi")))
+  "alertmanager" (dict "enabled" false)
+  "prometheus-pushgateway" (dict "enabled" false)
+  "kube-state-metrics" (dict "enabled" true)
+  "prometheus-node-exporter" (dict "enabled" true) }}
+{{- if $m.external.username }}
+{{- $_ := set $forwarder.server "extraSecretMounts" (list (dict
+      "name" "remote-write" "secretName" "prometheus-remote-write" "mountPath" "/etc/remote-write" "readOnly" true)) }}
+{{- end }}
+# Wave 1: a forwarder that scrapes this cluster and sends everything to the
+# external Prometheus (the prometheus chart; no operator, keeps 2 hours in memory).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus
+    targetRevision: {{ .Values.versions.prometheus }}
+    helm:
+      releaseName: prometheus
+      valuesObject:
+        {{- toYaml (mustMergeOverwrite $forwarder (deepCopy $m.values)) | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ toJson $retry }}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+{{- end }}
+# Wave 2: CloudWatch metrics of the environment's RDS instance (YACE). It finds the
+# instance by the tags the composition sets, so no instance name is configured.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-rds
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: yet-another-cloudwatch-exporter
+    targetRevision: {{ .Values.versions.yace }}
+    helm:
+      releaseName: yace
+      valuesObject:
+        fullnameOverride: yace
+        testConnection: false
+        serviceAccount:
+          create: true
+          name: yace
+          annotations:
+            eks.amazonaws.com/role-arn: {{ .Values.aws.cloudwatchExporterRoleArn }}
+        {{- if $local }}
+        serviceMonitor:
+          enabled: true
+          interval: 60s
+          timeout: 30s
+        {{- else }}
+        service:
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "5000"
+        {{- end }}
+        config: |
+          apiVersion: v1alpha1
+          sts-region: {{ .Values.aws.region }}
+          discovery:
+            exportedTagsOnMetrics:
+              AWS/RDS: [Environment]
+            jobs:
+            - type: AWS/RDS
+              regions: [{{ .Values.aws.region }}]
+              searchTags:
+              - {key: Service, value: ^Datagrok$}
+              - {key: Environment, value: ^{{ .Values.env }}$}
+              # Only per-instance series, not CloudWatch's account-wide
+              # aggregates by DatabaseClass or EngineName.
+              dimensionNameRequirements: [DBInstanceIdentifier]
+              period: 60
+              length: 600
+              delay: 120
+              # Every instance-level metric RDS for PostgreSQL publishes; one an instance
+              # doesn't have (ReplicaLag without a replica, DBLoad* without Performance
+              # Insights) is simply absent. Balances and free space keep Minimum for alerts.
+              statistics: [Average, Maximum]
+              metrics:
+              - {name: CPUUtilization}
+              - {name: CPUCreditUsage}
+              - {name: CPUSurplusCreditBalance}
+              - {name: CPUSurplusCreditsCharged}
+              - {name: CheckpointLag}
+              - {name: DBLoad}
+              - {name: DBLoadCPU}
+              - {name: DBLoadNonCPU}
+              - {name: DBLoadRelativeToNumVCPUs}
+              - {name: DatabaseConnections}
+              - {name: DiskQueueDepth}
+              - {name: MaximumUsedTransactionIDs}
+              - {name: NetworkReceiveThroughput}
+              - {name: NetworkTransmitThroughput}
+              - {name: OldestLogicalReplicationSlotLag}
+              - {name: OldestReplicationSlotLag}
+              - {name: ReadIOPS}
+              - {name: ReadLatency}
+              - {name: ReadThroughput}
+              - {name: ReplicaLag}
+              - {name: ReplicationSlotDiskUsage}
+              - {name: SwapUsage}
+              - {name: TransactionLogsDiskUsage}
+              - {name: TransactionLogsGeneration}
+              - {name: WriteIOPS}
+              - {name: WriteLatency}
+              - {name: WriteThroughput}
+              - {name: BurstBalance, statistics: [Minimum, Average]}
+              - {name: CPUCreditBalance, statistics: [Minimum, Average]}
+              - {name: EBSByteBalance%, statistics: [Minimum, Average]}
+              - {name: EBSIOBalance%, statistics: [Minimum, Average]}
+              - {name: FreeStorageSpace, statistics: [Minimum, Average]}
+              - {name: FreeableMemory, statistics: [Minimum, Average]}
+              - {name: DataVolumeIOPSExceededCheck, statistics: [Maximum]}
+              - {name: DataVolumeThroughputExceededCheck, statistics: [Maximum]}
+              - {name: InstanceEBSIOPSExceededCheck, statistics: [Maximum]}
+              - {name: InstanceEBSThroughputExceededCheck, statistics: [Maximum]}
+              - {name: IamDbAuthConnectionRequests, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionSuccess, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailure, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureInsufficientPermissions, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureInvalidToken, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureServerError, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureThrottling, statistics: [Sum], nilToZero: true}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ toJson $retry }}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+---
+# Wave 2: Datagrok rules and dashboards and the Grafana password (local), or the
+# password of the external Prometheus (external).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-datagrok
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: {{ .Values.repo.url }}
+    targetRevision: {{ .Values.repo.revision }}
+    path: gitops/charts/datagrok-monitoring
+    helm:
+      valuesObject:
+        env: {{ .Values.env }}
+        mode: {{ $mode }}
+        alerts: {{ toJson $m.alerts }}
+        remoteWriteAuth: {{ and (not $local) (not (empty $m.external.username)) }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ toJson $retry }}
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+{{- end }}

@@ -117,3 +117,43 @@ run "existing_vpc_without_node_subnets_fails" {
   }
   expect_failures = [terraform_data.inputs]
 }
+
+run "monitoring_off_by_default" {
+  command = plan
+  assert {
+    condition     = length(module.cloudwatch_exporter_irsa) == 0 && length(aws_eks_addon.ebs_csi) == 0
+    error_message = "monitoring is off by default: no exporter role, no EBS driver"
+  }
+}
+
+run "monitoring_local" {
+  command = plan
+  variables {
+    monitoring_mode = "local"
+  }
+  assert {
+    condition     = length(module.cloudwatch_exporter_irsa) == 1 && length(aws_eks_addon.ebs_csi) == 1
+    error_message = "local monitoring: exporter role and EBS driver"
+  }
+}
+
+run "monitoring_external_on_existing_cluster" {
+  command = plan
+  variables {
+    existing_cluster_name = "my-cluster"
+    db_subnet_ids         = ["subnet-c", "subnet-d"]
+    monitoring_mode       = "external"
+  }
+  assert {
+    condition     = length(module.cloudwatch_exporter_irsa) == 1 && length(aws_eks_addon.ebs_csi) == 0
+    error_message = "external monitoring: exporter role only, the external Prometheus stores the data"
+  }
+}
+
+run "monitoring_unknown_mode_fails" {
+  command = plan
+  variables {
+    monitoring_mode = "on"
+  }
+  expect_failures = [var.monitoring_mode]
+}

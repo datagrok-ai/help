@@ -37,6 +37,7 @@ locals {
   azs                  = slice(data.aws_availability_zones.available.names, 0, 3)
   use_existing_cluster = var.existing_cluster_name != ""
   use_existing_vpc     = local.use_existing_cluster || var.existing_vpc_id != ""
+  install_ebs_csi      = var.monitoring_mode == "local" && var.install_ebs_csi_driver
 }
 
 resource "terraform_data" "inputs" {
@@ -296,6 +297,64 @@ resource "aws_iam_policy" "external_secrets" {
   })
 }
 
+# --- Monitoring (monitoring_mode) --------------------------------------------
+
+# The RDS metrics exporter (YACE) reads CloudWatch. None of these actions can be
+# scoped to a resource; its config limits it to this environment's tags.
+module "cloudwatch_exporter_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.48"
+  count   = var.monitoring_mode != "off" ? 1 : 0
+
+  role_name        = "${local.name}-cloudwatch-exporter"
+  role_policy_arns = { read = aws_iam_policy.cloudwatch_exporter[0].arn }
+  oidc_providers = {
+    main = {
+      provider_arn               = local.oidc_provider_arn
+      namespace_service_accounts = ["monitoring:yace"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "cloudwatch_exporter" {
+  count = var.monitoring_mode != "off" ? 1 : 0
+  name  = "${local.name}-cloudwatch-exporter"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["cloudwatch:GetMetricData", "cloudwatch:GetMetricStatistics", "cloudwatch:ListMetrics", "tag:GetResources", "iam:ListAccountAliases"]
+      Resource = "*"
+    }]
+  })
+}
+
+# Volumes of the local Prometheus stack. EKS has no EBS provisioner without it.
+module "ebs_csi_irsa" {
+  source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+  version = "~> 5.48"
+  count   = local.install_ebs_csi ? 1 : 0
+
+  role_name             = "${local.name}-ebs-csi"
+  attach_ebs_csi_policy = true
+  oidc_providers = {
+    main = {
+      provider_arn               = local.oidc_provider_arn
+      namespace_service_accounts = ["kube-system:ebs-csi-controller-sa"]
+    }
+  }
+}
+
+resource "aws_eks_addon" "ebs_csi" {
+  count                       = local.install_ebs_csi ? 1 : 0
+  cluster_name                = local.cluster_name
+  addon_name                  = "aws-ebs-csi-driver"
+  service_account_role_arn    = module.ebs_csi_irsa[0].iam_role_arn
+  resolve_conflicts_on_create = "OVERWRITE"
+  # The add-on becomes active only once there are nodes to run it.
+  depends_on = [module.eks]
+}
+
 # --- ArgoCD and the root Application ----------------------------------------
 
 provider "helm" {
@@ -348,6 +407,7 @@ resource "helm_release" "root" {
               controllers = {
                 awsLoadBalancerController = var.install_lb_controller
               }
+              monitoring = { mode = var.monitoring_mode }
               aws = {
                 accountId              = data.aws_caller_identity.current.account_id
                 region                 = var.region
@@ -360,6 +420,8 @@ resource "helm_release" "root" {
                 crossplaneRoleArn      = aws_iam_role.crossplane.arn
                 lbControllerRoleArn    = var.install_lb_controller ? module.lb_controller_irsa[0].iam_role_arn : ""
                 externalSecretsRoleArn = module.external_secrets_irsa.iam_role_arn
+                cloudwatchExporterRoleArn = (var.monitoring_mode != "off"
+                ? module.cloudwatch_exporter_irsa[0].iam_role_arn : "")
               }
             }
           }

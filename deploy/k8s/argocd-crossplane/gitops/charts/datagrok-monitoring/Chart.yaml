@@ -1,0 +1,4 @@
+apiVersion: v2
+name: datagrok-monitoring
+description: Datagrok monitoring on top of a Prometheus stack - RDS alerts, hourly consumption roll-ups, dashboards
+version: 0.1.0
