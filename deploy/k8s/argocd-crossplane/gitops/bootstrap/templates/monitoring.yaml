@@ -179,23 +179,61 @@ spec:
               searchTags:
               - {key: Service, value: ^Datagrok$}
               - {key: Environment, value: ^{{ .Values.env }}$}
+              # Only per-instance series, not CloudWatch's account-wide
+              # aggregates by DatabaseClass or EngineName.
+              dimensionNameRequirements: [DBInstanceIdentifier]
               period: 60
               length: 600
               delay: 120
-              nilToZero: true
+              # Every instance-level metric RDS for PostgreSQL publishes; one an instance
+              # doesn't have (ReplicaLag without a replica, DBLoad* without Performance
+              # Insights) is simply absent. Balances and free space keep Minimum for alerts.
+              statistics: [Average, Maximum]
               metrics:
-              - {name: CPUUtilization, statistics: [Average, Maximum]}
-              - {name: FreeableMemory, statistics: [Minimum]}
-              - {name: FreeStorageSpace, statistics: [Minimum]}
-              - {name: DatabaseConnections, statistics: [Maximum]}
-              - {name: ReadLatency, statistics: [Average]}
-              - {name: WriteLatency, statistics: [Average]}
-              - {name: ReadIOPS, statistics: [Average]}
-              - {name: WriteIOPS, statistics: [Average]}
-              - {name: DiskQueueDepth, statistics: [Average]}
-              - {name: EBSIOBalance%, statistics: [Minimum]}
-              - {name: ReplicaLag, statistics: [Maximum]}
-              - {name: TransactionLogsDiskUsage, statistics: [Maximum]}
+              - {name: CPUUtilization}
+              - {name: CPUCreditUsage}
+              - {name: CPUSurplusCreditBalance}
+              - {name: CPUSurplusCreditsCharged}
+              - {name: CheckpointLag}
+              - {name: DBLoad}
+              - {name: DBLoadCPU}
+              - {name: DBLoadNonCPU}
+              - {name: DBLoadRelativeToNumVCPUs}
+              - {name: DatabaseConnections}
+              - {name: DiskQueueDepth}
+              - {name: MaximumUsedTransactionIDs}
+              - {name: NetworkReceiveThroughput}
+              - {name: NetworkTransmitThroughput}
+              - {name: OldestLogicalReplicationSlotLag}
+              - {name: OldestReplicationSlotLag}
+              - {name: ReadIOPS}
+              - {name: ReadLatency}
+              - {name: ReadThroughput}
+              - {name: ReplicaLag}
+              - {name: ReplicationSlotDiskUsage}
+              - {name: SwapUsage}
+              - {name: TransactionLogsDiskUsage}
+              - {name: TransactionLogsGeneration}
+              - {name: WriteIOPS}
+              - {name: WriteLatency}
+              - {name: WriteThroughput}
+              - {name: BurstBalance, statistics: [Minimum, Average]}
+              - {name: CPUCreditBalance, statistics: [Minimum, Average]}
+              - {name: EBSByteBalance%, statistics: [Minimum, Average]}
+              - {name: EBSIOBalance%, statistics: [Minimum, Average]}
+              - {name: FreeStorageSpace, statistics: [Minimum, Average]}
+              - {name: FreeableMemory, statistics: [Minimum, Average]}
+              - {name: DataVolumeIOPSExceededCheck, statistics: [Maximum]}
+              - {name: DataVolumeThroughputExceededCheck, statistics: [Maximum]}
+              - {name: InstanceEBSIOPSExceededCheck, statistics: [Maximum]}
+              - {name: InstanceEBSThroughputExceededCheck, statistics: [Maximum]}
+              - {name: IamDbAuthConnectionRequests, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionSuccess, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailure, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureInsufficientPermissions, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureInvalidToken, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureServerError, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureThrottling, statistics: [Sum], nilToZero: true}
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring

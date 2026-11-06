@@ -486,7 +486,9 @@ Prometheus per cluster in either mode.
 | `local` (recommended) | Prometheus, Alertmanager, and Grafana ([kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)), the RDS exporter, and the Datagrok rules and dashboards | The cluster doesn't run another Prometheus operator: two operators conflict over the same CRDs |
 | `external` | A forwarder ([prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) chart with kube-state-metrics and node-exporter, two hours in memory) that sends all metrics to your Prometheus with `remote_write`, and the RDS exporter | You already run a central Prometheus. It stores the data and evaluates the rules; load the rules and dashboards from `gitops/charts/datagrok-monitoring` there |
 
-Both modes collect the CloudWatch metrics of the environment's RDS instance with
+Both modes collect every CloudWatch metric of the environment's RDS instance (about 45: CPU and
+credits, memory, storage, IOPS, latency, throughput, network, connections, DB load, replication
+slots, transaction IDs, EBS balances and limit checks, IAM authentication) with
 [YACE](https://github.com/prometheus-community/yet-another-cloudwatch-exporter). The exporter
 finds the instance by the `Service=Datagrok` and `Environment=<env>` tags that the composition
 sets. It reads CloudWatch through the `datagrok-<env>-cloudwatch-exporter` IAM role.
