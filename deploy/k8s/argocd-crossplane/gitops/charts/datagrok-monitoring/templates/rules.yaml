@@ -1,0 +1,122 @@
+{{- if eq .Values.mode "local" }}
+{{- $a := .Values.alerts }}
+{{- $interval := .Values.scrapeIntervalSeconds }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: datagrok-rds
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  groups:
+  - name: datagrok-rds
+    rules:
+    - alert: DatagrokRdsMetricsMissing
+      expr: absent(aws_rds_cpuutilization_average{tag_Environment="{{ .Values.env }}"})
+      for: 30m
+      labels: {severity: warning}
+      annotations:
+        summary: No CloudWatch metrics for the RDS instance of {{ .Values.env }}
+        description: The yace exporter in the monitoring namespace returns nothing for the instance tagged Environment={{ .Values.env }}. Check its logs for IAM errors.
+    - alert: DatagrokRdsCpuHigh
+      expr: aws_rds_cpuutilization_average > {{ $a.rdsCpuPercent }}
+      for: 30m
+      labels: {severity: warning}
+      annotations:
+        summary: 'RDS {{ "{{" }} $labels.dimension_DBInstanceIdentifier {{ "}}" }}: CPU {{ "{{" }} $value | humanize {{ "}}" }}%'
+    - alert: DatagrokRdsStorageLow
+      expr: aws_rds_free_storage_space_minimum < {{ $a.rdsFreeStorageBytes }}
+      for: 15m
+      labels: {severity: critical}
+      annotations:
+        summary: 'RDS {{ "{{" }} $labels.dimension_DBInstanceIdentifier {{ "}}" }}: {{ "{{" }} $value | humanize1024 {{ "}}" }}B free'
+        description: Storage autoscaling grows the volume up to db.maxAllocatedStorage; at this point it is at the maximum or failing. Raise db.maxAllocatedStorage in the environment file.
+    - alert: DatagrokRdsMemoryLow
+      expr: aws_rds_freeable_memory_minimum < {{ $a.rdsFreeableMemoryBytes }}
+      for: 15m
+      labels: {severity: warning}
+      annotations:
+        summary: 'RDS {{ "{{" }} $labels.dimension_DBInstanceIdentifier {{ "}}" }}: {{ "{{" }} $value | humanize1024 {{ "}}" }}B freeable memory'
+    - alert: DatagrokRdsIoBalanceLow
+      expr: aws_rds_ebsiobalance_percent_minimum < {{ $a.rdsIoBalancePercent }}
+      for: 30m
+      labels: {severity: warning}
+      annotations:
+        summary: 'RDS {{ "{{" }} $labels.dimension_DBInstanceIdentifier {{ "}}" }}: EBS I/O burst balance {{ "{{" }} $value | humanize {{ "}}" }}%'
+        description: Below zero the volume is throttled to its baseline IOPS. A larger instance class has a higher baseline.
+---
+# Hourly consumption per workload and container. Each rule writes one sample per
+# hour; a sum_over_time over these is the consumption of any
+# period, e.g. sum_over_time(workload_container:cpu_core_hours:1h[30d]). Pods are
+# rolled up to the Deployment, StatefulSet, DaemonSet or Job that owns them; a bare
+# pod is its own workload.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: datagrok-consumption
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  groups:
+  - name: datagrok-consumption-1h
+    interval: 1h
+    rules:
+    - record: datagrok:pod_workload:1h
+      expr: |
+        max by (cluster, namespace, pod, workload, workload_type) (
+          label_replace(label_replace(
+            label_replace(max_over_time(kube_pod_owner{owner_kind="ReplicaSet"}[1h]), "replicaset", "$1", "owner_name", "(.*)")
+            * on (cluster, namespace, replicaset) group_left (owner_kind, owner_name)
+              max by (cluster, namespace, replicaset, owner_kind, owner_name) (max_over_time(kube_replicaset_owner[1h])),
+          "workload", "$1", "owner_name", "(.*)"), "workload_type", "$1", "owner_kind", "(.*)")
+          or
+          label_replace(label_replace(
+            max_over_time(kube_pod_owner{owner_kind!="ReplicaSet", owner_kind!="<none>"}[1h]),
+          "workload", "$1", "owner_name", "(.*)"), "workload_type", "$1", "owner_kind", "(.*)")
+          or
+          label_replace(label_replace(
+            max_over_time(kube_pod_owner{owner_kind="<none>"}[1h]),
+          "workload", "$1", "pod", "(.*)"), "workload_type", "Pod", "", "")
+        )
+    - record: workload_container:cpu_core_hours:1h
+      expr: |
+        sum by (cluster, namespace, workload, workload_type, container) (
+          increase(container_cpu_usage_seconds_total{container!="", container!="POD"}[1h])
+          * on (cluster, namespace, pod) group_left (workload, workload_type) datagrok:pod_workload:1h
+        ) / 3600
+    - record: workload_container:memory_gib_hours:1h
+      expr: |
+        sum by (cluster, namespace, workload, workload_type, container) (
+          sum_over_time(container_memory_working_set_bytes{container!="", container!="POD"}[1h])
+          * on (cluster, namespace, pod) group_left (workload, workload_type) datagrok:pod_workload:1h
+        ) * {{ $interval }} / 3600 / 1073741824
+    - record: workload_container:cpu_requested_core_hours:1h
+      expr: |
+        sum by (cluster, namespace, workload, workload_type, container) (
+          sum_over_time(kube_pod_container_resource_requests{resource="cpu"}[1h])
+          * on (cluster, namespace, pod) group_left (workload, workload_type) datagrok:pod_workload:1h
+        ) * {{ $interval }} / 3600
+    - record: workload_container:memory_requested_gib_hours:1h
+      expr: |
+        sum by (cluster, namespace, workload, workload_type, container) (
+          sum_over_time(kube_pod_container_resource_requests{resource="memory"}[1h])
+          * on (cluster, namespace, pod) group_left (workload, workload_type) datagrok:pod_workload:1h
+        ) * {{ $interval }} / 3600 / 1073741824
+    - record: workload:network_receive_bytes:1h
+      expr: |
+        sum by (cluster, namespace, workload, workload_type) (
+          sum by (cluster, namespace, pod) (increase(container_network_receive_bytes_total[1h]))
+          * on (cluster, namespace, pod) group_left (workload, workload_type) datagrok:pod_workload:1h
+        )
+    - record: workload:network_transmit_bytes:1h
+      expr: |
+        sum by (cluster, namespace, workload, workload_type) (
+          sum by (cluster, namespace, pod) (increase(container_network_transmit_bytes_total[1h]))
+          * on (cluster, namespace, pod) group_left (workload, workload_type) datagrok:pod_workload:1h
+        )
+    - record: namespace_pvc:used_gib_hours:1h
+      expr: |
+        sum by (cluster, namespace, persistentvolumeclaim) (
+          sum_over_time(kubelet_volume_stats_used_bytes[1h])
+        ) * {{ $interval }} / 3600 / 1073741824
+{{- end }}

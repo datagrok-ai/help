@@ -1,0 +1,15 @@
+# Rendered by gitops/bootstrap/templates/monitoring.yaml from the monitoring block
+# of the bootstrap values. See there for what each setting means.
+env: ""
+# local or external
+mode: local
+alerts:
+  rdsCpuPercent: 85
+  rdsFreeStorageBytes: 5368709120
+  rdsFreeableMemoryBytes: 268435456
+  rdsIoBalancePercent: 20
+# Scrape interval of the Prometheus that evaluates the roll-ups, in seconds. Gauges
+# are integrated as sum_over_time * interval.
+scrapeIntervalSeconds: 30
+# external: read the remote_write credentials from Secrets Manager.
+remoteWriteAuth: false

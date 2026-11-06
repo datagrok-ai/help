@@ -22,7 +22,7 @@ The approach has three layers:
 | Layer | Tool | Owns | Changes |
 |-------|------|------|---------|
 | Bootstrap | Terraform | VPC, EKS, and node groups, or [your existing ones](#existing-vpc-or-eks-cluster), plus IAM roles of the in-cluster controllers, ArgoCD, and one root Application | When a cluster is created or resized |
-| Delivery | ArgoCD, in each cluster | Crossplane, External Secrets, AWS Load Balancer Controller, and the Datagrok [Helm chart](install-helm-chart.md) | Every pull request to the config repo |
+| Delivery | ArgoCD, in each cluster | Crossplane, External Secrets, AWS Load Balancer Controller, the Datagrok [Helm chart](install-helm-chart.md), and optional [monitoring](#monitoring) | Every pull request to the config repo |
 | AWS resources | Crossplane, in each cluster | RDS, S3, the application IAM role, and the CloudWatch log group | Every pull request to the config repo |
 
 After the bootstrap, Terraform steps back. Releases, database and bucket changes, and new settings
@@ -102,10 +102,12 @@ gitops/
   envs/
     main.yaml                 # one file per environment
   charts/datagrok-env/        # source of the published environment chart
+  charts/datagrok-monitoring/ # optional monitoring: rules and dashboards
   crossplane-aws/             # source of the published Crossplane package
 ```
 
-Your config repo needs `terraform/` and the first three `gitops/` folders. The last two are the
+Your config repo needs `terraform/` and the first three `gitops/` folders, plus
+`charts/datagrok-monitoring/` if you turn on [monitoring](#monitoring). The last two are the
 sources Datagrok publishes the packages from. Keep them only if you
 [modify the environment chart or the composition](#modify-the-environment-chart-or-the-composition).
 
@@ -442,6 +444,8 @@ The cluster is set by the Terraform variables in `terraform/env/<env>.tfvars` an
 | `node_instance_types` | `["m6i.xlarge"]` | Instance types of the node group |
 | `node_min_size`, `node_max_size` | `2`, `5` | Node group size limits |
 | `config_repo_revision` | `main` | Branch or tag of the config repo that ArgoCD syncs |
+| `monitoring_mode` | `off` | `off`, `local` or `external`. See [Monitoring](#monitoring) |
+| `install_ebs_csi_driver` | `true` | With `monitoring_mode = "local"`: install the EBS CSI driver add-on for the Prometheus volumes. Set to `false` if the cluster already runs it |
 
 ### Modify the environment chart or the composition
 
@@ -468,6 +472,75 @@ where they work.
 
 A composition that creates resources with other names needs the Crossplane role policy in
 `terraform/main.tf` updated, because the policy only allows `datagrok-<env>` names.
+
+## Monitoring
+
+Monitoring is off by default. Turn it on with the Terraform variable `monitoring_mode` and run
+`terraform apply`: the mode decides which IAM role and storage driver Terraform creates, and
+Terraform passes it to ArgoCD. Everything is installed in the `monitoring` namespace. There is one
+Prometheus per cluster in either mode.
+
+| `monitoring_mode` | Installs | Use it when |
+|-------------------|----------|-------------|
+| `off` | Nothing | You don't need monitoring from this template |
+| `local` (recommended) | Prometheus, Alertmanager, and Grafana ([kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)), the RDS exporter, and the Datagrok rules and dashboards | The cluster doesn't run another Prometheus operator: two operators conflict over the same CRDs |
+| `external` | Prometheus in agent mode, which sends all metrics to your Prometheus, and the RDS exporter | You already run a central Prometheus. It stores the data and evaluates the rules; load the rules and dashboards from `gitops/charts/datagrok-monitoring` there |
+
+Both modes collect the CloudWatch metrics of the environment's RDS instance with
+[YACE](https://github.com/prometheus-community/yet-another-cloudwatch-exporter). The exporter
+finds the instance by the `Service=Datagrok` and `Environment=<env>` tags that the composition
+sets. It reads CloudWatch through the `datagrok-<env>-cloudwatch-exporter` IAM role.
+
+The other settings are in the environment file:
+
+```yaml title="gitops/envs/main.yaml"
+monitoring:
+  retention: 31d                   # local: how long Prometheus keeps metrics and consumption roll-ups
+  storageSize: 100Gi
+  grafana:
+    hostname: grafana.datagrok.example.com   # local; empty: kubectl port-forward only
+  external:
+    url: https://prometheus.example.com/api/v1/write   # external: remote_write endpoint
+    basicAuth: true                # username and password from Secrets Manager datagrok/<env>/monitoring
+  values: {}                       # merged over the kube-prometheus-stack values
+```
+
+With `basicAuth`, store the credentials before the first sync:
+
+```bash
+aws secretsmanager create-secret --name datagrok/main/monitoring \
+  --secret-string '{"username":"datagrok","password":"<password>"}'
+```
+
+To send to Amazon Managed Service for Prometheus instead, leave `url` empty and add
+`remoteWrite: [{url: <workspace remote_write URL>, sigv4: {region: <region>}}]`. Every series
+carries `cluster="datagrok-<env>"`.
+
+In `local` mode the Grafana admin password is generated in the cluster:
+
+```bash
+kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+```
+
+### What it collects
+
+| Dashboard | Shows |
+|-----------|-------|
+| Datagrok / RDS | CPU, connections, free storage, freeable memory, latency, IOPS, queue depth, EBS I/O burst balance, replica lag |
+| Datagrok / Consumption | CPU, memory, requested CPU and memory, network, and volume usage per workload over any period within `retention` |
+
+Alerts: `DatagrokRdsStorageLow` (critical), `DatagrokRdsCpuHigh`, `DatagrokRdsMemoryLow`,
+`DatagrokRdsIoBalanceLow`, and `DatagrokRdsMetricsMissing`. Their thresholds are under
+`monitoring.alerts`. Alertmanager has no receiver: add one with `monitoring.values.alertmanager.config`.
+
+Consumption is recorded once an hour per workload and container. Pods are counted toward the
+Deployment, StatefulSet, DaemonSet, or Job that owns them, so the numbers survive pod restarts. The
+sum over a period is the consumption of that period:
+
+```promql
+# CPU core-hours of each workload over the last 30 days
+sum by (namespace, workload) (sum_over_time(workload_container:cpu_core_hours:1h[30d]))
+```
 
 ## Day-to-day operations
 
@@ -580,6 +653,8 @@ Each environment has its own `datagrok.version`, so you can release to one envir
 | Datagrok can't connect to the database | `db.host` in the environment file must match the RDS endpoint, and the `datagrok-db-bootstrap` job must have completed. In an existing cluster, the nodes must be in the security group RDS allows: set `existing_node_security_group_id` |
 | `terraform apply` can't find an OIDC provider | The existing cluster has no IAM OIDC provider. Create it with `eksctl utils associate-iam-oidc-provider` |
 | `terraform apply` is denied by Kubernetes | The principal running Terraform has no administrator access to the existing cluster. Add an access entry |
+| A `monitoring` Prometheus or Alertmanager pod stays `Pending` | Its volume isn't provisioned: the EBS CSI driver is missing. Set `install_ebs_csi_driver = true`, or install the add-on yourself |
+| `DatagrokRdsMetricsMissing` fires | `kubectl -n monitoring logs deploy/yace` shows the CloudWatch or IAM error |
 | The ingress gets no load balancer | The AWS Load Balancer Controller finds no public subnets. Tag them `kubernetes.io/role/elb: 1`, or set `alb.ingress.kubernetes.io/subnets` |
 
 ## See also

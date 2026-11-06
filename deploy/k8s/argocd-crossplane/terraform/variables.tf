@@ -50,6 +50,22 @@ variable "install_lb_controller" {
   default     = true
 }
 
+variable "monitoring_mode" {
+  description = "off, local (Prometheus stack in the cluster) or external (report to an external Prometheus): see monitoring in gitops/bootstrap/values.yaml. local and external create the IAM role of the RDS metrics exporter."
+  type        = string
+  default     = "off"
+  validation {
+    condition     = contains(["off", "local", "external"], var.monitoring_mode)
+    error_message = "monitoring_mode must be off, local or external."
+  }
+}
+
+variable "install_ebs_csi_driver" {
+  description = "With monitoring_mode = local: install the EBS CSI driver add-on for the Prometheus volumes. Set to false if the cluster already runs it."
+  type        = bool
+  default     = true
+}
+
 variable "kubernetes_version" {
   type    = string
   default = "1.33"
