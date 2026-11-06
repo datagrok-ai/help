@@ -8,14 +8,15 @@ name: Bump help in public
 on:
   push:
     branches: [master]
+  # The gif job pushes with GITHUB_TOKEN, which starts no push run (IaC pushes with WRITE_TOKEN, which does).
   workflow_run:
-    workflows: ['Generate gif thumbnails', 'IaC']
+    workflows: ['Generate gif thumbnails']
     types: [completed]
     branches: [master]
   workflow_dispatch:
 
 concurrency:
-  group: bump-public
+  group: bump-public-${{ github.event_name }}
   cancel-in-progress: false
 
 permissions:
@@ -33,7 +34,7 @@ jobs:
           path: public
           sparse-checkout: .github
 
-      - name: Bump submodule pointer
+      - name: Bump or dispatch public
         working-directory: public
         env:
           GH_TOKEN: ${{ github.token }}
@@ -49,7 +50,7 @@ jobs:
           # Umbrella layout: public has no help submodule (no .gitmodules entry), help is its
           # sibling. Nothing to bump; rebuild and deploy the site from help master directly.
           if ! git config --file .gitmodules --get submodule.help.path >/dev/null 2>&1; then
-            # After a 'Generate gif thumbnails' or 'IaC' run, rebuild only if it pushed a commit;
+            # After a 'Generate gif thumbnails' run, rebuild only if it pushed a commit;
             # otherwise the push run has already dispatched this help master.
             if [ -n "$RUN_SHA" ] && [ "$(gh api "repos/$REPO/commits/master" --jq .sha)" = "$RUN_SHA" ]; then
               echo "::notice::help master is still $RUN_SHA: already dispatched"
