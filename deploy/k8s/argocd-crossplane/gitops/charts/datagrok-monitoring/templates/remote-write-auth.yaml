@@ -1,7 +1,7 @@
 {{- if .Values.remoteWriteAuth }}
 # Credentials of the external Prometheus. Store them in Secrets Manager first:
 #   aws secretsmanager create-secret --name datagrok/<env>/monitoring \
-#     --secret-string '{"username":"...","password":"..."}'
+#     --secret-string '{"password":"..."}'
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -16,8 +16,6 @@ spec:
   target:
     name: prometheus-remote-write
   data:
-  - secretKey: username
-    remoteRef: {key: datagrok/{{ .Values.env }}/monitoring, property: username}
   - secretKey: password
     remoteRef: {key: datagrok/{{ .Values.env }}/monitoring, property: password}
 {{- end }}

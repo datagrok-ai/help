@@ -41,8 +41,9 @@ monitoring:
   # off: nothing is installed.
   # local: Prometheus, Alertmanager and Grafana in this cluster, with the Datagrok
   #   rules and dashboards. Only on a cluster that runs no other Prometheus operator.
-  # external: Prometheus in agent mode sends everything to an external Prometheus,
-  #   which holds the data, the rules and the dashboards.
+  # external: a forwarder (the prometheus chart, 2 hours in memory) scrapes this
+  #   cluster and remote-writes everything to an external Prometheus, which holds
+  #   the data, the rules and the dashboards.
   # Both collect the CloudWatch metrics of the environment's RDS instance.
   mode: "off"
   # local: how long Prometheus keeps everything, including the hourly consumption
@@ -62,13 +63,13 @@ monitoring:
     # The remote_write endpoint of the external Prometheus,
     # e.g. https://prometheus.example.com/api/v1/write
     url: ""
-    # Basic auth with the username and password properties of the Secrets Manager
-    # secret datagrok/<env>/monitoring.
-    basicAuth: false
-  # More prometheusSpec.remoteWrite entries, in either mode, e.g. Amazon Managed Prometheus:
-  # {url: https://aps-workspaces.<region>.amazonaws.com/workspaces/<id>/api/v1/remote_write, sigv4: {region: <region>}}
-  remoteWrite: []
-  # Deep-merged over the computed kube-prometheus-stack values.
+    # Basic auth: this username, and the password property of the Secrets Manager
+    # secret datagrok/<env>/monitoring. Empty: no authentication.
+    username: ""
+    # Value of the cluster label on every series. Default: datagrok-<env>.
+    cluster: ""
+  # Deep-merged over the computed chart values: kube-prometheus-stack (local) or
+  # prometheus (external).
   values: {}
 
 versions:
@@ -76,4 +77,5 @@ versions:
   externalSecrets: 2.6.0
   awsLoadBalancerController: 3.4.0
   kubePrometheusStack: 92.21.2
+  prometheus: 29.12.0
   yace: 0.39.1

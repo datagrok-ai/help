@@ -484,7 +484,7 @@ Prometheus per cluster in either mode.
 |-------------------|----------|-------------|
 | `off` | Nothing | You don't need monitoring from this template |
 | `local` (recommended) | Prometheus, Alertmanager, and Grafana ([kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)), the RDS exporter, and the Datagrok rules and dashboards | The cluster doesn't run another Prometheus operator: two operators conflict over the same CRDs |
-| `external` | Prometheus in agent mode, which sends all metrics to your Prometheus, and the RDS exporter | You already run a central Prometheus. It stores the data and evaluates the rules; load the rules and dashboards from `gitops/charts/datagrok-monitoring` there |
+| `external` | A forwarder ([prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) chart with kube-state-metrics and node-exporter, two hours in memory) that sends all metrics to your Prometheus with `remote_write`, and the RDS exporter | You already run a central Prometheus. It stores the data and evaluates the rules; load the rules and dashboards from `gitops/charts/datagrok-monitoring` there |
 
 Both modes collect the CloudWatch metrics of the environment's RDS instance with
 [YACE](https://github.com/prometheus-community/yet-another-cloudwatch-exporter). The exporter
@@ -501,20 +501,19 @@ monitoring:
     hostname: grafana.datagrok.example.com   # local; empty: kubectl port-forward only
   external:
     url: https://prometheus.example.com/api/v1/write   # external: remote_write endpoint
-    basicAuth: true                # username and password from Secrets Manager datagrok/<env>/monitoring
-  values: {}                       # merged over the kube-prometheus-stack values
+    username: datagrok             # basic auth; the password is in Secrets Manager datagrok/<env>/monitoring
+    cluster: ""                    # value of the cluster label; default datagrok-<env>
+  values: {}                       # merged over the kube-prometheus-stack (local) or prometheus (external) values
 ```
 
-With `basicAuth`, store the credentials before the first sync:
+With `username`, store the password before the first sync:
 
 ```bash
-aws secretsmanager create-secret --name datagrok/main/monitoring \
-  --secret-string '{"username":"datagrok","password":"<password>"}'
+aws secretsmanager create-secret --name datagrok/main/monitoring --secret-string '{"password":"<password>"}'
 ```
 
-To send to Amazon Managed Service for Prometheus instead, leave `url` empty and add
-`remoteWrite: [{url: <workspace remote_write URL>, sigv4: {region: <region>}}]`. Every series
-carries `cluster="datagrok-<env>"`.
+The forwarder scrapes the kubelets and cAdvisor, kube-state-metrics, node-exporter, and every
+Service or pod annotated `prometheus.io/scrape: "true"`.
 
 In `local` mode the Grafana admin password is generated in the cluster:
 
