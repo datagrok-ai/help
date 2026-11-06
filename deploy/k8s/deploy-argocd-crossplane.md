@@ -86,6 +86,88 @@ the development branch every day. See [Follow bleeding-edge](#follow-bleeding-ed
 * An S3 bucket for the Terraform state
 * An issued [ACM certificate](https://docs.aws.amazon.com/acm/latest/userguide/gs-acm-request-public.html)
   for each environment's hostname, or a wildcard certificate
+* A free IPv4 range for each environment's VPC, a /18 by default (see [Network sizing](#network-sizing))
+
+## Network sizing
+
+On EKS, every pod gets an IP address from the VPC. That includes Datagrok's services and each
+package container. Size the VPC for pods, not for nodes.
+
+### What runs in one environment
+
+| Group | Pods |
+|-------|------|
+| Cluster add-ons: ArgoCD, Crossplane and its AWS providers, External Secrets, AWS Load Balancer Controller, CoreDNS, metrics-server, EBS CSI | about 25 |
+| Datagrok services: `datagrok` (2–5 replicas with autoscaling), Grok Connect (up to 3 variants), `grok_pipe`, RabbitMQ, `grok_spawner`, registry proxy | 8–13 |
+| Scripting kernels: Python, R, Julia, Octave, Node.js | 5 |
+| [Package containers](../../develop/how-to/packages/docker-containers.md), one Deployment per package version | 20–30 |
+| Debug copies of package containers, one per developer who publishes in debug mode (DEV only) | 5–10 per developer |
+| Monitoring (optional) | 0–20 |
+
+Plan for about **150 pods** in an environment, DEV included. This leaves room for rolling
+updates, where the old and new pods run side by side, and for jobs.
+
+### IP addresses
+
+By default, the VPC CNI keeps a spare network interface on every node with all of its IP addresses
+reserved. Each node can therefore hold all the addresses its instance type supports: 60 for
+`m6i.xlarge`, the template's default. In practice, a cluster uses about 2.5 VPC addresses per pod.
+
+The worst case for one environment:
+
+* 12 nodes (general and GPU) × 60 addresses = 720.
+* Add 50% for node group upgrades, when replacement nodes run before the old ones drain: about 1,080.
+* Add the EKS control plane's network interfaces, the interface VPC endpoints, and Fargate pods,
+  if any: about **1,150 addresses**.
+
+Nodes don't spread evenly across zones, so a single zone can need about 550. That fits a `/22`
+private subnet (1,019 usable addresses).
+
+### Recommended ranges
+
+| Scope | VPC range | Private subnets | Public subnets | Database subnets |
+|-------|-----------|-----------------|----------------|------------------|
+| One environment (recommended) | `/18` | 3 × `/22` | 3 × `/26` | 3 × `/26` |
+| One environment (minimum) | `/19` | 3 × `/23` | 3 × `/27` | 3 × `/27` |
+| DEV with many developers | `/17` or the default `/16` | 3 × `/21` or larger | 3 × `/25` or larger | 3 × `/25` or larger |
+| DEV, TEST, and PROD | `/16` split into 3 × `/18`, one `/18` spare |  |  |  |
+
+* Public subnets hold the Application Load Balancer (at least a `/27` with 8 free addresses) and
+  one NAT gateway per zone.
+* Database subnets hold RDS Multi-AZ: two addresses, plus a few during maintenance.
+
+:::caution Subnet sizes follow `vpc_cidr`
+
+The template carves subnets out of `vpc_cidr` with fixed offsets. Private subnets are 4 bits
+smaller than the VPC range, and public and database subnets are 8 bits smaller. A `/16` gives
+`/20` and `/24` subnets, and a `/18` gives `/22` and `/26`. A range smaller than `/19` produces
+`/28` public subnets, and the load balancer can't be created there.
+
+:::
+
+### Other network requirements
+
+* **Non-overlapping ranges.** The VPC range and the Kubernetes service range (EKS picks
+  `10.100.0.0/16` or `172.20.0.0/16`) must not overlap any network Datagrok connects to, such as
+  on-premises databases reached through a Transit Gateway or Direct Connect.
+* **Outbound address.** All outbound traffic leaves through the NAT gateways, one public IP per
+  zone. Allow-list these IPs on the data sources Datagrok queries.
+* **Outbound access.** Allow outbound access to:
+  * Docker Hub (Datagrok images)
+  * The config repository
+  * `xpkg.upbound.io` (Crossplane providers)
+  * The Helm repositories of ArgoCD, Crossplane, External Secrets, and `aws.github.io/eks-charts`
+  * The AWS APIs: STS, ECR, Secrets Manager, RDS, S3, EC2, and CloudWatch Logs. Route these
+    directly or through VPC endpoints.
+* **Little routable address space.** Pods don't need routable addresses. Add a secondary VPC range
+  from `100.64.0.0/10` (for example `100.64.0.0/16`) and enable
+  [VPC CNI custom networking](https://docs.aws.amazon.com/eks/latest/userguide/cni-custom-network.html)
+  so pods take their addresses from it. The routable range then needs only a `/22`–`/23` for
+  nodes, load balancers, NAT gateways, RDS, and endpoints. The template doesn't do this, so
+  extend `terraform/main.tf` if you need it.
+* **More pods per node.** [Prefix delegation](https://docs.aws.amazon.com/eks/latest/userguide/cni-increase-ip-addresses.html)
+  raises the pod limit of `m6i.xlarge` from 58 to 110. It assigns addresses in blocks of 16, so keep
+  private subnets at `/22` or larger.
 
 ## Repository layout
 
@@ -289,7 +371,8 @@ config_repo_url             = "git@github.com:acme/datagrok-config.git"
 The VPC needs:
 
 * Private subnets for the nodes, in at least two availability zones, with a route to a NAT gateway.
-  The nodes pull images from Docker Hub.
+  The nodes pull images from Docker Hub. Every pod takes an address from these subnets, so give each
+  a `/22` or larger. See [Network sizing](#network-sizing).
 * Private subnets for RDS in at least two availability zones. They can be the node subnets.
 * For an internet-facing load balancer, public subnets tagged `kubernetes.io/role/elb: 1`, so the
   [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/deploy/subnet_discovery/)
