@@ -54,7 +54,7 @@ alert is cleared and resolved.
 
 ## The Alerts view
 
-**Browse** > **Platform** > **Alerts** lists the problems with their alerts. A problem's row reads:
+**Browse** > **Platform** > **Observability** > **Alerts** lists the problems with their alerts. A problem's row reads:
 
 | Column | What it shows | Values |
 |---|---|---|
