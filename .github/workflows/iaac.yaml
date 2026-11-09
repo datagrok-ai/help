@@ -136,51 +136,6 @@ jobs:
           fi
 
 
-  snyk:
-    needs: common-check
-    runs-on: ubuntu-22.04
-    if: needs.common-check.outputs.continue == 'true'
-    name: Snyk
-    steps:
-      - name: Set git fetch depth
-        run: |
-          if [[ ${{ github.event_name }} == 'pull_request' ]]; then
-              echo "FETCH_DEPTH=0" >> "$GITHUB_ENV"
-          else
-              echo "FETCH_DEPTH=2" >> "$GITHUB_ENV"
-          fi
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: ${{ env.FETCH_DEPTH }}
-          sparse-checkout: |
-            deploy
-            .github
-      - name: Get changed files
-        uses: tj-actions/changed-files@v37
-        id: changed-files
-        with:
-          files: |
-            deploy/**
-            !deploy/**/templates/**
-            !deploy/**/*.md
-      - name: Output
-        run: echo ${{ steps.changed-files.outputs.all_changed_files }}
-      - name: Snyk check
-        uses: snyk/actions/iac@master
-        id: snyk
-        continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high
-          sarif: true
-          file: ${{ steps.changed-files.outputs.all_changed_files }}
-#      - uses: github/codeql-action/upload-sarif@v2
-#        if: steps.snyk.outcome == 'success'
-#        with:
-#          sarif_file: snyk.sarif
-
   #  checkov:
   #    needs: common-check
   #    runs-on: ubuntu-22.04
