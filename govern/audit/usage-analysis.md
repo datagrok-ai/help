@@ -92,8 +92,9 @@ into platform usage:
 
 ### Related admin apps
 
-The Usage Analysis package also installs these apps. They appear under
-**Browse** > **Platform** > **Admin**:
+The Usage Analysis package also installs these apps. **Test Track** appears under
+**Browse** > **Platform** > **Admin**; the others under **Browse** > **Platform** > **Observability**, next to
+[Alerts](problems-and-alerts.md):
 
 | App              | Purpose                                                                                     |
 |------------------|---------------------------------------------------------------------------------------------|
