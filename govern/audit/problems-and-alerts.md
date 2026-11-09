@@ -52,9 +52,29 @@ What to do with an alert:
 An alert that is open does not page again while its condition persists. When the condition ends, the
 alert is cleared and resolved.
 
+## The Observability overview
+
+**Browse** > **Platform** > **Observability** shows the state of the instance on one page:
+
+* **Status**: "All clear", or how many problems need attention, by severity. A problem needs attention
+  while its condition holds and nobody muted or dismissed it.
+* **Vitals** of the last 24 hours against the day before: requests and the share that failed, p95 latency,
+  errors and the users who met them, the function queue, the database size and cache hit rate, and blocked
+  database connections. A tile opens **Metrics** or **Errors**.
+* **Needs attention**: the most severe and latest problems. Click one to see it in the context panel; hover
+  it to acknowledge or resolve its alert, mute it, or open its evidence.
+* **Top errors** of the last 24 hours.
+* **Services**: every health check, the failing ones first.
+* **Monitoring setup**: the problem rules, the detection thresholds, where logs and alerts are sent, and how
+  long they are kept.
+
+The page refreshes every minute.
+
 ## The Alerts view
 
-**Browse** > **Platform** > **Observability** > **Alerts** lists the problems with their alerts. A problem's row reads:
+**Browse** > **Platform** > **Observability** > **Alerts** lists the active problems: those whose condition holds
+or whose alert is not resolved yet, the failing and most severe first. Set **Show** to **All** to see the
+problems that cleared as well. A problem's row reads:
 
 | Column | What it shows | Values |
 |---|---|---|
@@ -65,6 +85,8 @@ alert is cleared and resolved.
 
 The icons in **Actions** acknowledge or resolve the alert, mute the problem, and open its evidence. The
 **Actions** section of a problem's context panel also marks it fixed or not a problem, or watches it again.
+The **Diagnose** section links to where to look next: the rule that raised the problem, the logs of its service,
+the errors of the last day, or the request and database metrics.
 
 ## Where alerts go
 
