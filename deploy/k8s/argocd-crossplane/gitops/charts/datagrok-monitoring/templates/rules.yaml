@@ -23,27 +23,34 @@ spec:
       for: 30m
       labels: {severity: warning}
       annotations:
-        summary: 'RDS {{ "{{" }} $labels.dimension_DBInstanceIdentifier {{ "}}" }}: CPU {{ "{{" }} $value | humanize {{ "}}" }}%'
+        summary: 'RDS {{ "{{" }} $labels.dbinstance_identifier {{ "}}" }}: CPU {{ "{{" }} $value | humanize {{ "}}" }}%'
     - alert: DatagrokRdsStorageLow
       expr: aws_rds_free_storage_space_minimum < {{ $a.rdsFreeStorageBytes }}
       for: 15m
       labels: {severity: critical}
       annotations:
-        summary: 'RDS {{ "{{" }} $labels.dimension_DBInstanceIdentifier {{ "}}" }}: {{ "{{" }} $value | humanize1024 {{ "}}" }}B free'
+        summary: 'RDS {{ "{{" }} $labels.dbinstance_identifier {{ "}}" }}: {{ "{{" }} $value | humanize1024 {{ "}}" }}B free'
         description: Storage autoscaling grows the volume up to db.maxAllocatedStorage; at this point it is at the maximum or failing. Raise db.maxAllocatedStorage in the environment file.
     - alert: DatagrokRdsMemoryLow
       expr: aws_rds_freeable_memory_minimum < {{ $a.rdsFreeableMemoryBytes }}
       for: 15m
       labels: {severity: warning}
       annotations:
-        summary: 'RDS {{ "{{" }} $labels.dimension_DBInstanceIdentifier {{ "}}" }}: {{ "{{" }} $value | humanize1024 {{ "}}" }}B freeable memory'
+        summary: 'RDS {{ "{{" }} $labels.dbinstance_identifier {{ "}}" }}: {{ "{{" }} $value | humanize1024 {{ "}}" }}B freeable memory'
     - alert: DatagrokRdsIoBalanceLow
       expr: aws_rds_ebsiobalance_percent_minimum < {{ $a.rdsIoBalancePercent }}
       for: 30m
       labels: {severity: warning}
       annotations:
-        summary: 'RDS {{ "{{" }} $labels.dimension_DBInstanceIdentifier {{ "}}" }}: EBS I/O burst balance {{ "{{" }} $value | humanize {{ "}}" }}%'
+        summary: 'RDS {{ "{{" }} $labels.dbinstance_identifier {{ "}}" }}: EBS I/O burst balance {{ "{{" }} $value | humanize {{ "}}" }}%'
         description: Below zero the volume is throttled to its baseline IOPS. A larger instance class has a higher baseline.
+    - alert: DatagrokRdsTransactionIdsHigh
+      expr: aws_rds_maximum_used_transaction_ids_maximum > {{ $a.rdsMaxUsedTransactionIds | int64 }}
+      for: 1h
+      labels: {severity: warning}
+      annotations:
+        summary: 'RDS {{ "{{" }} $labels.dbinstance_identifier {{ "}}" }}: {{ "{{" }} $value | humanize {{ "}}" }} transaction IDs used'
+        description: PostgreSQL stops accepting writes at about 2.1 billion. Autovacuum is not freezing old rows; look for long-running transactions, abandoned replication slots, or prepared transactions, then VACUUM FREEZE the oldest tables.
 ---
 # Hourly consumption per workload and container. Each rule writes one sample per
 # hour; a sum_over_time over these is the consumption of any

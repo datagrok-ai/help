@@ -59,6 +59,8 @@ monitoring:
     rdsFreeStorageBytes: 5368709120
     rdsFreeableMemoryBytes: 268435456
     rdsIoBalancePercent: 20
+    # PostgreSQL stops accepting writes at about 2.1 billion to avoid transaction ID wraparound.
+    rdsMaxUsedTransactionIds: 1000000000
   external:
     # The remote_write endpoint of the external Prometheus,
     # e.g. https://prometheus.example.com/api/v1/write

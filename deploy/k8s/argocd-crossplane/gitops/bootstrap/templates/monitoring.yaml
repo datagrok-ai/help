@@ -82,7 +82,9 @@ spec:
     syncOptions: [CreateNamespace=true, ServerSideApply=true]
 ---
 {{- else }}
-{{- $remoteWrite := dict "url" $m.external.url }}
+{{- $remoteWrite := dict "url" $m.external.url "write_relabel_configs" (list
+      (dict "source_labels" (list "dimension_DBInstanceIdentifier") "target_label" "dbinstance_identifier")
+      (dict "action" "labeldrop" "regex" "dimension_DBInstanceIdentifier")) }}
 {{- with $m.external.username }}
 {{- $_ := set $remoteWrite "basic_auth" (dict "username" . "password_file" "/etc/remote-write/password") }}
 {{- end }}
@@ -161,6 +163,12 @@ spec:
           enabled: true
           interval: 60s
           timeout: 30s
+          # The central Prometheus names the instance label this way; keep both alike.
+          metricRelabelings:
+          - sourceLabels: [dimension_DBInstanceIdentifier]
+            targetLabel: dbinstance_identifier
+          - action: labeldrop
+            regex: dimension_DBInstanceIdentifier
         {{- else }}
         service:
           annotations:

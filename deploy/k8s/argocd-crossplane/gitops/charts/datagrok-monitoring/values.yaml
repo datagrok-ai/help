@@ -8,6 +8,7 @@ alerts:
   rdsFreeStorageBytes: 5368709120
   rdsFreeableMemoryBytes: 268435456
   rdsIoBalancePercent: 20
+  rdsMaxUsedTransactionIds: 1000000000
 # Scrape interval of the Prometheus that evaluates the roll-ups, in seconds. Gauges
 # are integrated as sum_over_time * interval.
 scrapeIntervalSeconds: 30

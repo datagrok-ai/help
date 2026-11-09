@@ -527,12 +527,13 @@ kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-passwor
 
 | Dashboard | Shows |
 |-----------|-------|
-| Datagrok / RDS | CPU, connections, free storage, freeable memory, latency, IOPS, queue depth, EBS I/O burst balance, replica lag |
+| Datagrok / RDS | CPU, connections, free storage, freeable memory, latency, IOPS, queue depth, EBS I/O burst balance, replica lag, transaction IDs used, DB load |
 | Datagrok / Consumption | CPU, memory, requested CPU and memory, network, and volume usage per workload over any period within `retention` |
 
 Alerts: `DatagrokRdsStorageLow` (critical), `DatagrokRdsCpuHigh`, `DatagrokRdsMemoryLow`,
-`DatagrokRdsIoBalanceLow`, and `DatagrokRdsMetricsMissing`. Their thresholds are under
-`monitoring.alerts`. Alertmanager has no receiver: add one with `monitoring.values.alertmanager.config`.
+`DatagrokRdsIoBalanceLow`, `DatagrokRdsTransactionIdsHigh` (transaction ID wraparound), and
+`DatagrokRdsMetricsMissing`. Their thresholds are under `monitoring.alerts`. RDS series carry the
+instance in `dbinstance_identifier`, as on a central Prometheus that receives several clusters. Alertmanager has no receiver: add one with `monitoring.values.alertmanager.config`.
 
 Consumption is recorded once an hour per workload and container. Pods are counted toward the
 Deployment, StatefulSet, DaemonSet, or Job that owns them, so the numbers survive pod restarts. The

@@ -65,7 +65,7 @@
       "uid": "${datasource}"
      },
      "expr": "aws_rds_cpuutilization_average",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}}"
+     "legendFormat": "{{dbinstance_identifier}}"
     }
    ]
   },
@@ -106,7 +106,7 @@
       "uid": "${datasource}"
      },
      "expr": "aws_rds_database_connections_maximum",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}}"
+     "legendFormat": "{{dbinstance_identifier}}"
     }
    ]
   },
@@ -147,7 +147,7 @@
       "uid": "${datasource}"
      },
      "expr": "aws_rds_free_storage_space_minimum",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}}"
+     "legendFormat": "{{dbinstance_identifier}}"
     }
    ]
   },
@@ -188,7 +188,7 @@
       "uid": "${datasource}"
      },
      "expr": "aws_rds_freeable_memory_minimum",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}}"
+     "legendFormat": "{{dbinstance_identifier}}"
     }
    ]
   },
@@ -229,7 +229,7 @@
       "uid": "${datasource}"
      },
      "expr": "label_replace(aws_rds_read_latency_average, \"op\", \"read\", \"\", \"\") or label_replace(aws_rds_write_latency_average, \"op\", \"write\", \"\", \"\")",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}} {{op}}"
+     "legendFormat": "{{dbinstance_identifier}} {{op}}"
     }
    ]
   },
@@ -270,7 +270,7 @@
       "uid": "${datasource}"
      },
      "expr": "label_replace(aws_rds_read_iops_average, \"op\", \"read\", \"\", \"\") or label_replace(aws_rds_write_iops_average, \"op\", \"write\", \"\", \"\")",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}} {{op}}"
+     "legendFormat": "{{dbinstance_identifier}} {{op}}"
     }
    ]
   },
@@ -311,7 +311,7 @@
       "uid": "${datasource}"
      },
      "expr": "aws_rds_disk_queue_depth_average",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}}"
+     "legendFormat": "{{dbinstance_identifier}}"
     }
    ]
   },
@@ -352,7 +352,7 @@
       "uid": "${datasource}"
      },
      "expr": "aws_rds_ebsiobalance_percent_minimum",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}}"
+     "legendFormat": "{{dbinstance_identifier}}"
     }
    ]
   },
@@ -393,7 +393,7 @@
       "uid": "${datasource}"
      },
      "expr": "aws_rds_replica_lag_maximum",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}}"
+     "legendFormat": "{{dbinstance_identifier}}"
     }
    ]
   },
@@ -434,7 +434,89 @@
       "uid": "${datasource}"
      },
      "expr": "aws_rds_transaction_logs_disk_usage_maximum",
-     "legendFormat": "{{dimension_DBInstanceIdentifier}}"
+     "legendFormat": "{{dbinstance_identifier}}"
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "type": "timeseries",
+   "title": "Transaction IDs used (wraparound at 2.1 billion)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 40,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "aws_rds_maximum_used_transaction_ids_maximum",
+     "legendFormat": "{{dbinstance_identifier}}"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "type": "timeseries",
+   "title": "DB load (average active sessions)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 40,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "aws_rds_dbload_average",
+     "legendFormat": "{{dbinstance_identifier}}"
     }
    ]
   }
