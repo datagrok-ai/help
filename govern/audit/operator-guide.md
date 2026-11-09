@@ -68,6 +68,8 @@ take. The defaults:
 | Failed logins (`rule-login-failures:<login>`) | 5 failed logins for one login in 15 minutes (the default [problem rule](problem-rules.md) `login-failures`) | `clearAfter` (5 minutes) after the condition stops holding | platform |
 | Your rules (`rule-<name>:<group>`) | the rule's condition holds ([problem rules](problem-rules.md)) | `clearAfter` (5 minutes by default) after it stops holding | the rule's `owners`, unless it says `platform` |
 | Rule failing (`problem-rule:<name>`) | a problem rule is invalid, fails, or exceeds a limit | it evaluates again, or is disabled or deleted | the rule's `owners` |
+| Data growth (`growth:<alert>:<key>`) | a [metric alert](metric-alerts.md) holds: by default the database or the storage grew 25% in 7 days, a table over 1 GiB doubled in a day, a disk is 90% full (critical), or the garbage collector has 10 million rows pending | its alert stops holding for two collections of its metric, or is disabled or deleted | platform |
+| Metric alert failing (`problem-rule:metric-alert:<name>`) | a metric alert is invalid or holds for more than 100 keys | it evaluates again, or is disabled or deleted | platform |
 
 An error signature is the first 12 characters of the error's stack trace hash, or, for an error without a stack
 trace, of its event type id.

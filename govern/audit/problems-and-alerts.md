@@ -26,7 +26,8 @@ monitoring system as a log record, once, and stays open until the problem ends o
 
 Services that fail their health checks, errors that hit many users or keep recurring, errors users keep making,
 slow or failing requests, data connections and scheduled jobs that fail, containers that don't start, storage,
-identity providers and Log sync destinations that keep failing, problem reports, and the conditions of your own
+identity providers and Log sync destinations that keep failing, problem reports, the database, storage or disks
+growing too much ([metric alerts](metric-alerts.md)), and the conditions of your own
 [problem rules](problem-rules.md), such as the default `login-failures`. When each one opens and ends, who acts
 on it, and which thresholds an administrator can change in **Settings** > **Alerts**:
 [What Datagrok detects](operator-guide.md#what-datagrok-detects) in the operator guide.
@@ -50,6 +51,20 @@ What to do with an alert:
 
 An alert that is open does not page again while its condition persists. When the condition ends, the
 alert is cleared and resolved.
+
+## The Alerts view
+
+**Browse** > **Platform** > **Alerts** lists the problems with their alerts. A problem's row reads:
+
+| Column | What it shows | Values |
+|---|---|---|
+| **Severity** | how bad it is | critical, warning, info |
+| **Condition** | whether it is happening now, as Datagrok sees it | failing (red), ok (green) |
+| **Alert** | its alert | open (red), acknowledged (orange), resolved (green) |
+| **Handling** | the status you set | watched (blue): an active problem, guarded and alerting when it fails; muted, not a problem (grey); fixed (green) |
+
+The icons in **Actions** acknowledge or resolve the alert, mute the problem, and open its evidence. The
+**Actions** section of a problem's context panel also marks it fixed or not a problem, or watches it again.
 
 ## Where alerts go
 
