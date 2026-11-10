@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 This is the Datagrok documentation site, built with **Docusaurus 3**. Source files are GitHub-flavored Markdown (`.md`)
-and MDX (`.mdx`). The Docusaurus config lives in `../docusaurus/`, not here.
+and MDX (`.mdx`). The Docusaurus config lives in the public repository (`../public/docusaurus/`), not here.
 
 ## Purpose
 
@@ -125,7 +125,7 @@ When a `.md` filename matches its parent folder name, clicking the folder shows 
 Broken links are fatal: Docusaurus is configured with `onBrokenLinks: 'throw'` and `onBrokenMarkdownLinks: 'throw'`.
 
 ```bash
-cd ../docusaurus
+cd ../public/docusaurus
 npm install
 npm start             # Local dev server with hot reload
 npm run build         # Full production build (catches broken links)
