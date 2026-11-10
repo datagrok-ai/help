@@ -151,6 +151,15 @@ You can configure DB-explorer without writing code directly from the **Database 
 
 This opens the **Database Explorer editor** for that specific connection and schema. The editor allows you to define how Datagrok detects and displays identifiers for tables in this schema.
 
+#### Databases with catalogs
+
+For a database that has catalogs (Databricks, Snowflake, SQL Server), the dialog asks for the **Catalog** first:
+
+* It opens on the catalog the connection is set to and lists the others; the search icon next to the field finds a catalog by a part of its name. Datagrok reads only the schemas and tables of the catalog you pick, however many catalogs the database has.
+* A configuration covers one schema of one catalog. It is listed under the connection as **Identifiers - catalog.schema**, and its identifiers, joins, and references are read from that catalog. To register identifiers from several catalogs, configure each of them.
+* To reuse a configuration for the same tables in another catalog (for example, development and production), click **Export JSON** in its editor, open the editor on the other catalog, and click **Import JSON**: the identifiers are imported into the catalog and schema the editor is open on.
+* Foreign keys are detected for the catalog the connection is set to. For another catalog, and for Databricks, which reports no foreign keys, define the links as [Explicit References](#explicit-references).
+
 #### Main Interface
 
 The editor lists all configuration categories in an accordion. You can expand each section to view, add, edit, or delete items.
@@ -254,6 +263,7 @@ Create a configuration file (e.g., `src/explorer-config.ts`) that defines your d
 export const explorerConfig = {
   // Database connection details
   'connectionName': 'CHEMBL',          // Name of your database connection in Datagrok
+  // 'catalogName': 'main',            // Optional: catalog of the schema, for a database that has catalogs
   'schemaName': 'public',              // Database schema name where the identifiers are located
   'nqName': 'CHEMBL',                   // Optional: fully-qualified connection name (namespace-qualified)
   'dataSourceName': 'postgres',        // Data source type (postgres, oracle, mysql, etc.)
@@ -368,6 +378,7 @@ export const explorerConfig = {
 **Configuration parameters explained:**
 
 * **connectionName**: The exact name of your database connection as configured in Datagrok's Database Manager.
+* **catalogName**: Optional catalog that contains the schema, for a database that has catalogs (Databricks, Snowflake, SQL Server). Tables are then read as `catalog.schema.table`. Without it, tables are read as `schema.table` in the catalog the connection is set to.
 * **schemaName**: The database schema containing your tables (e.g., `public`, `dbo`,).
 * **nqName**: Optional fully-qualified connection name (namespace-qualified). Useful when names collide.
 * **dataSourceName**: The type of database (e.g., `postgres`, `oracle`, `mysql`, `mssql`).
