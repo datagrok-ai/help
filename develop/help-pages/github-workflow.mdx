@@ -170,7 +170,7 @@ side by side: each command block below starts in the directory that contains bot
 
 1. As we use Docusaurus to generate the API documentation, `js-api` must be installed and its
 dependencies built. It is part of the repository's pnpm workspace, so run this once at the repository
-root (`corepack enable` first if pnpm is not installed yet):
+root (`npm install -g pnpm` first if pnpm is not installed yet):
 
 ```shell
 cd public
@@ -214,7 +214,8 @@ Before making a commit, check that the documentation builds without errors.
 1. To test internal links and anchors, convert markdown to HTML using [Docusaurus](https://docusaurus.io/)
 and then check all links using [hyperlink](https://github.com/untitaker/hyperlink).
 Stop Docusaurus by pressing `Ctrl+C` and run the following commands to build and check your documentation.
-Note that the build step will take some time.
+Note that the build step will take some time, and it also generates the Python API pages, so it needs Python 3
+with pip, run as `python`.
 
 ```mdx-code-block
 <Tabs>

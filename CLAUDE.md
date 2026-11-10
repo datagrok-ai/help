@@ -130,8 +130,8 @@ pnpm install
 pnpm turbo run build --filter="datagrok-api^..."
 cd docusaurus
 npm install
-npm start             # Local dev server with hot reload
-npm run build         # Full production build (catches broken links)
+npm run start-debug   # Local dev server with hot reload (broken links warn)
+npm run build         # Full production build (catches broken links); build-windows on Windows; needs Python 3 and pip
 ```
 
 ## Pre-commit checklist
