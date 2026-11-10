@@ -467,7 +467,7 @@ Installation
 ```bash
 npm install --location=global @commitlint/config-conventional @commitlint/cli
 pip install pre-commit
-pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg
+pre-commit install --install-hooks --hook-type pre-commit --hook-type pre-merge-commit --hook-type pre-push --hook-type commit-msg
 ```
 
 Every commit is checked in GitHub Actions and reported broken if it does not apply to
