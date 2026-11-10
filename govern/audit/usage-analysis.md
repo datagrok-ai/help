@@ -93,14 +93,12 @@ into platform usage:
 ### Related admin apps
 
 The Usage Analysis package also installs these apps. **Test Track** appears under
-**Browse** > **Platform** > **Admin**; the others under **Browse** > **Platform** > **Observability**, next to
-[Alerts](problems-and-alerts.md):
+**Browse** > **Platform** > **Admin**; **Reports** under **Browse** > **Platform** > **Observability**, next to
+[Alerts](problems-and-alerts.md). Metrics and the log explorer are part of the platform now: see
+[the Observability pages](problems-and-alerts.md#metrics-logs-and-log-settings).
 
 | App              | Purpose                                                                                     |
 |------------------|---------------------------------------------------------------------------------------------|
-| **Metrics**      | Opens the **Metrics** tab on its own                                                        |
-| **Service Logs** | Reads the logs of the platform's service containers                                         |
-| **Cloud Logs**   | Searches this instance's events and, on AWS deployments, the CloudWatch logs and the log archive |
 | **Reports**      | Lists [error reports](../bug-reports.md) submitted by users                                 |
 | **Test Track**   | Tracks manual and automated test runs                                                       |
 
