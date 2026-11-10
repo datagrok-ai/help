@@ -126,6 +126,7 @@ Each event is associated with a fixed type and the user session that triggered i
 * alert-escalated
 * alert-cleared
 * alert-acknowledged
+* alert-reopened
 * alert-resolved
 * problem-status-changed
 * connection-checked
