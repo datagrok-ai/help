@@ -1,9 +1,8 @@
 name: Bump help in public
 
 # Gets help master onto the site. While public nests help as a submodule, points it at help
-# master; that push deploys the site. In the datagrok umbrella layout (datagrok-src.md, one pin
-# per repo) public no longer nests help and the umbrella pins it, so this dispatches public's
-# Docusaurus build instead. WRITE_TOKEN: a GITHUB_TOKEN push/dispatch would not reach public.
+# master; that push deploys the site. In the datagrok umbrella layout public no longer nests
+# help and the umbrella pins it, so this dispatches public's Docusaurus build instead. WRITE_TOKEN: a GITHUB_TOKEN push/dispatch would not reach public.
 
 on:
   push:
