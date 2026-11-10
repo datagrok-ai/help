@@ -39,5 +39,10 @@ jobs:
             echo "::notice::help master is still $RUN_SHA: already dispatched"
             exit 0
           fi
-          GH_TOKEN="$WRITE_TOKEN" gh workflow run docusaurus.yaml -R datagrok-ai/public --ref master \
-            -f force=no -f help_author="$HELP_AUTHOR"
+          for attempt in 1 2 3; do
+            GH_TOKEN="$WRITE_TOKEN" gh workflow run docusaurus.yaml -R datagrok-ai/public --ref master \
+              -f force=no -f help_author="$HELP_AUTHOR" && exit 0
+            echo "Dispatch failed, retrying ($attempt/3)"
+            sleep $((attempt * 10))
+          done
+          exit 1
