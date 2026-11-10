@@ -104,8 +104,7 @@ we use [markdownlint](https://github.com/DavidAnson/markdownlint).
 2. Run MarkdownLint using the following command
 
    ```bash
-   cd help
-   markdownlint-cli2 --fix "**/*.{md,mdx}"
+   markdownlint-cli2 --fix "help/**/*.{md,mdx}"
    ```
 
 ```mdx-code-block
@@ -127,8 +126,7 @@ we use [markdownlint](https://github.com/DavidAnson/markdownlint).
    ```
 
    ```cmd
-   cd help
-   docker run -v %cd%:/workdir --entrypoint="markdownlint-cli2 --fix" davidanson/markdownlint-cli2:v0.12.1 "**/*.{md,mdx}"
+   docker run -v %cd%:/workdir --entrypoint="markdownlint-cli2 --fix" davidanson/markdownlint-cli2:v0.12.1 "help/**/*.{md,mdx}"
    ```
 
    ```mdx-code-block
@@ -137,8 +135,7 @@ we use [markdownlint](https://github.com/DavidAnson/markdownlint).
    ```
 
    ```bash
-   cd help
-   docker run -v "$(pwd):/workdir" --entrypoint="markdownlint-cli2 --fix" davidanson/markdownlint-cli2:v0.12.1 "**/*.{md,mdx}"
+   docker run -v "$(pwd):/workdir" --entrypoint="markdownlint-cli2 --fix" davidanson/markdownlint-cli2:v0.12.1 "help/**/*.{md,mdx}"
    ```
 
    ```mdx-code-block
@@ -156,26 +153,28 @@ we use [markdownlint](https://github.com/DavidAnson/markdownlint).
 The source code and READMEs are located in our
 [public repository on GitHub](https://github.com/datagrok-ai/public/tree/master).
 This section helps you to set up this repository and install all required packages.
-Clone [public](https://github.com/datagrok-ai/public) and [help](https://github.com/datagrok-ai/help)
-side by side: each command block below starts in the directory that contains both.
 
 1. Install commit linting tools as described in the [Git policy](../dev-process/git-policy#commit-linting)
 
-1. Install the package dependencies of the Docusaurus folder in the _Datagrok public_ repository:
+1. Open the Docusaurus folder in the _Datagrok public_ repository:
 
     ```shell
     cd public/docusaurus
+    ```
+
+1. Install package dependencies:
+
+    ```shell
     npm install
     ```
 
-1. As we use Docusaurus to generate the API documentation, `js-api` must be installed and its
-dependencies built. It is part of the repository's pnpm workspace, so run this once at the repository
-root (`npm install -g pnpm` first if pnpm is not installed yet):
+1. As we use Docusaurus to generate the API documentation, `js-api` must be installed too. It is part of
+the repository's pnpm workspace, so run this once at the repository root (`corepack enable` first if
+pnpm is not installed yet):
 
 ```shell
-cd public
+cd ..
 pnpm install
-pnpm turbo run build --filter="datagrok-api^..."
 ```
 
 ## Make changes
@@ -187,9 +186,29 @@ from the Git policy.
 
 ### 2. Run Docusaurus locally
 
-```shell
-cd public/docusaurus
+```mdx-code-block
+<Tabs>
+<TabItem value="win" label="Windows">
+```
+
+```cmd
+cd ..\public\docusaurus
 npm run start-debug
+```
+
+```mdx-code-block
+</TabItem>
+<TabItem value="bash" label="Linux/MacOS" default>
+```
+
+```shell
+cd ../public/docusaurus
+npm run start-debug
+```
+
+```mdx-code-block
+</TabItem>
+</Tabs>
 ```
 
 Docusaurus will be available at [http://localhost:3000](http://localhost:3000).
@@ -208,14 +227,13 @@ Before making a commit, check that the documentation builds without errors.
 1. Run the markdown linter for all changed files from your IDE or via the command line:
 
     ```shell
-    markdownlint-cli2 --fix changed-documentation-file.md
+    markdownlint-cli2-fix changed-documentation-file.md
     ```
 
 1. To test internal links and anchors, convert markdown to HTML using [Docusaurus](https://docusaurus.io/)
 and then check all links using [hyperlink](https://github.com/untitaker/hyperlink).
 Stop Docusaurus by pressing `Ctrl+C` and run the following commands to build and check your documentation.
-Note that the build step will take some time, and it also generates the Python API pages, so it needs Python 3
-with pip, run as `python`.
+Note that the build step will take some time.
 
 ```mdx-code-block
 <Tabs>
@@ -223,8 +241,8 @@ with pip, run as `python`.
 ```
 
 ```cmd
-cd public\docusaurus
-npm run build-windows
+cd docusaurus
+npm run build
 
 hyperlink --check-anchors build --sources ..\..\help
 ```
@@ -235,7 +253,7 @@ hyperlink --check-anchors build --sources ..\..\help
 ```
 
 ```bash
-cd public/docusaurus
+cd docusaurus
 npm run build
 
 hyperlink --check-anchors build/ --sources ../../help/
@@ -255,9 +273,7 @@ Finally, create a pull request to merge your changes to the master branch.
 
 ## GitHub Actions Docusaurus workflow
 
-[GitHub Actions Docusaurus workflow](https://github.com/datagrok-ai/public/actions/workflows/docusaurus.yaml)
-runs in the public repository. Every change on help `master` starts it on public `master`: the help
-repository's `bump-public` workflow dispatches it. It includes:
+[GitHub Actions Docusaurus workflow](https://github.com/datagrok-ai/public/actions/workflows/docusaurus.yaml) includes:
 
 * Lint checks using [markdownlint](https://github.com/DavidAnson/markdownlint-cli2) linter.
 * If the checks are finished successfully, GitHub will convert the markdown files to HTML
