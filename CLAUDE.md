@@ -125,7 +125,10 @@ When a `.md` filename matches its parent folder name, clicking the folder shows 
 Broken links are fatal: Docusaurus is configured with `onBrokenLinks: 'throw'` and `onBrokenMarkdownLinks: 'throw'`.
 
 ```bash
-cd ../public/docusaurus
+cd ../public
+pnpm install
+pnpm turbo run build --filter="datagrok-api^..."
+cd docusaurus
 npm install
 npm start             # Local dev server with hot reload
 npm run build         # Full production build (catches broken links)

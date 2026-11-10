@@ -168,13 +168,14 @@ side by side: each command block below starts in the directory that contains bot
     npm install
     ```
 
-1. As we use Docusaurus to generate the API documentation, `js-api` must be installed too. It is part of
-the repository's pnpm workspace, so run this once at the repository root (`corepack enable` first if
-pnpm is not installed yet):
+1. As we use Docusaurus to generate the API documentation, `js-api` must be installed and its
+dependencies built. It is part of the repository's pnpm workspace, so run this once at the repository
+root (`corepack enable` first if pnpm is not installed yet):
 
 ```shell
 cd public
 pnpm install
+pnpm turbo run build --filter="datagrok-api^..."
 ```
 
 ## Make changes
@@ -193,7 +194,7 @@ from the Git policy.
 
 ```cmd
 cd public\docusaurus
-npm run start-debug
+npm run start-debug-windows
 ```
 
 ```mdx-code-block
@@ -242,7 +243,7 @@ Note that the build step will take some time.
 
 ```cmd
 cd public\docusaurus
-npm run build
+npm run build-windows
 
 hyperlink --check-anchors build --sources ..\..\help
 ```
