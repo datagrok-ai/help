@@ -104,7 +104,8 @@ we use [markdownlint](https://github.com/DavidAnson/markdownlint).
 2. Run MarkdownLint using the following command
 
    ```bash
-   markdownlint-cli2 --fix "help/**/*.{md,mdx}"
+   cd help
+   markdownlint-cli2 --fix "**/*.{md,mdx}"
    ```
 
 ```mdx-code-block
@@ -126,7 +127,8 @@ we use [markdownlint](https://github.com/DavidAnson/markdownlint).
    ```
 
    ```cmd
-   docker run -v %cd%:/workdir --entrypoint="markdownlint-cli2 --fix" davidanson/markdownlint-cli2:v0.12.1 "help/**/*.{md,mdx}"
+   cd help
+   docker run -v %cd%:/workdir --entrypoint="markdownlint-cli2 --fix" davidanson/markdownlint-cli2:v0.12.1 "**/*.{md,mdx}"
    ```
 
    ```mdx-code-block
@@ -135,7 +137,8 @@ we use [markdownlint](https://github.com/DavidAnson/markdownlint).
    ```
 
    ```bash
-   docker run -v "$(pwd):/workdir" --entrypoint="markdownlint-cli2 --fix" davidanson/markdownlint-cli2:v0.12.1 "help/**/*.{md,mdx}"
+   cd help
+   docker run -v "$(pwd):/workdir" --entrypoint="markdownlint-cli2 --fix" davidanson/markdownlint-cli2:v0.12.1 "**/*.{md,mdx}"
    ```
 
    ```mdx-code-block
@@ -224,7 +227,7 @@ Before making a commit, check that the documentation builds without errors.
 1. Run the markdown linter for all changed files from your IDE or via the command line:
 
     ```shell
-    markdownlint-cli2-fix changed-documentation-file.md
+    markdownlint-cli2 --fix changed-documentation-file.md
     ```
 
 1. To test internal links and anchors, convert markdown to HTML using [Docusaurus](https://docusaurus.io/)
