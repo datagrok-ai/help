@@ -386,7 +386,7 @@ Datagrok supports rich visualization for both chemical and general data, includi
 * Advanced visual features: [coloring](../../visualize/viewers/grid.md#color-code-columns), [shaping and sizing](../../visualize/viewers/grid.md#resizing-columns), [formatting](../../visualize/viewers/grid.md#format-cells), [labeling](../../visualize/viewers/scatter-plot.md#labels), [trellising](../../visualize/viewers/trellis-plot.md)
 * Table view integration for visualization, including [charts in cells](../../visualize/viewers/grid.md#charts-in-cells) 
 
-See also: [Viewer gallery](https://github.com/datagrok-ai/help/blob/master/visualize/viewers/viewers.md), [Table view](../../visualize/table-view-1.md), [Grid](../../visualize/viewers/grid.md).
+See also: [Viewer gallery](../../visualize/viewers/viewers.md), [Table view](../../visualize/table-view-1.md), [Grid](../../visualize/viewers/grid.md).
 
 ##### <b>Q: Does Datagrok support analytical chemistry plots such as spectrograms?</b>
 
@@ -569,9 +569,9 @@ Learn more about  [JavaScript API](../../develop/packages/js-api.md)
 
 Datagrok provides robust capabilities for programmatic integration:
 
-- Scripting: users can automate tasks and extend functionality using JavaScript or Python scripts. See [Scripting](https://github.com/datagrok-ai/help/tree/master/compute/scripting)
-- APIs: Datagrok provides two primary types of APIs: JavaScript and Python. See [API](https://github.com/datagrok-ai/help/blob/master/develop/api-overview.md)
-- Develop: the platform supports the development of custom plugins and modules to enhance its capabilities. See [Develop](https://github.com/datagrok-ai/help/tree/master/develop)
+- Scripting: users can automate tasks and extend functionality using JavaScript or Python scripts. See [Scripting](../../compute/scripting/scripting.mdx)
+- APIs: Datagrok provides two primary types of APIs: JavaScript and Python. See [API](../../develop/api-overview.md)
+- Develop: the platform supports the development of custom plugins and modules to enhance its capabilities. See [Develop](../../develop/develop.md)
 
 ##### <b>Q: How do I develop and debug Datagrok customizations?</b>
 
