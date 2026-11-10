@@ -156,7 +156,8 @@ Using **Browse**, you can explore relational databases by viewing their schemas,
 Clicking an app opens an app-specific view: a landing view, a README, or a
 package card with a **RUN** button.
 Administrative apps such as **Usage Analysis** or **Test Manager** live under
-**Platform** > **Admin** rather than under **Apps**.
+**Platform** > **Admin** rather than under **Apps**. Monitoring apps (**Metrics**, **Reports**,
+**Service Logs**, **Cloud Logs**) live under **Platform** > **Observability**, next to **Alerts**.
 
 ![Browsing apps](img/browse-view-apps.gif)
 
