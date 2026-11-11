@@ -533,24 +533,24 @@ You can customize export using the following annotation:
 //meta.customExports: [{"name": "pdf", "function": "MyPackage:MyPDFExport"}]
 ```
 
-The export function will receive the following arguments:
+The export function receives the following arguments:
 
 * `funcCall`: DG.FuncCall, current call.
-* `startDownload`: bool, true if the function should start a file download or just return results.
 * `isOutputOutdated`: bool, true if the function output is outdated.
 * `validationState`: `Record<string, ValidationResult>`, available only if run inside a [workflows](../../workflows/workflows.mdx).
 * `consistencyState`: `Record<string, ConsistencyInfo>`, available only if run inside a [workflows](../../workflows/workflows.mdx).
 
 Declare these as `//input:` parameters of the export function. The current call must be
-typed `funccall`:
+typed `funccall`. The function returns the exported file, and Compute downloads it. An export
+that makes several files zips them into one.
 
 ```javascript
 //name: MyPDFExport
 //input: funccall funcCall
-//input: bool startDownload
-//output: object result
-export function myPDFExport(funcCall, startDownload) {
-  // build the report for funcCall; download it when startDownload is true
+//output: file result
+export async function myPDFExport(funcCall) {
+  const bytes = await buildPdf(funcCall);
+  return DG.FileInfo.fromBytes(`${funcCall.func.friendlyName}.pdf`, bytes);
 }
 ```
 

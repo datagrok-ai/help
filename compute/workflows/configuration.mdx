@@ -221,7 +221,7 @@ _Optional_
 An array of items, with `id`, `friendlyName` and `handler`, used to
 define custom exports for workflow data. Handler here is an async
 function that receives `PipelineState` and `ExportUtils`
-arguments. More information is available [here](#custom-exports)
+arguments and returns the exported file. More information is available [here](#custom-exports)
 
 #### `disableDefaultExport`
 
@@ -537,6 +537,9 @@ A custom export function receives two arguments
 * `treeState` of type `PipelineState`
 * `utils` of type `ExportUtils`
 
+It returns the exported file as `DG.FileInfo`, and Compute downloads it. An export that makes
+several files zips them into one, for example with the `Zippable` that `reportStateExcel` returns.
+
 Export utils contain 6 methods that could reuse standard existing
 export logic:
 
@@ -545,7 +548,7 @@ export logic:
 * `getFuncCallCustomExports` - returns a list of custom exports
   defined specifically for a particular Func, returns string[].
 * `runFuncCallCustomExport` - runs a custom export defined on a Func
-  based on export name. Returns whatever a custom export returned.
+  based on export name. Returns the file the export made, `DG.FileInfo`.
 * `reportStateExcel` - creates a standard xlsx tree export, however
   for each call an optional callback will be called (if
   provided). Returns [Blob, Zippable, string, ExportSummaryItem[]],
