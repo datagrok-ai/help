@@ -61,7 +61,9 @@ alert is cleared and resolved.
   while its condition holds and nobody muted or dismissed it.
 * **Vitals** of the last 24 hours against the day before: requests and the share that failed, p95 latency,
   errors and the users who met them, the function queue, the database size and cache hit rate, and blocked
-  database connections. A tile opens **Metrics**; **Errors** opens the error events in **Logs**.
+  database connections; and, now, the HTTP connections and the open sockets of the server that answered, with its
+  share of the open files limit. A tile opens **Metrics**; **Errors** opens the error events in **Logs**. Growing
+  sockets raise the [metric alerts](metric-alerts.md) `socket-growth` and `too-many-sockets`.
 * **Needs attention**: the most severe and latest problems. Click one to see it in the context panel; hover
   it to acknowledge or resolve its alert, mute it, or open its evidence.
 * **Top errors** of the last 24 hours. Click one to see its events in **Logs**.
