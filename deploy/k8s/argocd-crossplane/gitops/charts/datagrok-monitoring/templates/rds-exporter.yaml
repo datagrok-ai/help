@@ -1,0 +1,126 @@
+{{- if and (include "mon.agent" .) .Values.rds.enabled }}
+{{- $region := required "rds.enabled needs rds.region" .Values.rds.region }}
+{{- $operator := include "mon.hub" . }}
+# CloudWatch metrics of the Datagrok RDS instances (YACE). It finds them by the tags
+# the composition sets, so no instance name is configured.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-rds
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: yet-another-cloudwatch-exporter
+    targetRevision: {{ .Values.versions.yace }}
+    helm:
+      releaseName: yace
+      valuesObject:
+        fullnameOverride: yace
+        testConnection: false
+        serviceAccount:
+          create: true
+          name: yace
+          annotations:
+            eks.amazonaws.com/role-arn: {{ required "rds.enabled needs rds.roleArn" .Values.rds.roleArn }}
+        {{- if $operator }}
+        serviceMonitor:
+          enabled: true
+          interval: 60s
+          timeout: 30s
+          {{- with include "mon.objectLabels" . }}
+          labels:
+            {{- . | nindent 12 }}
+          {{- end }}
+          # One name for the instance label on a hub and on a cluster that monitors itself.
+          metricRelabelings:
+          - sourceLabels: [dimension_DBInstanceIdentifier]
+            targetLabel: dbinstance_identifier
+          - action: labeldrop
+            regex: dimension_DBInstanceIdentifier
+        {{- else }}
+        service:
+          annotations:
+            prometheus.io/scrape: "true"
+            prometheus.io/port: "5000"
+        {{- end }}
+        config: |
+          apiVersion: v1alpha1
+          sts-region: {{ $region }}
+          discovery:
+            exportedTagsOnMetrics:
+              AWS/RDS: [Environment]
+            jobs:
+            - type: AWS/RDS
+              regions: [{{ $region }}]
+              searchTags:
+              - {key: Service, value: ^Datagrok$}
+              {{- with .Values.rds.environment }}
+              - {key: Environment, value: ^{{ . }}$}
+              {{- end }}
+              # Only per-instance series, not CloudWatch's account-wide
+              # aggregates by DatabaseClass or EngineName.
+              dimensionNameRequirements: [DBInstanceIdentifier]
+              period: 60
+              length: 600
+              delay: 120
+              # Every instance-level metric RDS for PostgreSQL publishes; one an instance
+              # doesn't have (ReplicaLag without a replica, DBLoad* without Performance
+              # Insights) is simply absent. Balances and free space keep Minimum for alerts.
+              statistics: [Average, Maximum]
+              metrics:
+              - {name: CPUUtilization}
+              - {name: CPUCreditUsage}
+              - {name: CPUSurplusCreditBalance}
+              - {name: CPUSurplusCreditsCharged}
+              - {name: CheckpointLag}
+              - {name: DBLoad}
+              - {name: DBLoadCPU}
+              - {name: DBLoadNonCPU}
+              - {name: DBLoadRelativeToNumVCPUs}
+              - {name: DatabaseConnections}
+              - {name: DiskQueueDepth}
+              - {name: MaximumUsedTransactionIDs}
+              - {name: NetworkReceiveThroughput}
+              - {name: NetworkTransmitThroughput}
+              - {name: OldestLogicalReplicationSlotLag}
+              - {name: OldestReplicationSlotLag}
+              - {name: ReadIOPS}
+              - {name: ReadLatency}
+              - {name: ReadThroughput}
+              - {name: ReplicaLag}
+              - {name: ReplicationSlotDiskUsage}
+              - {name: SwapUsage}
+              - {name: TransactionLogsDiskUsage}
+              - {name: TransactionLogsGeneration}
+              - {name: WriteIOPS}
+              - {name: WriteLatency}
+              - {name: WriteThroughput}
+              - {name: BurstBalance, statistics: [Minimum, Average]}
+              - {name: CPUCreditBalance, statistics: [Minimum, Average]}
+              - {name: EBSByteBalance%, statistics: [Minimum, Average]}
+              - {name: EBSIOBalance%, statistics: [Minimum, Average]}
+              - {name: FreeStorageSpace, statistics: [Minimum, Average]}
+              - {name: FreeableMemory, statistics: [Minimum, Average]}
+              - {name: DataVolumeIOPSExceededCheck, statistics: [Maximum]}
+              - {name: DataVolumeThroughputExceededCheck, statistics: [Maximum]}
+              - {name: InstanceEBSIOPSExceededCheck, statistics: [Maximum]}
+              - {name: InstanceEBSThroughputExceededCheck, statistics: [Maximum]}
+              - {name: IamDbAuthConnectionRequests, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionSuccess, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailure, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureInsufficientPermissions, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureInvalidToken, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureServerError, statistics: [Sum], nilToZero: true}
+              - {name: IamDbAuthConnectionFailureThrottling, statistics: [Sum], nilToZero: true}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.namespace }}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ include "mon.retry" . }}
+    syncOptions: [ServerSideApply=true]
+{{- end }}

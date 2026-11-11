@@ -122,38 +122,49 @@ run "monitoring_off_by_default" {
   command = plan
   assert {
     condition     = length(module.cloudwatch_exporter_irsa) == 0 && length(aws_eks_addon.ebs_csi) == 0
-    error_message = "monitoring is off by default: no exporter role, no EBS driver"
+    error_message = "no monitoring by default: no exporter role, no EBS driver"
   }
 }
 
-run "monitoring_local" {
+run "monitoring_standalone" {
   command = plan
   variables {
-    monitoring_mode = "local"
+    monitoring_role = "standalone"
   }
   assert {
     condition     = length(module.cloudwatch_exporter_irsa) == 1 && length(aws_eks_addon.ebs_csi) == 1
-    error_message = "local monitoring: exporter role and EBS driver"
+    error_message = "standalone monitoring: exporter role and EBS driver"
   }
 }
 
-run "monitoring_external_on_existing_cluster" {
+run "monitoring_agent_on_existing_cluster" {
   command = plan
   variables {
     existing_cluster_name = "my-cluster"
     db_subnet_ids         = ["subnet-c", "subnet-d"]
-    monitoring_mode       = "external"
+    monitoring_role       = "agent"
   }
   assert {
     condition     = length(module.cloudwatch_exporter_irsa) == 1 && length(aws_eks_addon.ebs_csi) == 0
-    error_message = "external monitoring: exporter role only, the external Prometheus stores the data"
+    error_message = "agent: exporter role only, the hub stores the data"
   }
 }
 
-run "monitoring_unknown_mode_fails" {
+run "monitoring_unknown_role_fails" {
   command = plan
   variables {
-    monitoring_mode = "on"
+    monitoring_role = "on"
   }
-  expect_failures = [var.monitoring_mode]
+  expect_failures = [var.monitoring_role]
+}
+
+run "monitoring_hub" {
+  command = plan
+  variables {
+    monitoring_role = "hub"
+  }
+  assert {
+    condition     = length(module.cloudwatch_exporter_irsa) == 0 && length(aws_eks_addon.ebs_csi) == 1
+    error_message = "hub: EBS driver for the stack's volumes, no exporter role"
+  }
 }

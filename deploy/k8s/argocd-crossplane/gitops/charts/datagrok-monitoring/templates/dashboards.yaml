@@ -1,10 +1,11 @@
-{{- if eq .Values.mode "local" }}
+{{- if include "mon.hub" . }}
 {{- range $path, $_ := .Files.Glob "files/dashboards/*.json" }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboard-{{ base $path | trimSuffix ".json" }}
+  namespace: {{ $.Values.namespace }}
   labels:
     grafana_dashboard: "1"
 data:

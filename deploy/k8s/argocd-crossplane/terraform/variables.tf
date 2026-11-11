@@ -50,18 +50,18 @@ variable "install_lb_controller" {
   default     = true
 }
 
-variable "monitoring_mode" {
-  description = "off, local (Prometheus stack in the cluster) or external (report to an external Prometheus): see monitoring in gitops/bootstrap/values.yaml. local and external create the IAM role of the RDS metrics exporter."
+variable "monitoring_role" {
+  description = "none, standalone (Prometheus stack in the cluster), agent (report to a hub) or hub (the stack agents report to): see monitoring in gitops/bootstrap/values.yaml. standalone and agent create the IAM role of the RDS metrics exporter."
   type        = string
-  default     = "off"
+  default     = "none"
   validation {
-    condition     = contains(["off", "local", "external"], var.monitoring_mode)
-    error_message = "monitoring_mode must be off, local or external."
+    condition     = contains(["none", "standalone", "agent", "hub"], var.monitoring_role)
+    error_message = "monitoring_role must be none, standalone, agent or hub."
   }
 }
 
 variable "install_ebs_csi_driver" {
-  description = "With monitoring_mode = local: install the EBS CSI driver add-on for the Prometheus volumes. Set to false if the cluster already runs it."
+  description = "With monitoring_role standalone or hub: install the EBS CSI driver add-on for the Prometheus volumes. Set to false if the cluster already runs it."
   type        = bool
   default     = true
 }

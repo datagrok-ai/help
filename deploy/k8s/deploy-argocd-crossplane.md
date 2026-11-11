@@ -102,7 +102,7 @@ gitops/
   envs/
     main.yaml                 # one file per environment
   charts/datagrok-env/        # source of the published environment chart
-  charts/datagrok-monitoring/ # optional monitoring: rules and dashboards
+  charts/datagrok-monitoring/ # optional monitoring: stack, collector, probe, rules, dashboards
   crossplane-aws/             # source of the published Crossplane package
 ```
 
@@ -444,8 +444,8 @@ The cluster is set by the Terraform variables in `terraform/env/<env>.tfvars` an
 | `node_instance_types` | `["m6i.xlarge"]` | Instance types of the node group |
 | `node_min_size`, `node_max_size` | `2`, `5` | Node group size limits |
 | `config_repo_revision` | `main` | Branch or tag of the config repo that ArgoCD syncs |
-| `monitoring_mode` | `off` | `off`, `local` or `external`. See [Monitoring](#monitoring) |
-| `install_ebs_csi_driver` | `true` | With `monitoring_mode = "local"`: install the EBS CSI driver add-on for the Prometheus volumes. Set to `false` if the cluster already runs it |
+| `monitoring_role` | `none` | `none`, `standalone`, `agent`, or `hub`. See [Monitoring](#monitoring) |
+| `install_ebs_csi_driver` | `true` | With `monitoring_role` `standalone` or `hub`: install the EBS CSI driver add-on for the Prometheus volumes. Set to `false` if the cluster already runs it |
 
 ### Modify the environment chart or the composition
 
@@ -475,40 +475,63 @@ A composition that creates resources with other names needs the Crossplane role 
 
 ## Monitoring
 
-Monitoring is off by default. Turn it on with the Terraform variable `monitoring_mode` and run
-`terraform apply`: the mode decides which IAM role and storage driver Terraform creates, and
-Terraform passes it to ArgoCD. Everything is installed in the `monitoring` namespace. There is one
-Prometheus per cluster in either mode.
+Monitoring is off by default. Turn it on with the Terraform variable `monitoring_role` and run
+`terraform apply`. The role decides which IAM role and storage driver Terraform creates, and
+Terraform passes it to ArgoCD. Everything is installed in the `monitoring` namespace by one chart,
+`datagrok-monitoring`. There is one Prometheus per cluster in every role.
 
-| `monitoring_mode` | Installs | Use it when |
+| `monitoring_role` | Installs | Use it when |
 |-------------------|----------|-------------|
-| `off` | Nothing | You don't need monitoring from this template |
-| `local` (recommended) | Prometheus, Alertmanager, and Grafana ([kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)), the RDS exporter, and the Datagrok rules and dashboards | The cluster doesn't run another Prometheus operator: two operators conflict over the same CRDs |
-| `external` | A forwarder ([prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) chart with kube-state-metrics and node-exporter, two hours in memory) that sends all metrics to your Prometheus with `remote_write`, and the RDS exporter | You already run a central Prometheus. It stores the data and evaluates the rules; load the rules and dashboards from `gitops/charts/datagrok-monitoring` there |
+| `none` | Nothing | You don't need monitoring from this template |
+| `standalone` (recommended) | Prometheus, Alertmanager, and Grafana ([kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)), the collector, the probe, the RDS exporter, and the Datagrok rules and dashboards | One cluster monitors itself, in the same ArgoCD as Datagrok. The cluster must not run another Prometheus operator, because two operators conflict over the same CRDs |
+| `agent` | The collector, the probe, the RDS exporter, and a forwarder ([prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) chart with kube-state-metrics and node-exporter, two hours in memory) that sends everything to a hub with `remote_write` | Several Datagrok clusters report to one place. The hub stores the data, evaluates the rules, and shows the dashboards |
+| `hub` | The stack, rules, and dashboards of `standalone`, with the `remote_write` receiver on and nothing collected locally | This cluster is the place that agents report to |
 
-Both modes collect every CloudWatch metric of the environment's RDS instance (about 45: CPU and
-credits, memory, storage, IOPS, latency, throughput, network, connections, DB load, replication
-slots, transaction IDs, EBS balances and limit checks, IAM authentication) with
-[YACE](https://github.com/prometheus-community/yet-another-cloudwatch-exporter). The exporter
-finds the instance by the `Service=Datagrok` and `Environment=<env>` tags that the composition
-sets. It reads CloudWatch through the `datagrok-<env>-cloudwatch-exporter` IAM role.
+To run a hub that also hosts a Datagrok environment, use `standalone` and set
+`monitoring.stack.receiver: true`.
 
-The other settings are in the environment file:
+Every role that collects has three sources:
+
+| Source | What it gives |
+|--------|---------------|
+| Collector (`datagrok-otel`) | The problems Datagrok detects by itself, its heartbeat, error counts, and reports. Datagrok pushes them as OTLP records, and the collector counts them into Prometheus series |
+| Probe (`datagrok-probe`) | The state of each service from `/api/admin/health`, the response time, the certificate expiry, the age of the signing key, and a real sign-in when you give it an account |
+| RDS exporter ([YACE](https://github.com/prometheus-community/yet-another-cloudwatch-exporter)) | Every CloudWatch metric of the environment's RDS instance, about 45. The exporter finds the instance by the `Service=Datagrok` and `Environment=<env>` tags that the composition sets, and reads CloudWatch through the `datagrok-<env>-cloudwatch-exporter` IAM role |
+
+After the first sync, point Datagrok at the collector. Open **Settings** > **Logger**, add a
+**Log sync** destination of type **OpenTelemetry (OTLP)** with the endpoint
+`http://datagrok-otel.monitoring.svc:4318/v1/logs`, and select the error, audit, and usage levels.
+Without it the probe and the RDS metrics still work, and the problems Datagrok detects don't reach
+Prometheus.
+
+Every series carries the same labels, so one set of rules and dashboards serves one cluster or many:
+
+| Label | Meaning | Default in this template |
+|-------|---------|--------------------------|
+| `cluster` | The Kubernetes cluster | `datagrok-<env>` |
+| `datagrok_instance` | One Datagrok instance | `<env>` |
+| `tenant` | Optional owner of the instance | Not set |
+
+The other settings are in the environment file. The `monitoring` block holds the values of the
+`datagrok-monitoring` chart, and `gitops/charts/datagrok-monitoring/values.yaml` lists them all:
 
 ```yaml title="gitops/envs/main.yaml"
 monitoring:
-  retention: 31d                   # local: how long Prometheus keeps metrics and consumption roll-ups
-  storageSize: 100Gi
-  grafana:
-    hostname: grafana.datagrok.example.com   # local; empty: kubectl port-forward only
-  external:
-    url: https://prometheus.example.com/api/v1/write   # external: remote_write endpoint
+  stack:                           # standalone and hub
+    retention: 31d                 # how long Prometheus keeps metrics and consumption roll-ups
+    storageSize: 100Gi
+    grafana:
+      hostname: grafana.datagrok.example.com   # empty: kubectl port-forward only
+    values: {}                     # merged over the kube-prometheus-stack values
+  forwarder:                       # agent
+    url: https://prometheus.example.com/api/v1/write   # the hub's remote_write endpoint
     username: datagrok             # basic auth; the password is in Secrets Manager datagrok/<env>/monitoring
-    cluster: ""                    # value of the cluster label; default datagrok-<env>
-  values: {}                       # merged over the kube-prometheus-stack (local) or prometheus (external) values
+    values: {}                     # merged over the prometheus chart values
+  cluster: ""                      # value of the cluster label; default datagrok-<env>
+  alerts: {}                       # RDS alert thresholds
 ```
 
-With `username`, store the password before the first sync:
+With `forwarder.username`, store the password before the first sync:
 
 ```bash
 aws secretsmanager create-secret --name datagrok/main/monitoring --secret-string '{"password":"<password>"}'
@@ -517,23 +540,44 @@ aws secretsmanager create-secret --name datagrok/main/monitoring --secret-string
 The forwarder scrapes the kubelets and cAdvisor, kube-state-metrics, node-exporter, and every
 Service or pod annotated `prometheus.io/scrape: "true"`.
 
-In `local` mode the Grafana admin password is generated in the cluster:
+With `standalone` and `hub` the Grafana admin password is generated in the cluster:
 
 ```bash
 kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+```
+
+To let the probe sign in, create an account for it in Datagrok and store it in the cluster. The
+key of the JSON object is the environment name:
+
+```bash
+kubectl -n monitoring create secret generic datagrok-login-probe \
+  --from-literal=credentials='{"main": {"user": "probe", "password": "<password>"}}'
 ```
 
 ### What it collects
 
 | Dashboard | Shows |
 |-----------|-------|
+| Datagrok / Instances | Instances answering, open problems as Datagrok reports them, the state of each service over time, response time, time since the last heartbeat, errors by package, reports, sign-in time, days until the certificate expires |
 | Datagrok / RDS | CPU, connections, free storage, freeable memory, latency, IOPS, queue depth, EBS I/O burst balance, replica lag, transaction IDs used, DB load |
 | Datagrok / Consumption | CPU, memory, requested CPU and memory, network, and volume usage per workload over any period within `retention` |
 
-Alerts: `DatagrokRdsStorageLow` (critical), `DatagrokRdsCpuHigh`, `DatagrokRdsMemoryLow`,
-`DatagrokRdsIoBalanceLow`, `DatagrokRdsTransactionIdsHigh` (transaction ID wraparound), and
-`DatagrokRdsMetricsMissing`. Their thresholds are under `monitoring.alerts`. RDS series carry the
-instance in `dbinstance_identifier`, as on a central Prometheus that receives several clusters. Alertmanager has no receiver: add one with `monitoring.values.alertmanager.config`.
+| Alerts | Fire when |
+|--------|-----------|
+| `DatagrokHealthEndpointDown` (critical), `DatagrokSlowResponse`, `DatagrokVerySlowResponse` (critical) | The instance doesn't answer, or answers slowly |
+| `DatagrokServiceDown` (critical), `DatagrokPartiallyDegraded` (critical), `DatagrokAuxServiceDown` | A service is down while the instance answers. The garbage collector, Jupyter, Grok Connect, and the spawner warn. Every other service is critical |
+| `DatagrokProblem` | Datagrok reports a problem: a failed connection or job, an error incident, slow requests, a user report. The severity is the problem's own, and the alert clears when Datagrok resolves it |
+| `DatagrokHeartbeatMissing` (critical) | Datagrok sent no heartbeat for 15 minutes |
+| `DatagrokErrorBurst`, `DatagrokAutoReportBurst` | Many errors from one package, or many automatic reports, in 15 minutes |
+| `DatagrokLoginFailing` (critical), `DatagrokLoginSlow` | The probe account can't sign in, or signing in takes over 10 seconds |
+| `DatagrokSigningKeyStale`, `DatagrokSigningKeyVeryStale` (critical) | The signing key wasn't rotated for 100 or 130 days |
+| `SSLCertificateExpiry7Days`, `SSLCertificateExpiryToday` (critical) | The certificate is about to expire |
+| `DatagrokContainerOOMKilled`, `DatagrokContainerMemoryNearLimit` | A Datagrok container ran out of memory, or is about to |
+| `DatagrokRdsStorageLow` (critical), `DatagrokRdsCpuHigh`, `DatagrokRdsMemoryLow`, `DatagrokRdsIoBalanceLow`, `DatagrokRdsTransactionIdsHigh`, `DatagrokRdsMetricsMissing` | The database runs out of a resource, or its metrics stop. The thresholds are under `monitoring.alerts` |
+| `DatagrokOtelCollectorDown`, `DatagrokOtelRecordsRefused` | The collector is down or refuses records |
+
+While an instance is unreachable, Alertmanager holds back the alerts that only restate it. It has
+no receiver. Add one with `monitoring.stack.values.alertmanager.config`.
 
 Consumption is recorded once an hour per workload and container. Pods are counted toward the
 Deployment, StatefulSet, DaemonSet, or Job that owns them, so the numbers survive pod restarts. The
@@ -543,6 +587,12 @@ sum over a period is the consumption of that period:
 # CPU core-hours of each workload over the last 30 days
 sum by (namespace, workload) (sum_over_time(workload_container:cpu_core_hours:1h[30d]))
 ```
+
+### A cluster that already runs a Prometheus operator
+
+Deploy the `datagrok-monitoring` chart by itself with `stack.install: false`. It then installs only
+the collector, the probe, the rules, and the dashboards. If your Prometheus selects rules and
+ServiceMonitors by label, set `stack.objectLabels`, for example `{release: kube-prometheus-stack}`.
 
 ## Day-to-day operations
 

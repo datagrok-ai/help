@@ -1,6 +1,6 @@
-{{- if eq .Values.mode "local" }}
-# Volumes of Prometheus and Alertmanager (EBS CSI driver,
-# installed by Terraform with monitoring_mode = "local").
+{{- if and (include "mon.hub" .) .Values.stack.install }}
+{{- if .Values.stack.gp3StorageClass }}
+# Volumes of Prometheus and Alertmanager (EBS CSI driver).
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -13,12 +13,15 @@ volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 reclaimPolicy: Delete
 ---
+{{- end }}
+{{- if .Values.stack.grafana.generateAdminSecret }}
 # Grafana admin password: generated once in the cluster, never in Git.
-# kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+# kubectl -n {{ .Values.namespace }} get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
 apiVersion: generators.external-secrets.io/v1alpha1
 kind: Password
 metadata:
   name: grafana-admin
+  namespace: {{ .Values.namespace }}
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
@@ -32,6 +35,7 @@ apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: grafana-admin
+  namespace: {{ .Values.namespace }}
   annotations:
     argocd.argoproj.io/sync-options: Prune=false,SkipDryRunOnMissingResource=true
 spec:
@@ -53,4 +57,5 @@ spec:
         apiVersion: generators.external-secrets.io/v1alpha1
         kind: Password
         name: grafana-admin
+{{- end }}
 {{- end }}

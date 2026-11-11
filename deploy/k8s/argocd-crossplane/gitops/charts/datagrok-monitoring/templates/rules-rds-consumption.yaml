@@ -1,23 +1,31 @@
-{{- if eq .Values.mode "local" }}
+{{- if include "mon.hub" . }}
 {{- $a := .Values.alerts }}
 {{- $interval := .Values.scrapeIntervalSeconds }}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: datagrok-rds
+  namespace: {{ .Values.namespace }}
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  {{- with include "mon.objectLabels" . }}
+  labels:
+    {{- . | nindent 4 }}
+  {{- end }}
 spec:
   groups:
   - name: datagrok-rds
     rules:
+    {{- /* absent() needs one known instance: only where this cluster's own exporter runs. */}}
+    {{- if and (include "mon.agent" .) .Values.rds.enabled .Values.rds.environment }}
     - alert: DatagrokRdsMetricsMissing
-      expr: absent(aws_rds_cpuutilization_average{tag_Environment="{{ .Values.env }}"})
+      expr: absent(aws_rds_cpuutilization_average{tag_Environment="{{ .Values.rds.environment }}"})
       for: 30m
       labels: {severity: warning}
       annotations:
-        summary: No CloudWatch metrics for the RDS instance of {{ .Values.env }}
-        description: The yace exporter in the monitoring namespace returns nothing for the instance tagged Environment={{ .Values.env }}. Check its logs for IAM errors.
+        summary: No CloudWatch metrics for the RDS instance of {{ .Values.rds.environment }}
+        description: The yace exporter in the {{ .Values.namespace }} namespace returns nothing for the instance tagged Environment={{ .Values.rds.environment }}. Check its logs for IAM errors.
+    {{- end }}
     - alert: DatagrokRdsCpuHigh
       expr: aws_rds_cpuutilization_average > {{ $a.rdsCpuPercent }}
       for: 30m
@@ -61,8 +69,13 @@ apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
   name: datagrok-consumption
+  namespace: {{ .Values.namespace }}
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  {{- with include "mon.objectLabels" . }}
+  labels:
+    {{- . | nindent 4 }}
+  {{- end }}
 spec:
   groups:
   - name: datagrok-consumption-1h

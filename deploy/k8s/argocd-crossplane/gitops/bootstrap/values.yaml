@@ -34,50 +34,25 @@ datagrok:
 controllers:
   awsLoadBalancerController: true
 
-# Optional monitoring, installed in the monitoring namespace. The mode comes from
-# Terraform (monitoring_mode), because it decides the IAM role and the EBS driver;
-# everything else is set in gitops/envs/<env>.yaml.
+# Optional monitoring: the datagrok-monitoring chart. Terraform sets the role
+# (monitoring_role), because the role decides the IAM role and the EBS driver.
+# Every other key of this block is a value of that chart
+# (gitops/charts/datagrok-monitoring/values.yaml) and is set in gitops/envs/<env>.yaml.
+# The cluster label (datagrok-<env>), the instance to watch, the RDS exporter and
+# the storage class are filled in from the cluster.
 monitoring:
-  # off: nothing is installed.
-  # local: Prometheus, Alertmanager and Grafana in this cluster, with the Datagrok
-  #   rules and dashboards. Only on a cluster that runs no other Prometheus operator.
-  # external: a forwarder (the prometheus chart, 2 hours in memory) scrapes this
-  #   cluster and remote-writes everything to an external Prometheus, which holds
-  #   the data, the rules and the dashboards.
-  # Both collect the CloudWatch metrics of the environment's RDS instance.
-  mode: "off"
-  # local: how long Prometheus keeps everything, including the hourly consumption
-  # roll-ups, so this is also how far back consumption can be summed.
-  retention: 31d
-  storageSize: 100Gi
-  grafana:
-    # local: publish Grafana through the ALB on this hostname. Empty: kubectl port-forward only.
-    hostname: ""
-    certificateArn: ""
-  alerts:
-    rdsCpuPercent: 85
-    rdsFreeStorageBytes: 5368709120
-    rdsFreeableMemoryBytes: 268435456
-    rdsIoBalancePercent: 20
-    # PostgreSQL stops accepting writes at about 2.1 billion to avoid transaction ID wraparound.
-    rdsMaxUsedTransactionIds: 1000000000
-  external:
-    # The remote_write endpoint of the external Prometheus,
-    # e.g. https://prometheus.example.com/api/v1/write
-    url: ""
-    # Basic auth: this username, and the password property of the Secrets Manager
-    # secret datagrok/<env>/monitoring. Empty: no authentication.
-    username: ""
-    # Value of the cluster label on every series. Default: datagrok-<env>.
-    cluster: ""
-  # Deep-merged over the computed chart values: kube-prometheus-stack (local) or
-  # prometheus (external).
-  values: {}
+  # none: nothing is installed.
+  # standalone: Prometheus, Alertmanager and Grafana in this cluster, with the
+  #   Datagrok rules and dashboards. Only on a cluster that runs no other Prometheus operator.
+  # agent: a forwarder scrapes this cluster and remote-writes everything to a hub,
+  #   which holds the data, the rules and the dashboards. Needs forwarder.url.
+  # hub: the stack that agents report to; watches no Datagrok of its own.
+  role: none
+  # A published datagrok-monitoring chart version. Empty: the chart in
+  # gitops/charts/datagrok-monitoring of this repo.
+  chartVersion: ""
 
 versions:
   crossplane: 2.3.3
   externalSecrets: 2.6.0
   awsLoadBalancerController: 3.4.0
-  kubePrometheusStack: 92.21.2
-  prometheus: 29.12.0
-  yace: 0.39.1

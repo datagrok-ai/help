@@ -37,7 +37,8 @@ locals {
   azs                  = slice(data.aws_availability_zones.available.names, 0, 3)
   use_existing_cluster = var.existing_cluster_name != ""
   use_existing_vpc     = local.use_existing_cluster || var.existing_vpc_id != ""
-  install_ebs_csi      = var.monitoring_mode == "local" && var.install_ebs_csi_driver
+  monitoring_collects  = contains(["standalone", "agent"], var.monitoring_role)
+  install_ebs_csi      = contains(["standalone", "hub"], var.monitoring_role) && var.install_ebs_csi_driver
 }
 
 resource "terraform_data" "inputs" {
@@ -297,14 +298,14 @@ resource "aws_iam_policy" "external_secrets" {
   })
 }
 
-# --- Monitoring (monitoring_mode) --------------------------------------------
+# --- Monitoring (monitoring_role) --------------------------------------------
 
 # The RDS metrics exporter (YACE) reads CloudWatch. None of these actions can be
 # scoped to a resource; its config limits it to this environment's tags.
 module "cloudwatch_exporter_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.48"
-  count   = var.monitoring_mode != "off" ? 1 : 0
+  count   = local.monitoring_collects ? 1 : 0
 
   role_name        = "${local.name}-cloudwatch-exporter"
   role_policy_arns = { read = aws_iam_policy.cloudwatch_exporter[0].arn }
@@ -317,7 +318,7 @@ module "cloudwatch_exporter_irsa" {
 }
 
 resource "aws_iam_policy" "cloudwatch_exporter" {
-  count = var.monitoring_mode != "off" ? 1 : 0
+  count = local.monitoring_collects ? 1 : 0
   name  = "${local.name}-cloudwatch-exporter"
   policy = jsonencode({
     Version = "2012-10-17"
@@ -329,7 +330,7 @@ resource "aws_iam_policy" "cloudwatch_exporter" {
   })
 }
 
-# Volumes of the local Prometheus stack. EKS has no EBS provisioner without it.
+# Volumes of the Prometheus stack. EKS has no EBS provisioner without it.
 module "ebs_csi_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.48"
@@ -407,7 +408,7 @@ resource "helm_release" "root" {
               controllers = {
                 awsLoadBalancerController = var.install_lb_controller
               }
-              monitoring = { mode = var.monitoring_mode }
+              monitoring = { role = var.monitoring_role }
               aws = {
                 accountId              = data.aws_caller_identity.current.account_id
                 region                 = var.region
@@ -420,7 +421,7 @@ resource "helm_release" "root" {
                 crossplaneRoleArn      = aws_iam_role.crossplane.arn
                 lbControllerRoleArn    = var.install_lb_controller ? module.lb_controller_irsa[0].iam_role_arn : ""
                 externalSecretsRoleArn = module.external_secrets_irsa.iam_role_arn
-                cloudwatchExporterRoleArn = (var.monitoring_mode != "off"
+                cloudwatchExporterRoleArn = (local.monitoring_collects
                 ? module.cloudwatch_exporter_irsa[0].iam_role_arn : "")
               }
             }

@@ -1,0 +1,110 @@
+{{- if and (include "mon.agent" .) .Values.probe.enabled .Values.instances }}
+{{- $operator := include "mon.hub" . }}
+{{- $ns := .Values.namespace }}
+{{- $code := .Files.Get "files/probe.py" }}
+{{- $instances := list }}
+{{- range .Values.instances }}
+{{- $instances = append $instances (dict
+      "name" (required "instances[].name is required" .name)
+      "url" (required "instances[].url is required" .url)
+      "tenant" (.tenant | default "")) }}
+{{- end }}
+# Probes every instance in `instances`: services, response time, certificate,
+# signing key, login. The series are listed at the top of files/probe.py.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datagrok-probe
+  namespace: {{ $ns }}
+data:
+  probe.py: |
+    {{- $code | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datagrok-probe
+  namespace: {{ $ns }}
+  labels: {app: datagrok-probe}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: datagrok-probe}
+  template:
+    metadata:
+      labels: {app: datagrok-probe}
+      annotations:
+        checksum/code: {{ $code | sha256sum | trunc 32 }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: probe
+        image: {{ .Values.probe.image }}
+        command: ["python3", "/app/probe.py"]
+        env:
+        - name: INSTANCES
+          value: {{ toJson $instances | quote }}
+        - name: INSECURE_SKIP_VERIFY
+          value: {{ .Values.probe.insecureSkipVerify | quote }}
+        - name: LOGIN_CREDENTIALS
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.probe.loginSecret }}
+              key: credentials
+              optional: true
+        ports:
+        - {containerPort: 9107, name: metrics}
+        volumeMounts:
+        - {name: code, mountPath: /app}
+        livenessProbe:
+          httpGet: {path: /healthz, port: 9107}
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet: {path: /healthz, port: 9107}
+          periodSeconds: 10
+          timeoutSeconds: 5
+        resources:
+          requests: {cpu: 10m, memory: 32Mi}
+          limits: {cpu: 200m, memory: 128Mi}
+      volumes:
+      - name: code
+        configMap: {name: datagrok-probe}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datagrok-probe
+  namespace: {{ $ns }}
+  labels: {app: datagrok-probe}
+  {{- if not $operator }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9107"
+  {{- end }}
+spec:
+  selector: {app: datagrok-probe}
+  ports:
+  - {name: metrics, port: 9107, targetPort: 9107}
+{{- if $operator }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: datagrok-probe
+  namespace: {{ $ns }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  {{- with include "mon.objectLabels" . }}
+  labels:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels: {app: datagrok-probe}
+  endpoints:
+  - port: metrics
+    interval: 60s
+    scrapeTimeout: 45s
+{{- end }}
+{{- end }}
