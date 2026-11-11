@@ -116,13 +116,16 @@ the project. For a multi-table dashboard, keep these points in mind:
 A dashboard saves the arrangement of its views, not only the views themselves.
 Dock views side by side or one below another, float one, then save: the
 dashboard reopens with the same arrangement and proportions, and floating
-views at the same position and size. Whether the **Context Panel** and the
-**Help** panel are shown is saved too.
+views at the same position and size. The side panels are saved too: which of
+**Toolbox**, **Browse**, **Context Panel**, and **Help** are shown, and how wide
+they are.
 
 A dashboard can mix view types: table views, notebooks, markup views,
 Flow workflows (saved or not), and application
 views such as Usage Analysis. An application view reopens by starting the
-application at the place it showed when you saved.
+application at the place it showed when you saved. Applications that support
+it also restore their own settings. For example, Usage Analysis reopens on the
+same tab and chart with the same filters.
 
 Views that can reopen are saved by default. To keep a view out of the
 dashboard, right-click its tab and clear **Save with project**. A view
