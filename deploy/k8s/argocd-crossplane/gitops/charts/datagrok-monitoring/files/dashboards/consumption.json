@@ -1,0 +1,367 @@
+{
+ "uid": "datagrok-consumption",
+ "title": "Datagrok / Consumption",
+ "tags": [
+  "datagrok"
+ ],
+ "timezone": "browser",
+ "schemaVersion": 39,
+ "time": {
+  "from": "now-30d",
+  "to": "now"
+ },
+ "refresh": "5m",
+ "editable": true,
+ "templating": {
+  "list": [
+   {
+    "name": "datasource",
+    "label": "Data source",
+    "type": "datasource",
+    "query": "prometheus",
+    "current": {
+     "text": "prometheus",
+     "value": "prometheus"
+    },
+    "hide": 0
+   },
+   {
+    "name": "namespace",
+    "label": "Namespace",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "${datasource}"
+    },
+    "multi": true,
+    "includeAll": true,
+    "query": {
+     "query": "label_values(workload_container:cpu_core_hours:1h, namespace)",
+     "refId": "ns"
+    },
+    "refresh": 2,
+    "current": {
+     "text": "All",
+     "value": "$__all"
+    },
+    "hide": 0
+   }
+  ]
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "table",
+   "title": "Consumption over the selected period",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 24,
+    "h": 12
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace, workload) (sum_over_time(workload_container:cpu_core_hours:1h{namespace=~\"$namespace\"}[$__range]))",
+     "instant": true,
+     "format": "table",
+     "legendFormat": "CPU used, core-hours"
+    },
+    {
+     "refId": "B",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace, workload) (sum_over_time(workload_container:cpu_requested_core_hours:1h{namespace=~\"$namespace\"}[$__range]))",
+     "instant": true,
+     "format": "table",
+     "legendFormat": "CPU requested, core-hours"
+    },
+    {
+     "refId": "C",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace, workload) (sum_over_time(workload_container:memory_gib_hours:1h{namespace=~\"$namespace\"}[$__range]))",
+     "instant": true,
+     "format": "table",
+     "legendFormat": "Memory used, GiB-hours"
+    },
+    {
+     "refId": "D",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace, workload) (sum_over_time(workload_container:memory_requested_gib_hours:1h{namespace=~\"$namespace\"}[$__range]))",
+     "instant": true,
+     "format": "table",
+     "legendFormat": "Memory requested, GiB-hours"
+    },
+    {
+     "refId": "E",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace, workload) (sum_over_time(workload:network_receive_bytes:1h{namespace=~\"$namespace\"}[$__range]))",
+     "instant": true,
+     "format": "table",
+     "legendFormat": "Received"
+    },
+    {
+     "refId": "F",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace, workload) (sum_over_time(workload:network_transmit_bytes:1h{namespace=~\"$namespace\"}[$__range]))",
+     "instant": true,
+     "format": "table",
+     "legendFormat": "Sent"
+    }
+   ],
+   "transformations": [
+    {
+     "id": "merge",
+     "options": {}
+    },
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true
+      },
+      "renameByName": {
+       "Value #A": "CPU used, core-hours",
+       "Value #B": "CPU requested, core-hours",
+       "Value #C": "Memory used, GiB-hours",
+       "Value #D": "Memory requested, GiB-hours",
+       "Value #E": "Received",
+       "Value #F": "Sent"
+      }
+     }
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 1
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Received"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "bytes"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "Sent"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "bytes"
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "sortBy": [
+     {
+      "displayName": "CPU used, core-hours",
+      "desc": true
+     }
+    ]
+   }
+  },
+  {
+   "id": 2,
+   "type": "timeseries",
+   "title": "CPU used per hour, core-hours",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 12,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace) (workload_container:cpu_core_hours:1h{namespace=~\"$namespace\"})",
+     "legendFormat": "{{namespace}}"
+    }
+   ],
+   "interval": "1h"
+  },
+  {
+   "id": 3,
+   "type": "timeseries",
+   "title": "Memory used per hour, GiB-hours",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 12,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace) (workload_container:memory_gib_hours:1h{namespace=~\"$namespace\"})",
+     "legendFormat": "{{namespace}}"
+    }
+   ],
+   "interval": "1h"
+  },
+  {
+   "id": 4,
+   "type": "timeseries",
+   "title": "CPU requested per hour, core-hours",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 20,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace) (workload_container:cpu_requested_core_hours:1h{namespace=~\"$namespace\"})",
+     "legendFormat": "{{namespace}}"
+    }
+   ],
+   "interval": "1h"
+  },
+  {
+   "id": 5,
+   "type": "timeseries",
+   "title": "Volumes per hour, GiB-hours",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 20,
+    "w": 12,
+    "h": 8
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "${datasource}"
+     },
+     "expr": "sum by (namespace) (namespace_pvc:used_gib_hours:1h{namespace=~\"$namespace\"})",
+     "legendFormat": "{{namespace}}"
+    }
+   ],
+   "interval": "1h"
+  }
+ ],
+ "description": "Hourly roll-ups: CPU and memory used and requested, network and volume usage per workload. The period is limited by the Prometheus retention."
+}

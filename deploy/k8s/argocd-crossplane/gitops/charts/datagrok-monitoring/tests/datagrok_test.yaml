@@ -1,0 +1,219 @@
+# promtool test rules tests/datagrok_test.yaml
+rule_files:
+- ../files/rules/datagrok.yaml
+evaluation_interval: 1m
+
+tests:
+# The endpoint stops answering: one alert for that instance, after 5 minutes.
+- interval: 1m
+  input_series:
+  - series: 'datagrok_health_age_scrape_success{datagrok_instance="main",datagrok_url="https://dg.example.com"}'
+    values: '1x10 0x20'
+  - series: 'datagrok_health_age_scrape_success{datagrok_instance="other",datagrok_url="https://other.example.com"}'
+    values: '1x30'
+  alert_rule_test:
+  - eval_time: 14m
+    alertname: DatagrokHealthEndpointDown
+    exp_alerts: []
+  - eval_time: 17m
+    alertname: DatagrokHealthEndpointDown
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        datagrok_instance: main
+        datagrok_url: https://dg.example.com
+      exp_annotations:
+        summary: 'main: the health endpoint does not answer'
+        description: 'https://dg.example.com/api/admin/health has not answered with a service list for 5 minutes.'
+        url: https://dg.example.com
+        url_title: Open the instance
+
+# An essential service is down while the instance answers: the service alert and the
+# degraded alert. A non-essential one warns later and does not count as degraded.
+- interval: 1m
+  input_series:
+  - series: 'datagrok_health_age_scrape_success{datagrok_instance="main"}'
+    values: '1x40'
+  - series: 'datagrok_service_up{datagrok_instance="main",service="DatlasDB"}'
+    values: '1x5 0x35'
+  - series: 'datagrok_service_up{datagrok_instance="main",service="GrokConnect"}'
+    values: '0x40'
+  alert_rule_test:
+  - eval_time: 12m
+    alertname: DatagrokServiceDown
+    exp_alerts:
+    - exp_labels: {severity: critical, datagrok_instance: main, service: DatlasDB}
+      exp_annotations:
+        summary: 'main: DatlasDB is not Running'
+        description: The health endpoint reports DatlasDB as not Running for over 5 minutes, while the instance keeps answering. Check the logs of that service.
+  - eval_time: 12m
+    alertname: DatagrokPartiallyDegraded
+    exp_alerts:
+    - exp_labels: {severity: critical, datagrok_instance: main}
+      exp_annotations:
+        summary: 'main: up, with 1 essential service(s) down'
+        description: The instance answers, so availability checks pass, but people see failures.
+  - eval_time: 12m
+    alertname: DatagrokAuxServiceDown
+    exp_alerts: []
+  - eval_time: 16m
+    alertname: DatagrokAuxServiceDown
+    exp_alerts:
+    - exp_labels: {severity: warning, datagrok_instance: main, service: GrokConnect}
+      exp_annotations:
+        summary: 'main: GrokConnect is not Running'
+        description: The health endpoint reports GrokConnect as not Running. The platform stays up; check the logs of that service.
+
+# A problem Datagrok reports: open from the first record until the resolved one. Two
+# clusters run an instance with the same name; only the one that resolved clears.
+- interval: 1m
+  input_series:
+  - series: 'datagrok_alerts_total{cluster="a",datagrok_instance="main",datagrok_url="https://a.example.com",datagrok_alert_kind="health",datagrok_alert_key="GrokConnect@s1",datagrok_alert_name="DatagrokServiceDown",datagrok_alert_status="opened",datagrok_alert_severity="warning",datagrok_alert_audience="platform",datagrok_alert_url=""}'
+    values: '_x10 1x80'
+  - series: 'datagrok_alerts_total{cluster="a",datagrok_instance="main",datagrok_url="https://a.example.com",datagrok_alert_kind="health",datagrok_alert_key="GrokConnect@s1",datagrok_alert_name="DatagrokServiceDown",datagrok_alert_status="firing",datagrok_alert_severity="warning",datagrok_alert_audience="platform",datagrok_alert_url=""}'
+    values: '_x15 1x4 2x4 3x4 4x4 5x4 6x50'
+  - series: 'datagrok_alerts_total{cluster="a",datagrok_instance="main",datagrok_url="https://a.example.com",datagrok_alert_kind="health",datagrok_alert_key="GrokConnect@s1",datagrok_alert_name="DatagrokServiceDown",datagrok_alert_status="resolved",datagrok_alert_severity="warning",datagrok_alert_audience="platform",datagrok_alert_url=""}'
+    values: '_x41 1x50'
+  - series: 'datagrok_alerts_total{cluster="b",datagrok_instance="main",datagrok_url="https://b.example.com",datagrok_alert_kind="report",datagrok_alert_key="r1",datagrok_alert_name="DatagrokUserReport",datagrok_alert_status="opened",datagrok_alert_severity="warning",datagrok_alert_audience="platform",datagrok_alert_url="https://b.example.com/r/1"}'
+    values: '_x10 1x80'
+  - series: 'datagrok_alerts_total{cluster="b",datagrok_instance="main",datagrok_url="https://b.example.com",datagrok_alert_kind="report",datagrok_alert_key="r1",datagrok_alert_name="DatagrokUserReport",datagrok_alert_status="firing",datagrok_alert_severity="warning",datagrok_alert_audience="platform",datagrok_alert_url="https://b.example.com/r/1"}'
+    values: '_x15 1+1x75'
+  alert_rule_test:
+  - eval_time: 9m
+    alertname: DatagrokProblem
+    exp_alerts: []
+  - eval_time: 30m
+    alertname: DatagrokProblem
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+        audience: platform
+        cluster: a
+        datagrok_instance: main
+        datagrok_url: https://a.example.com
+        datagrok_alert_kind: health
+        datagrok_alert_key: GrokConnect@s1
+        datagrok_alert_name: DatagrokServiceDown
+        datagrok_alert_severity: warning
+        datagrok_alert_audience: platform
+      exp_annotations:
+        summary: 'main: DatagrokServiceDown (health GrokConnect@s1)'
+        description: 'Datagrok detected a problem: DatagrokServiceDown (health, warning, for the platform). It clears when Datagrok reports it resolved.'
+        url: https://a.example.com/apps/usage
+        url_title: Open Usage Analysis
+    - &report
+      exp_labels:
+        severity: warning
+        audience: platform
+        cluster: b
+        datagrok_instance: main
+        datagrok_url: https://b.example.com
+        datagrok_alert_kind: report
+        datagrok_alert_key: r1
+        datagrok_alert_name: DatagrokUserReport
+        datagrok_alert_severity: warning
+        datagrok_alert_audience: platform
+        datagrok_alert_url: https://b.example.com/r/1
+      exp_annotations:
+        summary: 'main: DatagrokUserReport (report r1)'
+        description: 'Datagrok detected a problem: DatagrokUserReport (report, warning, for the platform). It clears when Datagrok reports it resolved.'
+        url: https://b.example.com/r/1
+        url_title: Open the evidence
+  - eval_time: 45m
+    alertname: DatagrokProblem
+    exp_alerts:
+    - *report
+  # Long after the resolved record the key stays closed.
+  - eval_time: 75m
+    alertname: DatagrokProblem
+    exp_alerts:
+    - *report
+
+# A problem resolves and Datagrok opens it again five minutes later: the alert is back at once.
+- interval: 1m
+  input_series:
+  - series: 'datagrok_alerts_total{datagrok_instance="main",datagrok_url="https://a.example.com",datagrok_alert_kind="connection",datagrok_alert_key="c1",datagrok_alert_name="DatagrokConnectionDown",datagrok_alert_status="opened",datagrok_alert_severity="warning",datagrok_alert_audience="owner",datagrok_alert_url=""}'
+    values: '_x10 1x17 2x40'
+  - series: 'datagrok_alerts_total{datagrok_instance="main",datagrok_url="https://a.example.com",datagrok_alert_kind="connection",datagrok_alert_key="c1",datagrok_alert_name="DatagrokConnectionDown",datagrok_alert_status="firing",datagrok_alert_severity="warning",datagrok_alert_audience="owner",datagrok_alert_url=""}'
+    values: '_x15 1x4 2x12 3x4 4x30'
+  - series: 'datagrok_alerts_total{datagrok_instance="main",datagrok_url="https://a.example.com",datagrok_alert_kind="connection",datagrok_alert_key="c1",datagrok_alert_name="DatagrokConnectionDown",datagrok_alert_status="resolved",datagrok_alert_severity="warning",datagrok_alert_audience="owner",datagrok_alert_url=""}'
+    values: '_x22 1x50'
+  alert_rule_test:
+  - eval_time: 21m
+    alertname: DatagrokProblem
+    exp_alerts:
+    - &reopened
+      exp_labels:
+        severity: warning
+        audience: owner
+        datagrok_instance: main
+        datagrok_url: https://a.example.com
+        datagrok_alert_kind: connection
+        datagrok_alert_key: c1
+        datagrok_alert_name: DatagrokConnectionDown
+        datagrok_alert_severity: warning
+        datagrok_alert_audience: owner
+      exp_annotations:
+        summary: 'main: DatagrokConnectionDown (connection c1)'
+        description: 'Datagrok detected a problem: DatagrokConnectionDown (connection, warning, for the owner). It clears when Datagrok reports it resolved.'
+        url: https://a.example.com/apps/usage
+        url_title: Open Usage Analysis
+  - eval_time: 25m
+    alertname: DatagrokProblem
+    exp_alerts: []
+  - eval_time: 29m
+    alertname: DatagrokProblem
+    exp_alerts:
+    - *reopened
+  # The last firing record was at 39m; with nothing after it the alert ends 20 minutes later.
+  - eval_time: 50m
+    alertname: DatagrokProblem
+    exp_alerts:
+    - *reopened
+  - eval_time: 60m
+    alertname: DatagrokProblem
+    exp_alerts: []
+
+# The probe is scraped but its rounds stopped.
+- interval: 1m
+  input_series:
+  - series: 'up{job="datagrok-probe"}'
+    values: '1x40'
+  - series: 'datagrok_probe_last_run_timestamp_seconds'
+    values: '0+60x5 300x35'
+  alert_rule_test:
+  - eval_time: 8m
+    alertname: DatagrokProbeDown
+    exp_alerts: []
+  - eval_time: 25m
+    alertname: DatagrokProbeDown
+    exp_alerts:
+    - exp_labels: {severity: warning}
+      exp_annotations:
+        summary: The datagrok-probe is down or stuck
+        description: Instance availability, services, login and certificates are not checked until it is back. Check the datagrok-probe pod.
+
+# Heartbeats stop: the alert names the instance that went silent, not its neighbour.
+- interval: 1m
+  input_series:
+  - series: 'datagrok_heartbeats_total{cluster="a",datagrok_instance="main",datagrok_url="https://a.example.com"}'
+    values: '1x4 2x4 3x4 4x4 5x60'
+  - series: 'datagrok_heartbeats_total{cluster="a",datagrok_instance="second",datagrok_url="https://second.example.com"}'
+    values: '1+1x80'
+  alert_rule_test:
+  - eval_time: 25m
+    alertname: DatagrokHeartbeatMissing
+    exp_alerts: []
+  - eval_time: 45m
+    alertname: DatagrokHeartbeatMissing
+    exp_alerts:
+    - exp_labels:
+        severity: critical
+        cluster: a
+        datagrok_instance: main
+        datagrok_url: https://a.example.com
+      exp_annotations:
+        summary: 'main: no heartbeat from Datagrok'
+        description: No heartbeat for 15 minutes. Datagrok is down, hung, or cannot reach the collector; none of its alerts can arrive until it does.
+        url: https://a.example.com
+        url_title: Open the instance

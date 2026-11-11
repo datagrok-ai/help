@@ -50,6 +50,22 @@ variable "install_lb_controller" {
   default     = true
 }
 
+variable "monitoring_role" {
+  description = "none, standalone (Prometheus stack in the cluster), agent (report to a hub) or hub (the stack agents report to): see monitoring in gitops/bootstrap/values.yaml. standalone and agent create the IAM role of the RDS metrics exporter."
+  type        = string
+  default     = "none"
+  validation {
+    condition     = contains(["none", "standalone", "agent", "hub"], var.monitoring_role)
+    error_message = "monitoring_role must be none, standalone, agent or hub."
+  }
+}
+
+variable "install_ebs_csi_driver" {
+  description = "With monitoring_role standalone or hub: install the EBS CSI driver add-on for the Prometheus volumes. Set to false if the cluster already runs it."
+  type        = bool
+  default     = true
+}
+
 variable "kubernetes_version" {
   type    = string
   default = "1.33"

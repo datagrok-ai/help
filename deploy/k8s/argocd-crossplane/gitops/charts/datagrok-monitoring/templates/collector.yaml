@@ -1,0 +1,361 @@
+{{- define "mon.collectorConfig" -}}
+{{- $instances := .Values.instances }}
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 5s
+    limit_percentage: 75
+    spike_limit_percentage: 15
+  {{- if gt (len $instances) 1 }}
+  # The namespace of the pod that sent the record, found by its address.
+  k8sattributes:
+    auth_type: serviceAccount
+    passthrough: false
+    extract:
+      metadata: [k8s.namespace.name]
+    pod_association:
+      - sources:
+          - from: connection
+  {{- end }}
+  # datagrok_instance, datagrok_url and tenant of the instance that sent the record.
+  transform/instance:
+    error_mode: ignore
+    log_statements:
+      - context: resource
+        statements:
+          {{- if eq (len $instances) 1 }}
+          {{- $i := first $instances }}
+          # The only instance of this cluster: every record is its own.
+          - set(attributes["datagrok_instance"], {{ $i.name | quote }})
+          - set(attributes["datagrok_url"], {{ $i.url | trimSuffix "/" | quote }})
+          {{- with $i.tenant }}
+          - set(attributes["tenant"], {{ . | quote }})
+          {{- end }}
+          {{- else }}
+          {{- range $i := $instances }}
+          {{- $host := include "mon.ottlHostPattern" (urlParse $i.url).host }}
+          {{- $ids := list (include "mon.ottlHostPattern" $i.name) $host }}
+          {{- with $i.id }}
+          {{- $ids = append $ids (include "mon.ottlHostPattern" .) }}
+          {{- end }}
+          # {{ $i.name }}: by the namespace it runs in. Outside this cluster: by its instance id
+          # (the name in the instance's configuration, the name here, or its host) or the
+          # web root it reports.
+          - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["k8s.namespace.name"] == {{ $i.namespace | default (printf "datagrok-%s" $i.name) | quote }}
+          - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["datagrok.url"] != nil and IsMatch(attributes["datagrok.url"], "^https?://{{ $host }}(/.*)?$")
+          - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and IsMatch(attributes["service.instance.id"], "^({{ join "|" $ids }})$")
+          - set(attributes["datagrok_url"], {{ $i.url | trimSuffix "/" | quote }}) where attributes["datagrok_instance"] == {{ $i.name | quote }}
+          {{- with $i.tenant }}
+          - set(attributes["tenant"], {{ . | quote }}) where attributes["datagrok_instance"] == {{ $i.name | quote }}
+          {{- end }}
+          {{- end }}
+          # An instance that isn't listed names itself.
+          - set(attributes["datagrok_instance"], attributes["service.instance.id"]) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and attributes["service.instance.id"] != ""
+          - set(attributes["datagrok_instance"], "unknown") where attributes["datagrok_instance"] == nil
+          - set(attributes["datagrok_url"], attributes["datagrok.url"]) where attributes["datagrok_url"] == nil and attributes["datagrok.url"] != nil
+          - set(attributes["datagrok_url"], "") where attributes["datagrok_url"] == nil
+          - delete_key(attributes, "k8s.namespace.name")
+          - delete_key(attributes, "k8s.pod.ip")
+          {{- end }}
+          # As a label it would collide with datagrok_url, and the exporter drops the series.
+          - delete_key(attributes, "datagrok.url")
+  # datagrok.signature = the record's datagrok.error_stack_trace_hash, the key
+  # Usage Analysis > Errors groups by. A record without it gets the first 12 hex
+  # characters of sha256 over the digit-stripped stack trace. datagrok.error = the
+  # message with ids masked, whitespace collapsed, cut at 200 characters.
+  transform/signature:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["datagrok.package"], "") where attributes["datagrok.package"] == nil
+          - set(attributes["datagrok.source"], "") where attributes["datagrok.source"] == nil
+          - set(attributes["datagrok.severity"], "normal") where attributes["datagrok.severity"] == nil
+          - set(attributes["datagrok.signature"], attributes["datagrok.error_stack_trace_hash"]) where attributes["datagrok.level"] == "error" and attributes["datagrok.error_stack_trace_hash"] != nil
+          - set(attributes["datagrok.sig_src"], attributes["exception.stacktrace"]) where attributes["datagrok.signature"] == nil and attributes["exception.stacktrace"] != nil
+          - set(attributes["datagrok.sig_src"], body) where attributes["datagrok.signature"] == nil and attributes["datagrok.sig_src"] == nil and attributes["datagrok.level"] == "error"
+          - replace_pattern(attributes["datagrok.sig_src"], "\\d+", "") where attributes["datagrok.sig_src"] != nil
+          - set(attributes["datagrok.signature"], Substring(SHA256(attributes["datagrok.sig_src"]), 0, 12)) where attributes["datagrok.sig_src"] != nil
+          - delete_key(attributes, "datagrok.sig_src")
+          - set(attributes["datagrok.error"], body) where attributes["datagrok.level"] == "error"
+          - replace_pattern(attributes["datagrok.error"], "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", "<id>") where attributes["datagrok.error"] != nil
+          - replace_pattern(attributes["datagrok.error"], "\\s+", " ") where attributes["datagrok.error"] != nil
+          - set(attributes["datagrok.error"], Substring(attributes["datagrok.error"], 0, 200)) where attributes["datagrok.error"] != nil and Len(attributes["datagrok.error"]) > 200
+  delta_to_cumulative:
+    max_stale: 15m
+  batch:
+    timeout: 5s
+
+connectors:
+  count:
+    logs:
+      datagrok_reports:
+        description: Reports filed by people
+        conditions:
+          - attributes["datagrok.audit_type"] == "user-report-created"
+      datagrok_auto_reports:
+        description: Auto-reports posted by the client
+        conditions:
+          - attributes["datagrok.level"] == "usage" and attributes["datagrok.audit_type"] == "user report posted"
+      datagrok_errors:
+        description: Error events by source, package and severity
+        conditions:
+          - attributes["datagrok.level"] == "error"
+        attributes:
+          - key: datagrok.source
+            default_value: ""
+          - key: datagrok.package
+            default_value: ""
+          - key: datagrok.severity
+            default_value: normal
+      datagrok_error_signature_events:
+        description: Error events by stack-trace signature
+        conditions:
+          - attributes["datagrok.level"] == "error" and attributes["datagrok.signature"] != nil
+        attributes:
+          - key: datagrok.signature
+          - key: datagrok.package
+            default_value: ""
+          - key: datagrok.error
+            default_value: ""
+      datagrok_alerts:
+        description: Problem records - opened, escalated, resolved, and firing every 5 min while open
+        conditions:
+          - attributes["datagrok.alert.status"] != nil
+        attributes:
+          - key: datagrok.alert.kind
+            default_value: ""
+          - key: datagrok.alert.key
+            default_value: ""
+          - key: datagrok.alert.name
+            default_value: ""
+          - key: datagrok.alert.status
+          - key: datagrok.alert.severity
+            default_value: warning
+          - key: datagrok.alert.audience
+            default_value: platform
+          - key: datagrok.alert.url
+            default_value: ""
+      datagrok_heartbeats:
+        description: Heartbeats, every 5 min; their absence means the instance is down or cannot push
+        conditions:
+          - attributes["datagrok.audit_type"] == "heartbeat"
+      {{- if .Values.collector.userSeries }}
+      datagrok_error_user_events:
+        description: Error events by signature and user
+        conditions:
+          - attributes["datagrok.level"] == "error" and attributes["datagrok.signature"] != nil and attributes["user.id"] != nil
+        attributes:
+          - key: datagrok.signature
+          - key: datagrok.package
+            default_value: ""
+          - key: datagrok.error
+            default_value: ""
+          - key: user.id
+      {{- end }}
+
+exporters:
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    resource_to_telemetry_conversion:
+      enabled: true
+    # Longer than the 20m windows of the datagrok-incidents rules: a resolved
+    # record is sent once, and a series that expires first lets its key re-fire.
+    metric_expiration: 25m
+    send_timestamps: false
+
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      level: basic
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+  pipelines:
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, {{ if gt (len $instances) 1 }}k8sattributes, {{ end }}transform/instance, transform/signature, batch]
+      exporters: [count]
+    metrics:
+      receivers: [count]
+      processors: [delta_to_cumulative, batch]
+      exporters: [prometheus]
+{{- end }}
+{{- if and (include "mon.agent" .) .Values.collector.enabled }}
+{{- $operator := include "mon.hub" . }}
+{{- $ns := .Values.namespace }}
+{{- $config := include "mon.collectorConfig" . }}
+{{- $byNamespace := gt (len .Values.instances) 1 }}
+{{- if $byNamespace }}
+# The collector reads which namespace a pod address belongs to.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: datagrok-otel
+  namespace: {{ $ns }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: datagrok-otel-{{ $ns }}
+rules:
+- apiGroups: [""]
+  resources: [pods, namespaces]
+  verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: datagrok-otel-{{ $ns }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: datagrok-otel-{{ $ns }}
+subjects:
+- kind: ServiceAccount
+  name: datagrok-otel
+  namespace: {{ $ns }}
+---
+{{- end }}
+# Receives the records Datagrok pushes over OTLP and counts them into Prometheus
+# series (port 8889; resource attributes become labels):
+#   datagrok_alerts_total{datagrok_instance,datagrok_alert_kind,datagrok_alert_key,datagrok_alert_name,
+#                         datagrok_alert_status,datagrok_alert_severity,datagrok_alert_audience,datagrok_alert_url}
+#   datagrok_heartbeats_total{datagrok_instance}
+#   datagrok_reports_total, datagrok_auto_reports_total{datagrok_instance}
+#   datagrok_errors_total{datagrok_instance,datagrok_source,datagrok_package,datagrok_severity}
+#   datagrok_error_signature_events_total{datagrok_instance,datagrok_signature,datagrok_package,datagrok_error}
+# Its own telemetry (otelcol_*) is on port 8888.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datagrok-otel
+  namespace: {{ $ns }}
+data:
+  collector.yaml: |
+    {{- $config | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datagrok-otel
+  namespace: {{ $ns }}
+  labels: {app: datagrok-otel}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: datagrok-otel}
+  template:
+    metadata:
+      labels: {app: datagrok-otel}
+      annotations:
+        # The collector reads its configuration only at start.
+        checksum/config: {{ $config | sha256sum | trunc 32 }}
+    spec:
+      {{- if $byNamespace }}
+      serviceAccountName: datagrok-otel
+      {{- else }}
+      automountServiceAccountToken: false
+      {{- end }}
+      containers:
+      - name: collector
+        image: {{ .Values.collector.image }}
+        args: ["--config=/conf/collector.yaml"]
+        ports:
+        - {containerPort: 4318, name: otlp-http}
+        - {containerPort: 8889, name: metrics}
+        - {containerPort: 8888, name: telemetry}
+        - {containerPort: 13133, name: health}
+        volumeMounts:
+        - {name: config, mountPath: /conf}
+        livenessProbe:
+          httpGet: {path: /, port: 13133}
+          periodSeconds: 30
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet: {path: /, port: 13133}
+          periodSeconds: 10
+          timeoutSeconds: 5
+        resources:
+          requests: {cpu: 50m, memory: 128Mi}
+          limits: {cpu: 500m, memory: 512Mi}
+      volumes:
+      - name: config
+        configMap: {name: datagrok-otel}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datagrok-otel
+  namespace: {{ $ns }}
+  labels: {app: datagrok-otel}
+  {{- if not $operator }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8889"
+  {{- end }}
+spec:
+  selector: {app: datagrok-otel}
+  ports:
+  - {name: otlp-http, port: 4318, targetPort: 4318}
+  - {name: metrics, port: 8889, targetPort: 8889}
+  {{- if $operator }}
+  - {name: telemetry, port: 8888, targetPort: 8888}
+  {{- end }}
+---
+{{- if $operator }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: datagrok-otel
+  namespace: {{ $ns }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  {{- with include "mon.objectLabels" . }}
+  labels:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels: {app: datagrok-otel}
+  endpoints:
+  - port: metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    # As the forwarder does (honor_labels), so the series are the same in every role.
+    honorLabels: true
+  - port: telemetry
+    interval: 60s
+    scrapeTimeout: 10s
+{{- else }}
+# The forwarder scrapes one annotated port per Service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: datagrok-otel-telemetry
+  namespace: {{ $ns }}
+  labels: {app: datagrok-otel-telemetry}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8888"
+spec:
+  selector: {app: datagrok-otel}
+  ports:
+  - {name: telemetry, port: 8888, targetPort: 8888}
+{{- end }}
+{{- end }}

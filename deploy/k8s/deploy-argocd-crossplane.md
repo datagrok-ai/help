@@ -22,7 +22,7 @@ The approach has three layers:
 | Layer | Tool | Owns | Changes |
 |-------|------|------|---------|
 | Bootstrap | Terraform | VPC, EKS, and node groups, or [your existing ones](#existing-vpc-or-eks-cluster), plus IAM roles of the in-cluster controllers, ArgoCD, and one root Application | When a cluster is created or resized |
-| Delivery | ArgoCD, in each cluster | Crossplane, External Secrets, AWS Load Balancer Controller, and the Datagrok [Helm chart](install-helm-chart.md) | Every pull request to the config repo |
+| Delivery | ArgoCD, in each cluster | Crossplane, External Secrets, AWS Load Balancer Controller, the Datagrok [Helm chart](install-helm-chart.md), and optional [monitoring](#monitoring) | Every pull request to the config repo |
 | AWS resources | Crossplane, in each cluster | RDS, S3, the application IAM role, and the CloudWatch log group | Every pull request to the config repo |
 
 After the bootstrap, Terraform steps back. Releases, database and bucket changes, and new settings
@@ -102,10 +102,12 @@ gitops/
   envs/
     main.yaml                 # one file per environment
   charts/datagrok-env/        # source of the published environment chart
+  charts/datagrok-monitoring/ # optional monitoring: stack, collector, probe, rules, dashboards
   crossplane-aws/             # source of the published Crossplane package
 ```
 
-Your config repo needs `terraform/` and the first three `gitops/` folders. The last two are the
+Your config repo needs `terraform/` and the first three `gitops/` folders, plus
+`charts/datagrok-monitoring/` if you turn on [monitoring](#monitoring). The last two are the
 sources Datagrok publishes the packages from. Keep them only if you
 [modify the environment chart or the composition](#modify-the-environment-chart-or-the-composition).
 
@@ -442,6 +444,8 @@ The cluster is set by the Terraform variables in `terraform/env/<env>.tfvars` an
 | `node_instance_types` | `["m6i.xlarge"]` | Instance types of the node group |
 | `node_min_size`, `node_max_size` | `2`, `5` | Node group size limits |
 | `config_repo_revision` | `main` | Branch or tag of the config repo that ArgoCD syncs |
+| `monitoring_role` | `none` | `none`, `standalone`, `agent`, or `hub`. See [Monitoring](#monitoring) |
+| `install_ebs_csi_driver` | `true` | With `monitoring_role` `standalone` or `hub`: install the EBS CSI driver add-on for the Prometheus volumes. Set to `false` if the cluster already runs it |
 
 ### Modify the environment chart or the composition
 
@@ -468,6 +472,158 @@ where they work.
 
 A composition that creates resources with other names needs the Crossplane role policy in
 `terraform/main.tf` updated, because the policy only allows `datagrok-<env>` names.
+
+## Monitoring
+
+Monitoring is off by default. Turn it on with the Terraform variable `monitoring_role` and run
+`terraform apply`. The role decides which IAM role and storage driver Terraform creates, and
+Terraform passes it to ArgoCD. Everything is installed in the `monitoring` namespace by one chart,
+`datagrok-monitoring`. There is one Prometheus per cluster in every role.
+
+| `monitoring_role` | Installs | Use it when |
+|-------------------|----------|-------------|
+| `none` | Nothing | You don't need monitoring from this template |
+| `standalone` (recommended) | Prometheus, Alertmanager, and Grafana ([kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)), the collector, the probe, the RDS exporter, and the Datagrok rules and dashboards | One cluster monitors itself, in the same ArgoCD as Datagrok. The cluster must not run another Prometheus operator, because two operators conflict over the same CRDs |
+| `agent` | The collector, the probe, the RDS exporter, and a forwarder ([prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) chart with kube-state-metrics and node-exporter, two hours in memory) that sends everything to a hub with `remote_write` | Several Datagrok clusters report to one place. The hub stores the data, evaluates the rules, and shows the dashboards |
+| `hub` | The stack, rules, and dashboards of `standalone`, with the `remote_write` receiver on and nothing collected locally | This cluster is the place that agents report to |
+
+To run a hub that also hosts a Datagrok environment, use `standalone` and turn on `monitoring.ingest`.
+
+### Receive from agents
+
+A hub publishes its `remote_write` endpoint with `monitoring.ingest`. It runs a proxy that lets
+through only `POST /api/v1/write`, with a user and password per agent:
+
+```yaml title="gitops/envs/main.yaml"
+monitoring:
+  ingest:
+    enabled: true
+    hostname: prometheus.example.com     # agents send to https://prometheus.example.com/api/v1/write
+```
+
+Create the users before the first sync, one `htpasswd` line per agent. To cut an agent off, remove
+its line:
+
+```bash
+kubectl -n monitoring create secret generic prometheus-remote-write-auth \
+  --from-literal=auth="$(htpasswd -nb agent1 '<password>')"
+```
+
+On the agent, set `monitoring.forwarder.url` to that address and `monitoring.forwarder.username`
+to the user. The proxy checks who writes, not what: an agent chooses its own `cluster` label, so
+give each agent a different `cluster`.
+
+Every role that collects has three sources:
+
+| Source | What it gives |
+|--------|---------------|
+| Collector (`datagrok-otel`) | The problems Datagrok detects by itself, its heartbeat, error counts, and reports. Datagrok pushes them as OTLP records, and the collector counts them into Prometheus series |
+| Probe (`datagrok-probe`) | The state of each service from `/api/admin/health`, the response time, the certificate expiry, the age of the signing key, and a real sign-in when you give it an account |
+| RDS exporter ([YACE](https://github.com/prometheus-community/yet-another-cloudwatch-exporter)) | Every CloudWatch metric of the environment's RDS instance, about 45. The exporter finds the instance by the `Service=Datagrok` and `Environment=<env>` tags that the composition sets, and reads CloudWatch through the `datagrok-<env>-cloudwatch-exporter` IAM role |
+
+After the first sync, point Datagrok at the collector. Open **Settings** > **Logger**, add a
+**Log sync** destination of type **OpenTelemetry (OTLP)** with the endpoint
+`http://datagrok-otel.monitoring.svc:4318/v1/logs`. Datagrok sends its problems and the heartbeat
+to it whatever levels you select. Select the error, audit, and usage levels to count errors and
+reports as well. Without the destination the probe and the RDS metrics still work, and the problems
+Datagrok detects don't reach Prometheus.
+
+The same labels identify an instance everywhere, so one set of rules and dashboards serves one
+cluster or many. `cluster` is an external label of Prometheus: alerts and the series an agent sends
+to a hub carry it, and the series stored in a `standalone` cluster don't.
+
+| Label | Meaning | Default in this template |
+|-------|---------|--------------------------|
+| `cluster` | The Kubernetes cluster | `datagrok-<env>` |
+| `datagrok_instance` | One Datagrok instance | `<env>` |
+| `tenant` | Optional owner of the instance | Not set |
+
+When a cluster runs several Datagrok instances, list them in `monitoring.instances`. The collector
+labels each record by the namespace it comes from, `datagrok-<name>` unless you set `namespace`.
+
+The other settings are in the environment file. The `monitoring` block holds the values of the
+`datagrok-monitoring` chart, and `gitops/charts/datagrok-monitoring/values.yaml` lists them all:
+
+```yaml title="gitops/envs/main.yaml"
+monitoring:
+  stack:                           # standalone and hub
+    retention: 31d                 # how long Prometheus keeps metrics and consumption roll-ups
+    storageSize: 100Gi
+    grafana:
+      hostname: grafana.datagrok.example.com   # empty: kubectl port-forward only
+    values: {}                     # merged over the kube-prometheus-stack values
+  forwarder:                       # agent
+    url: https://prometheus.example.com/api/v1/write   # the hub's remote_write endpoint
+    username: datagrok             # basic auth; the password is in Secrets Manager datagrok/<env>/monitoring
+    values: {}                     # merged over the prometheus chart values
+  cluster: datagrok-main           # value of the cluster label; default datagrok-<env>
+  alerts: {}                       # RDS alert thresholds
+```
+
+With `forwarder.username`, store the password before the first sync:
+
+```bash
+aws secretsmanager create-secret --name datagrok/main/monitoring --secret-string '{"password":"<password>"}'
+```
+
+The forwarder scrapes the kubelets and cAdvisor, kube-state-metrics, node-exporter, and every
+Service or pod annotated `prometheus.io/scrape: "true"`.
+
+With `standalone` and `hub` the Grafana admin password is generated in the cluster:
+
+```bash
+kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+```
+
+To let the probe sign in, create an account for it in Datagrok and store it in the cluster. The
+key of the JSON object is the environment name:
+
+```bash
+kubectl -n monitoring create secret generic datagrok-login-probe \
+  --from-literal=credentials='{"main": {"user": "probe", "password": "<password>"}}'
+```
+
+### What it collects
+
+| Dashboard | Shows |
+|-----------|-------|
+| Datagrok / Instances | Instances answering, open problems as Datagrok reports them, the state of each service over time, response time, time since the last heartbeat, errors by package, reports, sign-in time, days until the certificate expires |
+| Datagrok / RDS | CPU, connections, free storage, freeable memory, latency, IOPS, queue depth, EBS I/O burst balance, replica lag, transaction IDs used, DB load |
+| Datagrok / Consumption | CPU, memory, requested CPU and memory, network, and volume usage per workload over any period within `retention` |
+
+| Alerts | Fire when |
+|--------|-----------|
+| `DatagrokHealthEndpointDown` (critical), `DatagrokSlowResponse`, `DatagrokVerySlowResponse` (critical) | The instance doesn't answer, or answers slowly |
+| `DatagrokServiceDown` (critical), `DatagrokPartiallyDegraded` (critical), `DatagrokAuxServiceDown` | A service is down while the instance answers. The garbage collector, Jupyter, Grok Connect, and the spawner warn. Every other service is critical |
+| `DatagrokProblem` | Datagrok reports a problem: a failed connection or job, an error incident, slow requests, a user report. The severity is the problem's own, and the alert clears when Datagrok resolves it |
+| `DatagrokHeartbeatMissing` (critical) | Datagrok sent no heartbeat for 15 minutes |
+| `DatagrokErrorBurst`, `DatagrokAutoReportBurst` | Many errors from one package, or many automatic reports, in 15 minutes |
+| `DatagrokLoginFailing` (critical), `DatagrokLoginSlow` | The probe account can't sign in, or signing in takes over 10 seconds |
+| `DatagrokSigningKeyStale`, `DatagrokSigningKeyVeryStale` (critical) | The signing key wasn't rotated for 100 or 130 days |
+| `SSLCertificateExpiry7Days`, `SSLCertificateExpiryToday` (critical) | The certificate is about to expire |
+| `DatagrokContainerOOMKilled`, `DatagrokContainerMemoryNearLimit` | A Datagrok container ran out of memory, or is about to |
+| `DatagrokRdsStorageLow` (critical), `DatagrokRdsCpuHigh`, `DatagrokRdsMemoryLow`, `DatagrokRdsIoBalanceLow`, `DatagrokRdsTransactionIdsHigh`, `DatagrokRdsMetricsMissing` | The database runs out of a resource, or its metrics stop. The thresholds are under `monitoring.alerts` |
+| `DatagrokOtelCollectorDown`, `DatagrokOtelRecordsRefused`, `DatagrokProbeDown` | The collector or the probe is down, or the collector refuses records |
+
+While an instance is unreachable, Alertmanager holds back the alerts that only restate it. It has
+no receiver. Add one with `monitoring.stack.values.alertmanager.config`.
+
+Consumption is recorded once an hour per workload and container. Pods are counted toward the
+Deployment, StatefulSet, DaemonSet, or Job that owns them, so the numbers survive pod restarts. The
+sum over a period is the consumption of that period:
+
+```promql
+# CPU core-hours of each workload over the last 30 days
+sum by (namespace, workload) (sum_over_time(workload_container:cpu_core_hours:1h[30d]))
+```
+
+### A cluster that already runs a Prometheus operator
+
+Deploy the `datagrok-monitoring` chart by itself with `stack.install: false`. It then installs only
+the collector, the probe, the rules, and the dashboards, into the existing namespace that you set
+in `namespace`. If your Prometheus selects rules and ServiceMonitors by label, set
+`stack.objectLabels`, for example `{release: kube-prometheus-stack}`. The chart doesn't change your
+Alertmanager configuration, so the alerts that restate an unreachable instance aren't held back.
 
 ## Day-to-day operations
 
@@ -580,6 +736,8 @@ Each environment has its own `datagrok.version`, so you can release to one envir
 | Datagrok can't connect to the database | `db.host` in the environment file must match the RDS endpoint, and the `datagrok-db-bootstrap` job must have completed. In an existing cluster, the nodes must be in the security group RDS allows: set `existing_node_security_group_id` |
 | `terraform apply` can't find an OIDC provider | The existing cluster has no IAM OIDC provider. Create it with `eksctl utils associate-iam-oidc-provider` |
 | `terraform apply` is denied by Kubernetes | The principal running Terraform has no administrator access to the existing cluster. Add an access entry |
+| A `monitoring` Prometheus or Alertmanager pod stays `Pending` | Its volume isn't provisioned: the EBS CSI driver is missing. Set `install_ebs_csi_driver = true`, or install the add-on yourself |
+| `DatagrokRdsMetricsMissing` fires | `kubectl -n monitoring logs deploy/yace` shows the CloudWatch or IAM error |
 | The ingress gets no load balancer | The AWS Load Balancer Controller finds no public subnets. Tag them `kubernetes.io/role/elb: 1`, or set `alb.ingress.kubernetes.io/subnets` |
 
 ## See also

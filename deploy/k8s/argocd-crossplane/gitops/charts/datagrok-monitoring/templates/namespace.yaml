@@ -1,0 +1,11 @@
+{{- /* An existing stack (stack.install false) already owns its namespace. */}}
+{{- if not (and (include "mon.hub" .) (not .Values.stack.install)) }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    # Other things live in the namespace; removing this chart must not take them along.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
+{{- end }}

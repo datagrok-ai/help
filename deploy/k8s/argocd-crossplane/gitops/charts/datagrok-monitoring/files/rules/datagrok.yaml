@@ -1,0 +1,270 @@
+# Alert rules for Datagrok instances. A plain Prometheus rule file: the chart loads
+# it into a PrometheusRule, and tests/datagrok_test.yaml runs it through promtool.
+#
+# An instance is (cluster, datagrok_instance). On a cluster that monitors itself
+# the series carry no cluster label, which matches as one empty value.
+groups:
+# From the probe (files/probe.py).
+- name: datagrok-availability
+  rules:
+  - alert: DatagrokHealthEndpointDown
+    expr: datagrok_health_age_scrape_success == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: the health endpoint does not answer'
+      description: '{{ $labels.datagrok_url }}/api/admin/health has not answered with a service list for 5 minutes.'
+      url: '{{ $labels.datagrok_url }}'
+      url_title: Open the instance
+  # Normal p95 is under 1 s.
+  - alert: DatagrokSlowResponse
+    expr: avg_over_time(datagrok_health_duration_seconds[10m]) > 5 and on (cluster, datagrok_instance) datagrok_health_age_scrape_success == 1
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: responding in {{ $value | humanizeDuration }}'
+      description: The 10-minute average response time of the health endpoint is above 5 s.
+  - alert: DatagrokVerySlowResponse
+    expr: avg_over_time(datagrok_health_duration_seconds[5m]) > 15 and on (cluster, datagrok_instance) datagrok_health_age_scrape_success == 1
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: responding in {{ $value | humanizeDuration }}'
+      description: The 5-minute average response time of the health endpoint is above 15 s. The instance is up but unusable.
+
+# Without the probe none of the rules above and below can fire.
+- name: datagrok-probe
+  rules:
+  - alert: DatagrokProbeDown
+    expr: |-
+      up{job="datagrok-probe"} == 0 or up{service="datagrok-probe"} == 0
+      or time() - datagrok_probe_last_run_timestamp_seconds > 300
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: The datagrok-probe is down or stuck
+      description: Instance availability, services, login and certificates are not checked until it is back. Check the datagrok-probe pod.
+
+# The health endpoint answers 200 while a dependency is down. Losing Datlas, its
+# database or the credentials service breaks the platform; losing the garbage
+# collector, Jupyter, Grok Connect or the spawner degrades it.
+- name: datagrok-services
+  rules:
+  - alert: DatagrokServiceDown
+    expr: datagrok_service_up{service!~"GarbageCollector|Jupyter|GrokConnect|GrokSpawner"} == 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: {{ $labels.service }} is not Running'
+      description: The health endpoint reports {{ $labels.service }} as not Running for over 5 minutes, while the instance keeps answering. Check the logs of that service.
+  - alert: DatagrokAuxServiceDown
+    expr: datagrok_service_up{service=~"GarbageCollector|Jupyter|GrokConnect|GrokSpawner"} == 0
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: {{ $labels.service }} is not Running'
+      description: The health endpoint reports {{ $labels.service }} as not Running. The platform stays up; check the logs of that service.
+  - alert: DatagrokPartiallyDegraded
+    expr: |-
+      count by (cluster, datagrok_instance) (datagrok_service_up{service!~"GarbageCollector|Jupyter|GrokConnect|GrokSpawner"} == 0) > 0
+      and on (cluster, datagrok_instance) datagrok_health_age_scrape_success == 1
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: up, with {{ $value }} essential service(s) down'
+      description: The instance answers, so availability checks pass, but people see failures.
+
+# A container the kernel OOM-kills comes straight back, so no health check sees it,
+# but every request it was serving failed. pod=~"datagrok-.*" is the platform's own
+# pods; package containers are named after the package.
+- name: datagrok-pods
+  rules:
+  - alert: DatagrokContainerOOMKilled
+    expr: |-
+      increase(kube_pod_container_status_restarts_total{pod=~"datagrok-.*"}[30m]) > 0
+      and on (cluster, namespace, pod, container) kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.namespace }}/{{ $labels.pod }}: {{ $labels.container }} OOM-killed'
+      description: The container was OOM-killed and restarted ({{ $value | humanize }} restart(s) in 30 minutes). Requests it was serving failed. See `kubectl logs --previous`, then its memory limit.
+  - alert: DatagrokContainerMemoryNearLimit
+    expr: |-
+      max by (cluster, namespace, pod, container) (container_memory_working_set_bytes{pod=~"datagrok-.*", container!=""})
+      / on (cluster, namespace, pod, container)
+      max by (cluster, namespace, pod, container) (kube_pod_container_resource_limits{resource="memory"}) > 0.9
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.namespace }}/{{ $labels.pod }}: {{ $labels.container }} at {{ $value | humanizePercentage }} of its memory limit'
+      description: The container has held over 90% of its memory limit for 5 minutes and is OOM-killed if it keeps growing.
+
+# The health endpoint needs no login, so a broken login is invisible to it. Internal
+# accounts only: an identity provider needs a real round trip.
+- name: datagrok-authentication
+  rules:
+  - alert: DatagrokLoginFailing
+    expr: datagrok_login_success == 0
+    for: 10m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: the probe account cannot sign in'
+      description: POST /api/users/login has failed for the probe account for 10 minutes. People cannot sign in.
+  - alert: DatagrokLoginSlow
+    expr: datagrok_login_duration_seconds > 10
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: signing in takes {{ $value | humanizeDuration }}'
+  # Datagrok rotates the signing key at 90 days.
+  - alert: DatagrokSigningKeyStale
+    expr: datagrok_signing_key_age_seconds > 100 * 86400
+    for: 6h
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: signing key not rotated for {{ $value | humanizeDuration }}'
+      description: Rotation targets 90 days, so it is switched off or stuck. Check signingKeyMaxAgeDays and the key management scheduler.
+  - alert: DatagrokSigningKeyVeryStale
+    expr: datagrok_signing_key_age_seconds > 130 * 86400
+    for: 6h
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: signing key not rotated for {{ $value | humanizeDuration }}'
+      description: Well past the 90-day target. Rotation has stopped.
+
+- name: datagrok-certificates
+  rules:
+  - alert: SSLCertificateExpiry7Days
+    expr: probe_ssl_earliest_cert_expiry - time() < 7 * 86400
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ if $labels.datagrok_instance }}{{ $labels.datagrok_instance }}{{ else }}{{ $labels.instance }}{{ end }}: certificate expires in {{ $value | humanizeDuration }}'
+  - alert: SSLCertificateExpiryToday
+    expr: probe_ssl_earliest_cert_expiry - time() < 86400
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ if $labels.datagrok_instance }}{{ $labels.datagrok_instance }}{{ else }}{{ $labels.instance }}{{ end }}: certificate expires in {{ $value | humanizeDuration }}'
+
+# Datagrok detects its own problems and pushes one record per transition to the
+# datagrok-otel collector, which counts them. Datagrok owns the detection (debounce,
+# thresholds, resolve); these rules only follow its records.
+- name: datagrok-incidents
+  rules:
+  # Open while the last opened, escalated or firing record is newer than the last
+  # resolved one. Each side is "when did this counter last move, in the last 20
+  # minutes": a step counts when the counter grew or the series was born (a counter
+  # is born at 1, which changes() does not see). Datagrok re-sends a firing record
+  # per open alert every 5 min, so a problem stays one alert however long it lasts
+  # and a collector restart does not drop it. 20 min: a restarting Datagrok is
+  # silent for up to 17. The collector's metric_expiration must stay longer.
+  - alert: DatagrokProblem
+    expr: |-
+      (
+        max by (cluster, datagrok_instance, datagrok_url, datagrok_alert_kind, datagrok_alert_key, datagrok_alert_name, datagrok_alert_severity, datagrok_alert_audience, datagrok_alert_url) (
+          max_over_time((
+            timestamp(datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"})
+            and (
+              changes(datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"}[2m]) > 0
+              or (datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"}
+                  unless datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"} offset 2m)
+            )
+          )[20m:1m])
+        )
+      )
+      > on (cluster, datagrok_instance, datagrok_alert_kind, datagrok_alert_key) group_left ()
+      (
+        max by (cluster, datagrok_instance, datagrok_alert_kind, datagrok_alert_key) (
+          max_over_time((
+            timestamp(datagrok_alerts_total{datagrok_alert_status="resolved"})
+            and (
+              changes(datagrok_alerts_total{datagrok_alert_status="resolved"}[2m]) > 0
+              or (datagrok_alerts_total{datagrok_alert_status="resolved"}
+                  unless datagrok_alerts_total{datagrok_alert_status="resolved"} offset 2m)
+            )
+          )[20m:1m])
+        )
+        or
+        # No resolved record in the window: anything open is newer than zero.
+        max by (cluster, datagrok_instance, datagrok_alert_kind, datagrok_alert_key) (
+          datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"} * 0
+        )
+      )
+    labels:
+      severity: '{{ $labels.datagrok_alert_severity }}'
+      audience: '{{ $labels.datagrok_alert_audience }}'
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: {{ $labels.datagrok_alert_name }} ({{ $labels.datagrok_alert_kind }}{{ if $labels.datagrok_alert_key }} {{ $labels.datagrok_alert_key }}{{ end }})'
+      description: 'Datagrok detected a problem: {{ $labels.datagrok_alert_name }} ({{ $labels.datagrok_alert_kind }}, {{ $labels.datagrok_alert_severity }}, for the {{ $labels.datagrok_alert_audience }}). It clears when Datagrok reports it resolved.'
+      url: '{{ if $labels.datagrok_alert_url }}{{ $labels.datagrok_alert_url }}{{ else }}{{ $labels.datagrok_url }}/apps/usage{{ end }}'
+      url_title: '{{ if $labels.datagrok_alert_url }}Open the evidence{{ else }}Open Usage Analysis{{ end }}'
+  # Every other signal leaves through Datagrok, so one that is down, hung or cannot
+  # push is silent. An instance that sent a heartbeat in the last day and none in
+  # the last 15 minutes is down or cut off.
+  - alert: DatagrokHeartbeatMissing
+    expr: |-
+      max by (cluster, datagrok_instance, datagrok_url) (max_over_time(datagrok_heartbeats_total[24h]))
+      unless max by (cluster, datagrok_instance, datagrok_url) (
+        (increase(datagrok_heartbeats_total[15m]) > 0)
+        or (datagrok_heartbeats_total unless datagrok_heartbeats_total offset 15m)
+      )
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: no heartbeat from Datagrok'
+      description: No heartbeat for 15 minutes. Datagrok is down, hung, or cannot reach the collector; none of its alerts can arrive until it does.
+      url: '{{ $labels.datagrok_url }}'
+      url_title: Open the instance
+  - alert: DatagrokAutoReportBurst
+    expr: |-
+      (increase(datagrok_auto_reports_total[15m]) >= 5)
+      or ((datagrok_auto_reports_total unless datagrok_auto_reports_total offset 15m) >= 5)
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: auto-report burst'
+      description: '{{ $value | printf "%.0f" }} auto-reports were posted by browsers in 15 minutes. Something is failing for several sessions.'
+      url: '{{ $labels.datagrok_url }}/apps/usage/reports'
+      url_title: Open the reports
+  - alert: DatagrokErrorBurst
+    expr: sum by (cluster, datagrok_instance, datagrok_url, datagrok_package) (increase(datagrok_errors_total[15m])) >= 100
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: '{{ $labels.datagrok_instance }}: error burst in {{ $labels.datagrok_package }}'
+      description: '{{ $value | printf "%.0f" }} error events from package {{ $labels.datagrok_package }} in 15 minutes (all users, all signatures).'
+      url: '{{ $labels.datagrok_url }}/apps/usage/errors?date=last%203%20days'
+      url_title: Open Usage Analysis > Errors
+  # job with a Prometheus operator, service with a forwarder.
+  - alert: DatagrokOtelCollectorDown
+    expr: up{job="datagrok-otel"} == 0 or up{service="datagrok-otel"} == 0
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: The datagrok-otel collector is down
+      description: Records from Datagrok do not reach Prometheus, so its problems and heartbeats are not seen.
+  - alert: DatagrokOtelRecordsRefused
+    expr: (increase(otelcol_receiver_refused_log_records_total[15m]) or increase(otelcol_receiver_refused_log_records[15m])) > 0
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: The datagrok-otel collector is refusing records
+      description: '{{ $value | printf "%.0f" }} log records refused in 15 minutes (memory limiter or a rejected payload). Check the collector logs.'

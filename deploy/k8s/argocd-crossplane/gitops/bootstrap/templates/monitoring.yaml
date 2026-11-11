@@ -1,0 +1,67 @@
+{{- $m := .Values.monitoring }}
+{{- $role := toString $m.role }}
+{{- if ne $role "none" }}
+{{- if not (has $role (list "standalone" "agent" "hub")) }}
+{{- fail (printf "monitoring.role: %s. Use none, standalone, agent or hub" $role) }}
+{{- end }}
+{{- $collects := ne $role "hub" }}
+{{- if and $collects (not .Values.aws.cloudwatchExporterRoleArn) }}
+{{- fail "monitoring needs the IAM role Terraform creates when monitoring_role is standalone or agent" }}
+{{- end }}
+{{- if and (eq $role "agent") (not (dig "forwarder" "url" "" $m)) }}
+{{- fail "monitoring_role agent needs monitoring.forwarder.url in the environment file: the hub's remote_write endpoint" }}
+{{- end }}
+{{- /* What the cluster and the environment already say; the environment file's monitoring block goes over it. */}}
+{{- $computed := dict
+  "role" $role
+  "cluster" (printf "datagrok-%s" .Values.env)
+  "stack" (dict "gp3StorageClass" true) }}
+{{- if $collects }}
+{{- $_ := set $computed "instances" (list (dict
+      "name" .Values.env
+      "url" (printf "https://%s" (required "hostname is required" .Values.hostname)))) }}
+{{- $_ := set $computed "rds" (dict
+      "enabled" true
+      "region" .Values.aws.region
+      "roleArn" .Values.aws.cloudwatchExporterRoleArn
+      "environment" .Values.env) }}
+{{- end }}
+{{- if and (eq $role "agent") (dig "forwarder" "username" "" $m) }}
+{{- $_ := set $computed "forwarder" (dict "passwordFrom" (dict
+      "secretStore" "aws-secrets-manager"
+      "key" (printf "datagrok/%s/monitoring" .Values.env))) }}
+{{- end }}
+# Wave 2: monitoring (the datagrok-monitoring chart). It installs the Prometheus
+# stack or the forwarder, the RDS exporter, the Datagrok records collector and
+# probe, the alert rules and the dashboards.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+  {{- if $m.chartVersion }}
+    repoURL: {{ .Values.datagrok.registry }}
+    chart: datagrok-monitoring
+    targetRevision: {{ $m.chartVersion }}
+  {{- else }}
+    repoURL: {{ .Values.repo.url }}
+    targetRevision: {{ .Values.repo.revision }}
+    path: gitops/charts/datagrok-monitoring
+  {{- end }}
+    helm:
+      valuesObject:
+        {{- toYaml (mustMergeOverwrite $computed (omit (deepCopy $m) "role" "chartVersion" (ternary "" "cluster" (not (empty $m.cluster))))) | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    # The rules and scrape objects need the CRDs the stack installs.
+    retry: {limit: -1, backoff: {duration: 30s, factor: 2, maxDuration: 5m}}
+    syncOptions: [ServerSideApply=true]
+{{- end }}

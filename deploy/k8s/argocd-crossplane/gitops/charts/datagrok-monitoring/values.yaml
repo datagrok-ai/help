@@ -1,0 +1,139 @@
+# Monitoring for Datagrok, installed by ArgoCD into one namespace. The chart
+# renders ArgoCD Applications for the upstream charts (kube-prometheus-stack or
+# prometheus, YACE) and the Datagrok parts next to them.
+
+# What this cluster runs:
+#   standalone  the hub and the agent: one cluster that monitors itself
+#   agent       collects in this cluster and sends everything to a hub
+#   hub         stores, alerts and shows what agents send; collects nothing itself
+role: standalone
+
+# REQUIRED. Value of the cluster label on every series and alert of this cluster.
+cluster: ""
+
+namespace: monitoring
+
+# Agent side: the Datagrok instances to watch. name becomes the datagrok_instance
+# label, url is the instance's web root, tenant is optional.
+instances: []
+#  - name: main
+#    url: https://datagrok.example.com
+#    tenant: ""
+#    # With several instances the collector tells them apart by the namespace a record
+#    # comes from. Default: datagrok-<name>.
+#    namespace: ""
+#    # For an instance outside this cluster: its name in its own configuration, which
+#    # it sends with every record, when that is neither `name` nor the host of `url`.
+#    id: ""
+
+# --- Hub side (standalone, hub) ------------------------------------------------
+stack:
+  # false: this cluster already runs a Prometheus operator stack. Only the rules,
+  # dashboards and scrape objects are installed, labelled with stack.objectLabels.
+  install: true
+  # How long Prometheus keeps everything, including the hourly consumption
+  # roll-ups, so this is also how far back consumption can be summed.
+  retention: 31d
+  storageSize: 100Gi
+  # Empty: the cluster's default StorageClass.
+  storageClassName: ""
+  # AWS: create the datagrok-gp3 StorageClass (EBS CSI driver) and use it.
+  gp3StorageClass: false
+  # Accept remote_write from agents. Always on with role hub and with ingest.enabled.
+  receiver: false
+  grafana:
+    # Publish Grafana through an Ingress on this hostname. Empty: kubectl port-forward only.
+    hostname: ""
+    ingressClassName: alb
+    certificateArn: ""
+    # true: External Secrets generates the admin password into the Secret
+    # grafana-admin. false: you create that Secret (keys admin-user, admin-password).
+    generateAdminSecret: true
+  # Labels added to every PrometheusRule and ServiceMonitor, for a stack whose
+  # Prometheus selects by label, e.g. {release: kube-prom-stack}.
+  objectLabels: {}
+  # Deep-merged over the computed kube-prometheus-stack values.
+  values: {}
+
+# Publishes the hub's remote_write endpoint to agents: a proxy that lets only
+# POST /api/v1/write through, with a user and password per agent, behind an Ingress.
+ingest:
+  enabled: false
+  # Agents send to https://<hostname>/api/v1/write.
+  hostname: ""
+  ingressClassName: alb
+  certificateArn: ""
+  # Over the computed Ingress annotations.
+  annotations: {}
+  # A Secret you create, key `auth`: htpasswd lines, one per agent.
+  #   htpasswd -nb <agent> <password>
+  # Removing a line cuts that agent off.
+  authSecret: prometheus-remote-write-auth
+  # Empty: the Prometheus of the stack this chart installs. With stack.install
+  # false: your Prometheus, e.g. http://prometheus-operated.monitoring.svc:9090
+  upstream: ""
+  # Largest request the proxy lets through.
+  maxBodySize: 32m
+  image: nginxinc/nginx-unprivileged:1.27-alpine
+
+# --- Agent side (standalone, agent) ----------------------------------------------
+# agent only: where the forwarder sends everything it scrapes.
+forwarder:
+  # The hub's remote_write endpoint, e.g. https://prometheus.example.com/api/v1/write
+  url: ""
+  # Basic auth: this username, and the password from the Secret
+  # prometheus-remote-write (key password). Empty: no authentication.
+  username: ""
+  # Fill the Secret from a secret store instead of creating it yourself.
+  passwordFrom:
+    secretStore: ""            # a ClusterSecretStore, e.g. aws-secrets-manager
+    key: ""                    # e.g. datagrok/main/monitoring
+    property: password
+  # Deep-merged over the computed prometheus chart values.
+  values: {}
+
+# Receives the records Datagrok pushes over OTLP (Settings > Logger > Log sync,
+# type OpenTelemetry, endpoint http://datagrok-otel.<namespace>.svc:4318/v1/logs)
+# and counts them into datagrok_*_total series: problems, heartbeats, errors, reports.
+collector:
+  enabled: true
+  # A series per user and error signature. Only for an instance with tens of users.
+  userSeries: false
+  image: otel/opentelemetry-collector-contrib:0.160.0
+
+# Asks each instance's /api/admin/health which services run, measures the response,
+# reads the certificate and the signing key age, and signs in when it has an account.
+probe:
+  enabled: true
+  image: python:3.12-alpine
+  # Optional Secret with the key credentials:
+  # {"<instance name>": {"user": "...", "password": "..."}}
+  loginSecret: datagrok-login-probe
+  # true: accept a certificate from a private CA. The certificate expiry is then not reported.
+  insecureSkipVerify: false
+
+# CloudWatch metrics of the instances' RDS databases (YACE). AWS only.
+rds:
+  enabled: false
+  region: ""
+  # IAM role of the exporter's ServiceAccount (IRSA).
+  roleArn: ""
+  # Only the RDS instance tagged Environment=<this>. Empty: every instance tagged Service=Datagrok.
+  environment: ""
+
+alerts:
+  rdsCpuPercent: 85
+  rdsFreeStorageBytes: 5368709120
+  rdsFreeableMemoryBytes: 268435456
+  rdsIoBalancePercent: 20
+  # PostgreSQL stops accepting writes at about 2.1 billion to avoid transaction ID wraparound.
+  rdsMaxUsedTransactionIds: 1000000000
+
+# Scrape interval of the Prometheus that evaluates the roll-ups, in seconds. Gauges
+# are integrated as sum_over_time * interval.
+scrapeIntervalSeconds: 30
+
+versions:
+  kubePrometheusStack: 92.21.2
+  prometheus: 29.12.0
+  yace: 0.39.1
