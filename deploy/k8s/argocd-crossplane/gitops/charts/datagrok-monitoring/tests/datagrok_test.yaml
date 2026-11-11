@@ -129,6 +129,51 @@ tests:
     exp_alerts:
     - *report
 
+# A problem resolves and Datagrok opens it again five minutes later: the alert is back at once.
+- interval: 1m
+  input_series:
+  - series: 'datagrok_alerts_total{datagrok_instance="main",datagrok_url="https://a.example.com",datagrok_alert_kind="connection",datagrok_alert_key="c1",datagrok_alert_name="DatagrokConnectionDown",datagrok_alert_status="opened",datagrok_alert_severity="warning",datagrok_alert_audience="owner",datagrok_alert_url=""}'
+    values: '_x10 1x17 2x40'
+  - series: 'datagrok_alerts_total{datagrok_instance="main",datagrok_url="https://a.example.com",datagrok_alert_kind="connection",datagrok_alert_key="c1",datagrok_alert_name="DatagrokConnectionDown",datagrok_alert_status="firing",datagrok_alert_severity="warning",datagrok_alert_audience="owner",datagrok_alert_url=""}'
+    values: '_x15 1x4 2x12 3x4 4x30'
+  - series: 'datagrok_alerts_total{datagrok_instance="main",datagrok_url="https://a.example.com",datagrok_alert_kind="connection",datagrok_alert_key="c1",datagrok_alert_name="DatagrokConnectionDown",datagrok_alert_status="resolved",datagrok_alert_severity="warning",datagrok_alert_audience="owner",datagrok_alert_url=""}'
+    values: '_x22 1x50'
+  alert_rule_test:
+  - eval_time: 21m
+    alertname: DatagrokProblem
+    exp_alerts:
+    - &reopened
+      exp_labels:
+        severity: warning
+        audience: owner
+        datagrok_instance: main
+        datagrok_url: https://a.example.com
+        datagrok_alert_kind: connection
+        datagrok_alert_key: c1
+        datagrok_alert_name: DatagrokConnectionDown
+        datagrok_alert_severity: warning
+        datagrok_alert_audience: owner
+      exp_annotations:
+        summary: 'main: DatagrokConnectionDown (connection c1)'
+        description: 'Datagrok detected a problem: DatagrokConnectionDown (connection, warning, for the owner). It clears when Datagrok reports it resolved.'
+        url: https://a.example.com/apps/usage
+        url_title: Open Usage Analysis
+  - eval_time: 25m
+    alertname: DatagrokProblem
+    exp_alerts: []
+  - eval_time: 29m
+    alertname: DatagrokProblem
+    exp_alerts:
+    - *reopened
+  # The last firing record was at 39m; with nothing after it the alert ends 20 minutes later.
+  - eval_time: 50m
+    alertname: DatagrokProblem
+    exp_alerts:
+    - *reopened
+  - eval_time: 60m
+    alertname: DatagrokProblem
+    exp_alerts: []
+
 # The probe is scraped but its rounds stopped.
 - interval: 1m
   input_series:

@@ -46,7 +46,7 @@
     "scrapeInterval" (printf "%ds" (int .Values.scrapeIntervalSeconds))
     "retention" $s.retention
     "externalLabels" (dict "cluster" .Values.cluster)
-    "enableRemoteWriteReceiver" (or $s.receiver (eq $role "hub"))
+    "enableRemoteWriteReceiver" (or $s.receiver .Values.ingest.enabled (eq $role "hub"))
     "ruleSelectorNilUsesHelmValues" false
     "serviceMonitorSelectorNilUsesHelmValues" false
     "podMonitorSelectorNilUsesHelmValues" false

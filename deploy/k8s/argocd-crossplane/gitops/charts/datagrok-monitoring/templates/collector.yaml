@@ -15,6 +15,17 @@ processors:
     check_interval: 5s
     limit_percentage: 75
     spike_limit_percentage: 15
+  {{- if gt (len $instances) 1 }}
+  # The namespace of the pod that sent the record, found by its address.
+  k8sattributes:
+    auth_type: serviceAccount
+    passthrough: false
+    extract:
+      metadata: [k8s.namespace.name]
+    pod_association:
+      - sources:
+          - from: connection
+  {{- end }}
   # datagrok_instance, datagrok_url and tenant of the instance that sent the record.
   transform/instance:
     error_mode: ignore
@@ -36,8 +47,10 @@ processors:
           {{- with $i.id }}
           {{- $ids = append $ids (include "mon.ottlHostPattern" .) }}
           {{- end }}
-          # {{ $i.name }}: by its instance id (the name in the instance's configuration,
-          # the instance name here, or its host), or by the web root it reports.
+          # {{ $i.name }}: by the namespace it runs in. Outside this cluster: by its instance id
+          # (the name in the instance's configuration, the name here, or its host) or the
+          # web root it reports.
+          - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["k8s.namespace.name"] == {{ $i.namespace | default (printf "datagrok-%s" $i.name) | quote }}
           - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["datagrok.url"] != nil and IsMatch(attributes["datagrok.url"], "^https?://{{ $host }}(/.*)?$")
           - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and IsMatch(attributes["service.instance.id"], "^({{ join "|" $ids }})$")
           - set(attributes["datagrok_url"], {{ $i.url | trimSuffix "/" | quote }}) where attributes["datagrok_instance"] == {{ $i.name | quote }}
@@ -50,6 +63,8 @@ processors:
           - set(attributes["datagrok_instance"], "unknown") where attributes["datagrok_instance"] == nil
           - set(attributes["datagrok_url"], attributes["datagrok.url"]) where attributes["datagrok_url"] == nil and attributes["datagrok.url"] != nil
           - set(attributes["datagrok_url"], "") where attributes["datagrok_url"] == nil
+          - delete_key(attributes, "k8s.namespace.name")
+          - delete_key(attributes, "k8s.pod.ip")
           {{- end }}
           # As a label it would collide with datagrok_url, and the exporter drops the series.
           - delete_key(attributes, "datagrok.url")
@@ -174,7 +189,7 @@ service:
   pipelines:
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, transform/instance, transform/signature, batch]
+      processors: [memory_limiter, {{ if gt (len $instances) 1 }}k8sattributes, {{ end }}transform/instance, transform/signature, batch]
       exporters: [count]
     metrics:
       receivers: [count]
@@ -185,6 +200,38 @@ service:
 {{- $operator := include "mon.hub" . }}
 {{- $ns := .Values.namespace }}
 {{- $config := include "mon.collectorConfig" . }}
+{{- $byNamespace := gt (len .Values.instances) 1 }}
+{{- if $byNamespace }}
+# The collector reads which namespace a pod address belongs to.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: datagrok-otel
+  namespace: {{ $ns }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: datagrok-otel-{{ $ns }}
+rules:
+- apiGroups: [""]
+  resources: [pods, namespaces]
+  verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: datagrok-otel-{{ $ns }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: datagrok-otel-{{ $ns }}
+subjects:
+- kind: ServiceAccount
+  name: datagrok-otel
+  namespace: {{ $ns }}
+---
+{{- end }}
 # Receives the records Datagrok pushes over OTLP and counts them into Prometheus
 # series (port 8889; resource attributes become labels):
 #   datagrok_alerts_total{datagrok_instance,datagrok_alert_kind,datagrok_alert_key,datagrok_alert_name,
@@ -220,6 +267,11 @@ spec:
         # The collector reads its configuration only at start.
         checksum/config: {{ $config | sha256sum | trunc 32 }}
     spec:
+      {{- if $byNamespace }}
+      serviceAccountName: datagrok-otel
+      {{- else }}
+      automountServiceAccountToken: false
+      {{- end }}
       containers:
       - name: collector
         image: {{ .Values.collector.image }}

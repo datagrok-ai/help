@@ -19,8 +19,11 @@ instances: []
 #  - name: main
 #    url: https://datagrok.example.com
 #    tenant: ""
-#    # With several instances: the instance's name in its own configuration, which it
-#    # sends with every record, when that is neither `name` nor the host of `url`.
+#    # With several instances the collector tells them apart by the namespace a record
+#    # comes from. Default: datagrok-<name>.
+#    namespace: ""
+#    # For an instance outside this cluster: its name in its own configuration, which
+#    # it sends with every record, when that is neither `name` nor the host of `url`.
 #    id: ""
 
 # --- Hub side (standalone, hub) ------------------------------------------------
@@ -36,7 +39,7 @@ stack:
   storageClassName: ""
   # AWS: create the datagrok-gp3 StorageClass (EBS CSI driver) and use it.
   gp3StorageClass: false
-  # Accept remote_write from agents. Always on with role hub.
+  # Accept remote_write from agents. Always on with role hub and with ingest.enabled.
   receiver: false
   grafana:
     # Publish Grafana through an Ingress on this hostname. Empty: kubectl port-forward only.
@@ -51,6 +54,27 @@ stack:
   objectLabels: {}
   # Deep-merged over the computed kube-prometheus-stack values.
   values: {}
+
+# Publishes the hub's remote_write endpoint to agents: a proxy that lets only
+# POST /api/v1/write through, with a user and password per agent, behind an Ingress.
+ingest:
+  enabled: false
+  # Agents send to https://<hostname>/api/v1/write.
+  hostname: ""
+  ingressClassName: alb
+  certificateArn: ""
+  # Over the computed Ingress annotations.
+  annotations: {}
+  # A Secret you create, key `auth`: htpasswd lines, one per agent.
+  #   htpasswd -nb <agent> <password>
+  # Removing a line cuts that agent off.
+  authSecret: prometheus-remote-write-auth
+  # Empty: the Prometheus of the stack this chart installs. With stack.install
+  # false: your Prometheus, e.g. http://prometheus-operated.monitoring.svc:9090
+  upstream: ""
+  # Largest request the proxy lets through.
+  maxBodySize: 32m
+  image: nginxinc/nginx-unprivileged:1.27-alpine
 
 # --- Agent side (standalone, agent) ----------------------------------------------
 # agent only: where the forwarder sends everything it scrapes.

@@ -1,0 +1,128 @@
+{{- define "mon.ingestConfig" -}}
+server {
+  listen 8080;
+  client_max_body_size {{ .Values.ingest.maxBodySize }};
+
+  location = /healthz {
+    access_log off;
+    return 200 "ok\n";
+  }
+
+  # The only thing an agent may do: write.
+  location = /api/v1/write {
+    limit_except POST { deny all; }
+    auth_basic "remote_write";
+    auth_basic_user_file /etc/nginx/auth/auth;
+    proxy_pass {{ .Values.ingest.upstream | default (printf "http://monitoring-kube-prometheus-prometheus.%s.svc:9090" .Values.namespace) }};
+    proxy_set_header Authorization "";
+    proxy_read_timeout 60s;
+  }
+
+  location / {
+    return 404;
+  }
+}
+{{- end }}
+{{- if and (include "mon.hub" .) .Values.ingest.enabled }}
+{{- $i := .Values.ingest }}
+{{- $ns := .Values.namespace }}
+{{- $config := include "mon.ingestConfig" . }}
+{{- if and (not .Values.stack.install) (not $i.upstream) }}
+{{- fail "ingest.enabled with stack.install false needs ingest.upstream: the URL of your Prometheus" }}
+{{- end }}
+{{- $annotations := dict }}
+{{- if eq $i.ingressClassName "alb" }}
+{{- $annotations = dict
+      "alb.ingress.kubernetes.io/scheme" "internet-facing"
+      "alb.ingress.kubernetes.io/target-type" "ip"
+      "alb.ingress.kubernetes.io/listen-ports" "[{\"HTTPS\":443}]"
+      "alb.ingress.kubernetes.io/ssl-policy" "ELBSecurityPolicy-TLS13-1-2-2021-06"
+      "alb.ingress.kubernetes.io/healthcheck-path" "/healthz" }}
+{{- with $i.certificateArn }}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/certificate-arn" . }}
+{{- end }}
+{{- end }}
+# The hub's remote_write endpoint for agents: only POST /api/v1/write, with a user
+# and password per agent (Secret {{ $i.authSecret }}, key auth, htpasswd lines).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datagrok-ingest
+  namespace: {{ $ns }}
+data:
+  default.conf: |
+    {{- $config | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datagrok-ingest
+  namespace: {{ $ns }}
+  labels: {app: datagrok-ingest}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: datagrok-ingest}
+  template:
+    metadata:
+      labels: {app: datagrok-ingest}
+      annotations:
+        checksum/config: {{ $config | sha256sum | trunc 32 }}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: nginx
+        image: {{ $i.image }}
+        ports:
+        - {containerPort: 8080, name: http}
+        volumeMounts:
+        - {name: config, mountPath: /etc/nginx/conf.d}
+        - {name: auth, mountPath: /etc/nginx/auth, readOnly: true}
+        livenessProbe:
+          httpGet: {path: /healthz, port: 8080}
+          periodSeconds: 30
+        readinessProbe:
+          httpGet: {path: /healthz, port: 8080}
+          periodSeconds: 10
+        resources:
+          requests: {cpu: 20m, memory: 32Mi}
+          limits: {cpu: 500m, memory: 128Mi}
+      volumes:
+      - name: config
+        configMap: {name: datagrok-ingest}
+      - name: auth
+        secret: {secretName: {{ $i.authSecret }}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: datagrok-ingest
+  namespace: {{ $ns }}
+  labels: {app: datagrok-ingest}
+spec:
+  selector: {app: datagrok-ingest}
+  ports:
+  - {name: http, port: 80, targetPort: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: datagrok-ingest
+  namespace: {{ $ns }}
+  {{- with mustMergeOverwrite $annotations (deepCopy $i.annotations) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ $i.ingressClassName }}
+  rules:
+  - host: {{ required "ingest.enabled needs ingest.hostname" $i.hostname }}
+    http:
+      paths:
+      - path: /api/v1/write
+        pathType: Exact
+        backend:
+          service:
+            name: datagrok-ingest
+            port: {name: http}
+{{- end }}

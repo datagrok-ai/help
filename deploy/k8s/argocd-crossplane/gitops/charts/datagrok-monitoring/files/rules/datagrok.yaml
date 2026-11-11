@@ -164,24 +164,44 @@ groups:
 # thresholds, resolve); these rules only follow its records.
 - name: datagrok-incidents
   rules:
-  # Open from the first opened record until the resolved one. Datagrok re-sends a
-  # firing record per open alert every 5 min, so a problem stays one alert however
-  # long it lasts, and a collector restart does not drop it. The second term catches
-  # a series born inside the window (increase() needs two samples). 20 min: a
-  # restarting Datagrok is silent for up to 17. Both windows must stay equal, and
-  # the collector's metric_expiration longer, or a resolved key fires again. The
-  # price: a key that resolves and reopens within 20 min waits out the window.
+  # Open while the last opened, escalated or firing record is newer than the last
+  # resolved one. Each side is "when did this counter last move, in the last 20
+  # minutes": a step counts when the counter grew or the series was born (a counter
+  # is born at 1, which changes() does not see). Datagrok re-sends a firing record
+  # per open alert every 5 min, so a problem stays one alert however long it lasts
+  # and a collector restart does not drop it. 20 min: a restarting Datagrok is
+  # silent for up to 17. The collector's metric_expiration must stay longer.
   - alert: DatagrokProblem
     expr: |-
-      max by (cluster, datagrok_instance, datagrok_url, datagrok_alert_kind, datagrok_alert_key, datagrok_alert_name, datagrok_alert_severity, datagrok_alert_audience, datagrok_alert_url) (
-        (increase(datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"}[20m]) > 0)
-        or (datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"}
-            unless datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"} offset 20m)
+      (
+        max by (cluster, datagrok_instance, datagrok_url, datagrok_alert_kind, datagrok_alert_key, datagrok_alert_name, datagrok_alert_severity, datagrok_alert_audience, datagrok_alert_url) (
+          max_over_time((
+            timestamp(datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"})
+            and (
+              changes(datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"}[2m]) > 0
+              or (datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"}
+                  unless datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"} offset 2m)
+            )
+          )[20m:1m])
+        )
       )
-      unless on (cluster, datagrok_instance, datagrok_alert_kind, datagrok_alert_key) (
-        (increase(datagrok_alerts_total{datagrok_alert_status="resolved"}[20m]) > 0)
-        or (datagrok_alerts_total{datagrok_alert_status="resolved"}
-            unless datagrok_alerts_total{datagrok_alert_status="resolved"} offset 20m)
+      > on (cluster, datagrok_instance, datagrok_alert_kind, datagrok_alert_key) group_left ()
+      (
+        max by (cluster, datagrok_instance, datagrok_alert_kind, datagrok_alert_key) (
+          max_over_time((
+            timestamp(datagrok_alerts_total{datagrok_alert_status="resolved"})
+            and (
+              changes(datagrok_alerts_total{datagrok_alert_status="resolved"}[2m]) > 0
+              or (datagrok_alerts_total{datagrok_alert_status="resolved"}
+                  unless datagrok_alerts_total{datagrok_alert_status="resolved"} offset 2m)
+            )
+          )[20m:1m])
+        )
+        or
+        # No resolved record in the window: anything open is newer than zero.
+        max by (cluster, datagrok_instance, datagrok_alert_kind, datagrok_alert_key) (
+          datagrok_alerts_total{datagrok_alert_status=~"opened|escalated|firing",datagrok_alert_severity!="info"} * 0
+        )
       )
     labels:
       severity: '{{ $labels.datagrok_alert_severity }}'

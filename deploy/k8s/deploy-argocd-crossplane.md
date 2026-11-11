@@ -487,10 +487,31 @@ Terraform passes it to ArgoCD. Everything is installed in the `monitoring` names
 | `agent` | The collector, the probe, the RDS exporter, and a forwarder ([prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) chart with kube-state-metrics and node-exporter, two hours in memory) that sends everything to a hub with `remote_write` | Several Datagrok clusters report to one place. The hub stores the data, evaluates the rules, and shows the dashboards |
 | `hub` | The stack, rules, and dashboards of `standalone`, with the `remote_write` receiver on and nothing collected locally | This cluster is the place that agents report to |
 
-To run a hub that also hosts a Datagrok environment, use `standalone` and set
-`monitoring.stack.receiver: true`. The chart turns the receiver on and doesn't publish it. Publish
-`/api/v1/write` of the `monitoring-kube-prometheus-prometheus` Service to the agents yourself,
-behind TLS and authentication, with `monitoring.stack.values.prometheus.ingress` or your own Ingress.
+To run a hub that also hosts a Datagrok environment, use `standalone` and turn on `monitoring.ingest`.
+
+### Receive from agents
+
+A hub publishes its `remote_write` endpoint with `monitoring.ingest`. It runs a proxy that lets
+through only `POST /api/v1/write`, with a user and password per agent:
+
+```yaml title="gitops/envs/main.yaml"
+monitoring:
+  ingest:
+    enabled: true
+    hostname: prometheus.example.com     # agents send to https://prometheus.example.com/api/v1/write
+```
+
+Create the users before the first sync, one `htpasswd` line per agent. To cut an agent off, remove
+its line:
+
+```bash
+kubectl -n monitoring create secret generic prometheus-remote-write-auth \
+  --from-literal=auth="$(htpasswd -nb agent1 '<password>')"
+```
+
+On the agent, set `monitoring.forwarder.url` to that address and `monitoring.forwarder.username`
+to the user. The proxy checks who writes, not what: an agent chooses its own `cluster` label, so
+give each agent a different `cluster`.
 
 Every role that collects has three sources:
 
@@ -516,6 +537,9 @@ to a hub carry it, and the series stored in a `standalone` cluster don't.
 | `cluster` | The Kubernetes cluster | `datagrok-<env>` |
 | `datagrok_instance` | One Datagrok instance | `<env>` |
 | `tenant` | Optional owner of the instance | Not set |
+
+When a cluster runs several Datagrok instances, list them in `monitoring.instances`. The collector
+labels each record by the namespace it comes from, `datagrok-<name>` unless you set `namespace`.
 
 The other settings are in the environment file. The `monitoring` block holds the values of the
 `datagrok-monitoring` chart, and `gitops/charts/datagrok-monitoring/values.yaml` lists them all:
@@ -579,7 +603,7 @@ kubectl -n monitoring create secret generic datagrok-login-probe \
 | `SSLCertificateExpiry7Days`, `SSLCertificateExpiryToday` (critical) | The certificate is about to expire |
 | `DatagrokContainerOOMKilled`, `DatagrokContainerMemoryNearLimit` | A Datagrok container ran out of memory, or is about to |
 | `DatagrokRdsStorageLow` (critical), `DatagrokRdsCpuHigh`, `DatagrokRdsMemoryLow`, `DatagrokRdsIoBalanceLow`, `DatagrokRdsTransactionIdsHigh`, `DatagrokRdsMetricsMissing` | The database runs out of a resource, or its metrics stop. The thresholds are under `monitoring.alerts` |
-| `DatagrokOtelCollectorDown`, `DatagrokOtelRecordsRefused` | The collector is down or refuses records |
+| `DatagrokOtelCollectorDown`, `DatagrokOtelRecordsRefused`, `DatagrokProbeDown` | The collector or the probe is down, or the collector refuses records |
 
 While an instance is unreachable, Alertmanager holds back the alerts that only restate it. It has
 no receiver. Add one with `monitoring.stack.values.alertmanager.config`.
