@@ -191,28 +191,24 @@ You can access audit logs in a number of ways:
 
 ### Export logs
 
-**Log sync** sends log events to external destinations as they are posted,
-without waiting for them to be saved to the database. To add a destination:
+Log events are sent to external destinations as they are posted, without waiting for them to be saved to the
+database. Destinations are set up in **Browse** > **Platform** > **Observability** > **Log settings**:
 
-1. On the **Sidebar**, click **Settings** (<FAIcon icon="fa-solid fa-gear"/>) > **Logger**, and expand **Log sync**.
-1. Click **Add new sync block**.
-1. Set **Cloud** to the destination and fill in its settings (see the table below).
-1. Select the **Levels** to sync. Only levels that are posted can be synced. See [Changing settings for default logs](#changing-settings-for-default-logs).
-1. Click **Save and apply**.
+1. Under **Endpoints**, click **+** and fill in where to send (see the table below). An endpoint only describes a
+   destination; nothing is sent to it yet.
+1. Under **Log groups**, open a group, or click **+** for a new one, and tick the endpoint in **Save to**.
+1. Click **Save** in the toolbar.
 
-Add one block per destination. For example, send errors to one CloudWatch log
-group and audit events to another.
+A group picks the records it sends by **Levels**, **Who** (users or groups; everyone by default) and an optional
+**Filter**. For example, send errors to one CloudWatch log group and audit events to another: two groups, each
+saving to its own endpoint.
 
 <details>
-<summary>Log sync settings</summary>
+<summary>Endpoint settings</summary>
 
 | Setting        | Applies to            | Description                                                                                          |
 |----------------|-----------------------|------------------------------------------------------------------------------------------------------|
-| **Enabled**    | All                   | Turns the destination off without deleting it                                                        |
-| **Levels**     | All                   | Levels to sync: error, warning, info, debug, audit, usage                                            |
-| **Event type** | All                   | Narrows the destination to a single audit or usage event type. Leave empty for all                   |
-| **Params**     | All                   | Syncs only events whose parameters have the given values                                              |
-| **Batch Size** | All                   | Maximum number of events sent in one batch                                                            |
+| **Name**       | All                   | How log groups refer to the endpoint                                                                 |
 | **Format**     | All                   | `json` (one object per event, queryable in the backend) or `text`                                     |
 | **Cloud**      | All                   | **Amazon CloudWatch**, **Google Cloud Logging**, or **OpenTelemetry (OTLP)**                          |
 | **Connection** | All                   | An AWS or GCP connection with write access. Leave empty to authenticate with the instance role       |
@@ -221,9 +217,12 @@ group and audit events to another.
 | **Endpoint**   | OpenTelemetry         | OTLP/HTTP logs endpoint, for example `http://otel-collector:4318/v1/logs`                             |
 | **Auth**       | OpenTelemetry         | `none`, `bearer` (with **Token**), `aws-sigv4`, or `gcp-oauth`                                        |
 | **Headers**, **Compress**, **Max Payload** | OpenTelemetry | Extra HTTP headers, gzip compression, and the size at which a batch is split          |
-| **Alerts**     | OpenTelemetry         | Sends alert and heartbeat records regardless of the selected levels. On by default                    |
 
 </details>
+
+To send problem and alert records to a collector that pages someone, add a group of kind **Alerts** that saves
+to its endpoint: it takes the opened, escalated, resolved and still-firing records and the heartbeat, whatever
+the levels of the other groups.
 
 Besides regular events, the server emits alert records and a heartbeat that let your monitoring system page
 you when a [problem](problems-and-alerts.md) starts. The records, when they arrive, and the problems behind
@@ -304,15 +303,25 @@ To customize which events are logged and how they are handled, you have these op
 
 ### Changing settings for default logs
 
-To access logging settings, on the **Sidebar**,  click **Settings (<FAIcon
-icon="fa-solid fa-gear"/>) > Logger**. The **Settings - Logger** view opens.
-From here, you can specify which audit events are logged for a user or group,
-and set timeouts for logging events. 
+What is logged is set in **Browse** > **Platform** > **Observability** > **Log settings**
+(**Settings** > **Logger** opens the same page). It has three parts:
 
-To specify which audit events should be logged for a user or group:
+* **Log groups**, read top to bottom. Each group picks records and sends them to its destinations (the Datagrok
+  database, the console, or an [endpoint](#export-logs)). A record reaches a destination once. A group is one of:
+  * **Records**: what users and the server log, of the ticked **Levels**, from **Who** (everyone by default),
+    narrowed by debug flags, audit or usage types, and a **Filter**.
+  * **Alerts**: problem and alert records, for collectors that page someone.
+  * **Drop**: matching records go nowhere; groups below it don't see them. Put it above the groups it silences.
 
-1. Under **Log settings** add a user or group and the desired logging level (Standard, Verbose, Custom).
-1. Optional. Adjust settings for the selected option by clicking the **Gear icon** next to the dropdown.
+  A group is active **Always**, **Until** a time, or **When triggered** by a record (for example, keep debug records
+  of a session for ten minutes after it hits an error). The **Audit export** group takes every audit record and
+  can only be changed with the Edit Audit Logging permission.
+* **Endpoints**: the external destinations, see [Export logs](#export-logs).
+* **Buffer**: the recent records each server process keeps in memory per level, whatever is saved, and for how
+  long. A triggered group sends them along with the record that switched it on; error reports include them.
+
+Hover a part's header for what it is and which values are fine. Click **Save** to apply. On a platform-managed
+instance the page is read-only: the deployment owns the settings.
 
 ### Customizing logging via JavaScript API
 
