@@ -46,6 +46,8 @@ processors:
           - set(attributes["datagrok_url"], attributes["datagrok.url"]) where attributes["datagrok_url"] == nil and attributes["datagrok.url"] != nil
           - set(attributes["datagrok_url"], "") where attributes["datagrok_url"] == nil
           {{- end }}
+          # As a label it would collide with datagrok_url, and the exporter drops the series.
+          - delete_key(attributes, "datagrok.url")
   # datagrok.signature = the record's datagrok.error_stack_trace_hash, the key
   # Usage Analysis > Errors groups by. A record without it gets the first 12 hex
   # characters of sha256 over the digit-stripped stack trace. datagrok.error = the
