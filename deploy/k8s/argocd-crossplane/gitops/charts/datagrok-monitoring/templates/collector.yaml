@@ -32,16 +32,21 @@ processors:
           {{- else }}
           {{- range $i := $instances }}
           {{- $host := include "mon.ottlHostPattern" (urlParse $i.url).host }}
-          # {{ $i.name }}: by the web root the instance reports, or by its instance id.
+          {{- $ids := list (include "mon.ottlHostPattern" $i.name) $host }}
+          {{- with $i.id }}
+          {{- $ids = append $ids (include "mon.ottlHostPattern" .) }}
+          {{- end }}
+          # {{ $i.name }}: by its instance id (the name in the instance's configuration,
+          # the instance name here, or its host), or by the web root it reports.
           - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["datagrok.url"] != nil and IsMatch(attributes["datagrok.url"], "^https?://{{ $host }}(/.*)?$")
-          - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and IsMatch(attributes["service.instance.id"], "^({{ include "mon.ottlHostPattern" $i.name }}|{{ $host }})$")
+          - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and IsMatch(attributes["service.instance.id"], "^({{ join "|" $ids }})$")
           - set(attributes["datagrok_url"], {{ $i.url | trimSuffix "/" | quote }}) where attributes["datagrok_instance"] == {{ $i.name | quote }}
           {{- with $i.tenant }}
           - set(attributes["tenant"], {{ . | quote }}) where attributes["datagrok_instance"] == {{ $i.name | quote }}
           {{- end }}
           {{- end }}
           # An instance that isn't listed names itself.
-          - set(attributes["datagrok_instance"], attributes["service.instance.id"]) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil
+          - set(attributes["datagrok_instance"], attributes["service.instance.id"]) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and attributes["service.instance.id"] != ""
           - set(attributes["datagrok_instance"], "unknown") where attributes["datagrok_instance"] == nil
           - set(attributes["datagrok_url"], attributes["datagrok.url"]) where attributes["datagrok_url"] == nil and attributes["datagrok.url"] != nil
           - set(attributes["datagrok_url"], "") where attributes["datagrok_url"] == nil
@@ -113,9 +118,11 @@ connectors:
           - attributes["datagrok.alert.status"] != nil
         attributes:
           - key: datagrok.alert.kind
+            default_value: ""
           - key: datagrok.alert.key
             default_value: ""
           - key: datagrok.alert.name
+            default_value: ""
           - key: datagrok.alert.status
           - key: datagrok.alert.severity
             default_value: warning
@@ -278,6 +285,8 @@ spec:
   - port: metrics
     interval: 30s
     scrapeTimeout: 10s
+    # As the forwarder does (honor_labels), so the series are the same in every role.
+    honorLabels: true
   - port: telemetry
     interval: 60s
     scrapeTimeout: 10s

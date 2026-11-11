@@ -187,7 +187,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "count(max by (cluster, datagrok_instance, datagrok_alert_name, datagrok_alert_kind, datagrok_alert_key, datagrok_alert_severity) (increase(datagrok_alerts_total{cluster=~\"$cluster\",datagrok_instance=~\"$instance\",datagrok_alert_status=~\"opened|escalated|firing\",datagrok_alert_severity!=\"info\"}[20m]) > 0) unless on (cluster, datagrok_instance, datagrok_alert_kind, datagrok_alert_key) (increase(datagrok_alerts_total{cluster=~\"$cluster\",datagrok_instance=~\"$instance\",datagrok_alert_status=\"resolved\"}[20m]) > 0)) or vector(0)",
+          "expr": "count(ALERTS{alertname=\"DatagrokProblem\",alertstate=\"firing\",cluster=~\"$cluster\",datagrok_instance=~\"$instance\"}) or vector(0)",
           "instant": true
         }
       ]
@@ -261,7 +261,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "max by (cluster, datagrok_instance, datagrok_alert_name, datagrok_alert_kind, datagrok_alert_key, datagrok_alert_severity) (increase(datagrok_alerts_total{cluster=~\"$cluster\",datagrok_instance=~\"$instance\",datagrok_alert_status=~\"opened|escalated|firing\",datagrok_alert_severity!=\"info\"}[20m]) > 0) unless on (cluster, datagrok_instance, datagrok_alert_kind, datagrok_alert_key) (increase(datagrok_alerts_total{cluster=~\"$cluster\",datagrok_instance=~\"$instance\",datagrok_alert_status=\"resolved\"}[20m]) > 0)",
+          "expr": "ALERTS{alertname=\"DatagrokProblem\",alertstate=\"firing\",cluster=~\"$cluster\",datagrok_instance=~\"$instance\"}",
           "instant": true,
           "format": "table"
         }
@@ -272,7 +272,15 @@
           "options": {
             "excludeByName": {
               "Time": true,
-              "Value": true
+              "Value": true,
+              "__name__": true,
+              "alertname": true,
+              "alertstate": true,
+              "audience": true,
+              "severity": true,
+              "datagrok_alert_audience": true,
+              "datagrok_url": true,
+              "datagrok_alert_url": true
             },
             "renameByName": {
               "cluster": "Cluster",
@@ -384,7 +392,7 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "Minutes since the last heartbeat",
+      "title": "Heartbeats per 15 minutes",
       "datasource": {
         "type": "prometheus",
         "uid": "${datasource}"
@@ -396,9 +404,7 @@
         "h": 8
       },
       "fieldConfig": {
-        "defaults": {
-          "unit": "m"
-        },
+        "defaults": {},
         "overrides": []
       },
       "targets": [
@@ -408,7 +414,7 @@
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "expr": "(time() - max by (cluster, datagrok_instance) (timestamp(changes(datagrok_heartbeats_total{cluster=~\"$cluster\",datagrok_instance=~\"$instance\"}[10m]) > 0))) / 60",
+          "expr": "sum by (cluster, datagrok_instance) (increase(datagrok_heartbeats_total{cluster=~\"$cluster\",datagrok_instance=~\"$instance\"}[15m]))",
           "legendFormat": "{{datagrok_instance}}"
         }
       ],
@@ -421,7 +427,7 @@
           "mode": "multi"
         }
       },
-      "description": "Datagrok sends a heartbeat every 5 minutes. A gap means it is down or cannot reach the collector."
+      "description": "Datagrok sends a heartbeat every 5 minutes, so the normal value is 3. Zero means it is down or cannot reach the collector."
     },
     {
       "id": 9,

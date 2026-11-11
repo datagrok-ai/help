@@ -55,7 +55,7 @@ spec:
   {{- end }}
     helm:
       valuesObject:
-        {{- toYaml (mustMergeOverwrite $computed (omit (deepCopy $m) "role" "chartVersion")) | nindent 8 }}
+        {{- toYaml (mustMergeOverwrite $computed (omit (deepCopy $m) "role" "chartVersion" (ternary "" "cluster" (not (empty $m.cluster))))) | nindent 8 }}
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

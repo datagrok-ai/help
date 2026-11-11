@@ -35,6 +35,20 @@ groups:
       summary: '{{ $labels.datagrok_instance }}: responding in {{ $value | humanizeDuration }}'
       description: The 5-minute average response time of the health endpoint is above 15 s. The instance is up but unusable.
 
+# Without the probe none of the rules above and below can fire.
+- name: datagrok-probe
+  rules:
+  - alert: DatagrokProbeDown
+    expr: |-
+      up{job="datagrok-probe"} == 0 or up{service="datagrok-probe"} == 0
+      or time() - datagrok_probe_last_run_timestamp_seconds > 300
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: The datagrok-probe is down or stuck
+      description: Instance availability, services, login and certificates are not checked until it is back. Check the datagrok-probe pod.
+
 # The health endpoint answers 200 while a dependency is down. Losing Datlas, its
 # database or the credentials service breaks the platform; losing the garbage
 # collector, Jupyter, Grok Connect or the spawner degrades it.
@@ -155,7 +169,8 @@ groups:
   # long it lasts, and a collector restart does not drop it. The second term catches
   # a series born inside the window (increase() needs two samples). 20 min: a
   # restarting Datagrok is silent for up to 17. Both windows must stay equal, and
-  # the collector's metric_expiration longer, or a resolved key fires again.
+  # the collector's metric_expiration longer, or a resolved key fires again. The
+  # price: a key that resolves and reopens within 20 min waits out the window.
   - alert: DatagrokProblem
     expr: |-
       max by (cluster, datagrok_instance, datagrok_url, datagrok_alert_kind, datagrok_alert_key, datagrok_alert_name, datagrok_alert_severity, datagrok_alert_audience, datagrok_alert_url) (

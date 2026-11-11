@@ -488,7 +488,9 @@ Terraform passes it to ArgoCD. Everything is installed in the `monitoring` names
 | `hub` | The stack, rules, and dashboards of `standalone`, with the `remote_write` receiver on and nothing collected locally | This cluster is the place that agents report to |
 
 To run a hub that also hosts a Datagrok environment, use `standalone` and set
-`monitoring.stack.receiver: true`.
+`monitoring.stack.receiver: true`. The chart turns the receiver on and doesn't publish it. Publish
+`/api/v1/write` of the `monitoring-kube-prometheus-prometheus` Service to the agents yourself,
+behind TLS and authentication, with `monitoring.stack.values.prometheus.ingress` or your own Ingress.
 
 Every role that collects has three sources:
 
@@ -500,11 +502,14 @@ Every role that collects has three sources:
 
 After the first sync, point Datagrok at the collector. Open **Settings** > **Logger**, add a
 **Log sync** destination of type **OpenTelemetry (OTLP)** with the endpoint
-`http://datagrok-otel.monitoring.svc:4318/v1/logs`, and select the error, audit, and usage levels.
-Without it the probe and the RDS metrics still work, and the problems Datagrok detects don't reach
-Prometheus.
+`http://datagrok-otel.monitoring.svc:4318/v1/logs`. Datagrok sends its problems and the heartbeat
+to it whatever levels you select. Select the error, audit, and usage levels to count errors and
+reports as well. Without the destination the probe and the RDS metrics still work, and the problems
+Datagrok detects don't reach Prometheus.
 
-Every series carries the same labels, so one set of rules and dashboards serves one cluster or many:
+The same labels identify an instance everywhere, so one set of rules and dashboards serves one
+cluster or many. `cluster` is an external label of Prometheus: alerts and the series an agent sends
+to a hub carry it, and the series stored in a `standalone` cluster don't.
 
 | Label | Meaning | Default in this template |
 |-------|---------|--------------------------|
@@ -527,7 +532,7 @@ monitoring:
     url: https://prometheus.example.com/api/v1/write   # the hub's remote_write endpoint
     username: datagrok             # basic auth; the password is in Secrets Manager datagrok/<env>/monitoring
     values: {}                     # merged over the prometheus chart values
-  cluster: ""                      # value of the cluster label; default datagrok-<env>
+  cluster: datagrok-main           # value of the cluster label; default datagrok-<env>
   alerts: {}                       # RDS alert thresholds
 ```
 
@@ -591,8 +596,10 @@ sum by (namespace, workload) (sum_over_time(workload_container:cpu_core_hours:1h
 ### A cluster that already runs a Prometheus operator
 
 Deploy the `datagrok-monitoring` chart by itself with `stack.install: false`. It then installs only
-the collector, the probe, the rules, and the dashboards. If your Prometheus selects rules and
-ServiceMonitors by label, set `stack.objectLabels`, for example `{release: kube-prometheus-stack}`.
+the collector, the probe, the rules, and the dashboards, into the existing namespace that you set
+in `namespace`. If your Prometheus selects rules and ServiceMonitors by label, set
+`stack.objectLabels`, for example `{release: kube-prometheus-stack}`. The chart doesn't change your
+Alertmanager configuration, so the alerts that restate an unreachable instance aren't held back.
 
 ## Day-to-day operations
 

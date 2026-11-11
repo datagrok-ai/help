@@ -19,6 +19,9 @@ instances: []
 #  - name: main
 #    url: https://datagrok.example.com
 #    tenant: ""
+#    # With several instances: the instance's name in its own configuration, which it
+#    # sends with every record, when that is neither `name` nor the host of `url`.
+#    id: ""
 
 # --- Hub side (standalone, hub) ------------------------------------------------
 stack:

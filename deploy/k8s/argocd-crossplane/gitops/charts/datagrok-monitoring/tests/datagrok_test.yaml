@@ -129,6 +129,25 @@ tests:
     exp_alerts:
     - *report
 
+# The probe is scraped but its rounds stopped.
+- interval: 1m
+  input_series:
+  - series: 'up{job="datagrok-probe"}'
+    values: '1x40'
+  - series: 'datagrok_probe_last_run_timestamp_seconds'
+    values: '0+60x5 300x35'
+  alert_rule_test:
+  - eval_time: 8m
+    alertname: DatagrokProbeDown
+    exp_alerts: []
+  - eval_time: 25m
+    alertname: DatagrokProbeDown
+    exp_alerts:
+    - exp_labels: {severity: warning}
+      exp_annotations:
+        summary: The datagrok-probe is down or stuck
+        description: Instance availability, services, login and certificates are not checked until it is back. Check the datagrok-probe pod.
+
 # Heartbeats stop: the alert names the instance that went silent, not its neighbour.
 - interval: 1m
   input_series:

@@ -102,7 +102,7 @@ spec:
 {{- $remoteWrite := dict
       "url" (required "role agent needs forwarder.url: the hub's remote_write endpoint" $f.url)
       "write_relabel_configs" (list
-        (dict "source_labels" (list "dimension_DBInstanceIdentifier") "target_label" "dbinstance_identifier")
+        (dict "source_labels" (list "dimension_DBInstanceIdentifier") "regex" "(.+)" "target_label" "dbinstance_identifier")
         (dict "action" "labeldrop" "regex" "dimension_DBInstanceIdentifier")) }}
 {{- with $f.username }}
 {{- $_ := set $remoteWrite "basic_auth" (dict "username" . "password_file" "/etc/remote-write/password") }}
