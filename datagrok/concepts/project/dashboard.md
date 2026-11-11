@@ -111,6 +111,24 @@ the project. For a multi-table dashboard, keep these points in mind:
   Recipients of your dashboard can read a linked table even if they can't
   see the project it comes from.
 
+## Multiple views
+
+A dashboard saves the arrangement of its views, not only the views themselves.
+Dock views side by side or one below another, float one, then save: the
+dashboard reopens with the same arrangement and proportions, and floating
+views at the same position and size. Whether the **Context Panel** and the
+**Help** panel are shown is saved too.
+
+A dashboard can mix view types: table views, notebooks, markup views,
+Flow workflows (saved or not), and application
+views such as Usage Analysis. An application view reopens by starting the
+application at the place it showed when you saved.
+
+Views that can reopen are saved by default. To keep a view out of the
+dashboard, right-click its tab and clear **Save with project**. A view
+that can't reopen from a saved state doesn't offer the option and isn't
+saved.
+
 ## Saving a dashboard
 
 To save, click the **SAVE** button at the top of the screen. This opens the
