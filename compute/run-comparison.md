@@ -135,6 +135,20 @@ the row with its chevron to see every compatible item, grouped by run:
 
 ![The Biomass row expanded, with the day 1 profile checked in each run](img/run-comparison-fix-match.png)
 
+## Comparing unsaved changes
+
+The **Add the current state to a comparison** icon next to **Save** adds the model or
+workflow as it is now, without saving it. If a workflow is saved and unchanged, its
+saved run is added instead. A workflow step based on a completed run has a branch icon:
+**Compare with original** in its menu, or the same link in the step's **Actions**, opens a
+new comparison of the original run and the step's current state. **Add to comparison...**
+and the icon let you name the state and pick a new comparison or an open one.
+
+The current state shows as **unsaved**. It lives only while the comparison is open: save
+it with its **Save to history** icon to keep it. Outputs that are outdated, because the
+inputs changed after the last run, get a warning, and **Hide outdated outputs** leaves
+them out of the charts.
+
 ## Exporting
 
 **Export...** under **Results** saves a snapshot of the comparison: the chart data and the
