@@ -676,7 +676,8 @@ pick.
   have a <i class="fal fa-hourglass-half"></i> mark. A workflow run saved before this mark existed is checked
   when it's exported, and skipped with a warning if it isn't completed.
 
-**Browse Runs** in the **Model Hub** has **Export** too, for the runs of every model.
+**Browse Runs** in the **Model Hub** has **Export** too, for the runs of the chosen model or of all models.
+The dialog title names the place and the model filter, for example **Export runs of My runs · All models**.
 
 In a workflow step's **Runs** panel, **Export** uses the step's viewers hook, as the step's own export menu does.
 
