@@ -6,4 +6,6 @@ metadata:
   name: {{ .Values.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
+    # Other things live in the namespace; removing this chart must not take them along.
+    argocd.argoproj.io/sync-options: Prune=false,Delete=false
 {{- end }}
