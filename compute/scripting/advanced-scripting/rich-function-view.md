@@ -162,8 +162,12 @@ function MyScriptViewersHookMaker() {
 
 When used inside a [workflow](../../workflows/workflows.mdx), the hook also receives a `meta`
 argument and is re-invoked whenever metadata published by
-[`meta` links](../../workflows/link-types.mdx) changes. See the workflow-side
+[`meta` links](../../workflows/link-types.mdx) changes. A workflow step can set its own `viewersHook`
+instead, which replaces the script's hook for that step. See the workflow-side
 [`viewersHook` reference](../../workflows/configuration.mdx) for the full signature.
+
+If the hook can't be made, because the function is missing or fails, a warning says so, and the viewers
+and exports go on without it.
 
 RichFunctionView supports the `dockSpawnConfig` option to control the
 viewer's width. By default, any viewer occupies all available

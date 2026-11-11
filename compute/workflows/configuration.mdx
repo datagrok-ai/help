@@ -424,6 +424,12 @@ The hook fires once per `(ioName, viewer type)` combination when the viewer
 appears, and again on every metadata update. Keep it side-effect-free aside
 from mutating the supplied viewer.
 
+A step without a `viewersHook` uses the hook of its script, set with the
+script's [`viewersHook` annotation](../scripting/advanced-scripting/rich-function-view.md#visualize-input-data). A step's own
+hook replaces the script's; the two are not combined. If the script's hook
+can't be made, because its function is missing or fails, a warning says so, and
+the step's viewers and exports go on without it.
+
 #### `enableHistory` (Script node)
 
 _Optional_
