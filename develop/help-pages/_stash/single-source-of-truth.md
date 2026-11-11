@@ -6,7 +6,7 @@ Our wiki is a single source of truth for any information about how to deploy, us
 applies to how we communicate and share knowledge internally and externally. The rationale is simple. We want to have
 all information about Datagrok in a place that is universally accessible to prevent information silos, knowledge gaps,
 and inefficiencies. For this reason, we maintain our documentation in
-a [public repository on Github](https://github.com/datagrok-ai/public/tree/master/help).
+a [public repository on Github](https://github.com/datagrok-ai/help/tree/master).
 
 Internally, we treat documentation the same way we treat our code: we improve it as often as possible and follow the
 _fewer words, better_ writing style.

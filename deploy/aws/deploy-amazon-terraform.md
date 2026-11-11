@@ -39,7 +39,7 @@ ArgoCD, which keeps RDS, S3, and Datagrok in sync with a Git repository.
 ### Prerequisites
 
 1. Check that you
-   have the [required permissions](https://github.com/datagrok-ai/public/blob/master/help/deploy/iam.list)
+   have the [required permissions](https://github.com/datagrok-ai/help/blob/master/deploy/iam.list)
    on the AWS account to perform Terraform deployment to ECS.
 2. Check that you
    have the required [S3 permissions](https://www.terraform.io/language/settings/backends/s3#s3-bucket-permissions)

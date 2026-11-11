@@ -1,78 +1,48 @@
-name: Bump help in public
+name: Rebuild the help site
 
-# Points public's `help` submodule at help master; that push deploys the site.
-# Pushes with WRITE_TOKEN, since a GITHUB_TOKEN push would not trigger public's workflows.
+# Every new help master rebuilds and deploys the site: dispatches public's Docusaurus workflow,
+# which checks help out next to public. WRITE_TOKEN: a GITHUB_TOKEN dispatch would not start it.
 
 on:
   push:
     branches: [master]
+  # The gif job pushes with GITHUB_TOKEN, which starts no push run (IaC pushes with WRITE_TOKEN, which does).
   workflow_run:
-    workflows: ['Generate gif thumbnails', 'IaC']
+    workflows: ['Generate gif thumbnails']
     types: [completed]
     branches: [master]
   workflow_dispatch:
 
 concurrency:
-  group: bump-public
+  group: bump-public-${{ github.event_name }}
   cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  bump:
+  dispatch:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: datagrok-ai/public
-          ref: master
-          token: ${{ secrets.WRITE_TOKEN }}
-          path: public
-          sparse-checkout: .github
-
-      - name: Bump submodule pointer
-        working-directory: public
+      - name: Dispatch public's Docusaurus build
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
+          WRITE_TOKEN: ${{ secrets.WRITE_TOKEN }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          HELP_AUTHOR: ${{ github.event.head_commit.author.username || github.event.workflow_run.actor.login || github.actor }}
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-
-          # Until the cutover commit lands, public/help is a plain folder: do nothing.
-          if [ "$(git ls-files -s help | awk 'NR==1 {print $1}')" != "160000" ]; then
-            echo "::notice::public/help is not a submodule yet, skipping"
+          # After a 'Generate gif thumbnails' run, rebuild only if it pushed a commit;
+          # otherwise the push run has already dispatched this help master.
+          if [ -n "$RUN_SHA" ] && [ "$(gh api "repos/$REPO/commits/master" --jq .sha)" = "$RUN_SHA" ]; then
+            echo "::notice::help master is still $RUN_SHA: already dispatched"
             exit 0
           fi
-
-          NEW=$(gh api "repos/$REPO/commits/master" --jq .sha)
-          SUBJECT=$(gh api "repos/$REPO/commits/$NEW" --jq '.commit.message' | head -n1)
-
-          for attempt in 1 2 3 4 5; do
-            OLD=$(git ls-files -s help | awk '{print $2}')
-            if [ "$OLD" = "$NEW" ]; then
-              echo "public already points at $NEW"
-              exit 0
-            fi
-            # The latest non-bot commit's author: public's Slack action DMs one user.
-            AUTHOR=$(gh api "repos/$REPO/compare/$OLD...$NEW" \
-              --jq '[.commits[].author.login // empty | select(endswith("[bot]") | not)] | last // empty' || true)
-
-            git update-index --cacheinfo "160000,$NEW,help"
-            git commit -q -F - <<EOF
-          Help: bump to ${NEW:0:10}
-
-          $SUBJECT
-
-          Help-Author: $AUTHOR
-          EOF
-            git push origin HEAD:master && exit 0
-
-            echo "Push rejected, retrying on top of the new public master ($attempt/5)"
-            sleep $((attempt * 5))
-            git fetch -q --depth 1 origin master
-            git reset -q --hard origin/master
+          for attempt in 1 2 3; do
+            GH_TOKEN="$WRITE_TOKEN" gh workflow run docusaurus.yaml -R datagrok-ai/public --ref master \
+              -f force=no -f help_author="$HELP_AUTHOR" && exit 0
+            echo "Dispatch failed, retrying ($attempt/3)"
+            sleep $((attempt * 10))
           done
           exit 1
