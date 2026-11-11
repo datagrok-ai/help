@@ -223,6 +223,10 @@ define custom exports for workflow data. Handler here is an async
 function that receives `PipelineState` and `ExportUtils`
 arguments and returns the exported file. More information is available [here](#custom-exports)
 
+Set `preferred: true` on an item to list it before the default export and the other exports. The first
+item of the **Export** menu is the default one, also in the bulk export of runs. Several preferred items
+keep their order.
+
 #### `disableDefaultExport`
 
 _Optional_

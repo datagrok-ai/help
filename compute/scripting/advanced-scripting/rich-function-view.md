@@ -537,6 +537,14 @@ You can customize export using the following annotation:
 //meta.customExports: [{"name": "pdf", "function": "MyPackage:MyPDFExport"}]
 ```
 
+To make an export the default one, add `"preferred": true` to it. Preferred exports come first in the
+**Export** menu, in their order, before the default Excel report and the other exports. The first export
+of the menu is also the one the bulk export of runs picks.
+
+```javascript
+//meta.customExports: [{"name": "pdf", "function": "MyPackage:MyPDFExport", "preferred": true}]
+```
+
 The export function receives the following arguments:
 
 * `funcCall`: DG.FuncCall, current call.
