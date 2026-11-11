@@ -554,6 +554,16 @@ export async function myPDFExport(funcCall) {
 }
 ```
 
+To start from the default Excel report, call `reportFuncCallExcel` from
+`@datagrok-libraries/compute-api`, or the `Compute2:ReportFuncCallExcel` function. It returns the file and
+its ExcelJS workbook, built as the export menu builds them, so you can add sheets and save the workbook:
+
+```javascript
+const [, wb] = await reportFuncCallExcel(funcCall);
+wb.addWorksheet('Notes').addRow(['Reviewed']);
+return DG.FileInfo.fromBytes('report.xlsx', new Uint8Array(await wb.xlsx.writeBuffer()));
+```
+
 Workflows also support a workflow-level `customExports` option with a different handler
 signature (it receives the whole pipeline state, not a single call). See the workflow
 [Custom exports reference](../../workflows/configuration.mdx) for details.
