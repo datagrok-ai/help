@@ -543,6 +543,8 @@ The export function receives the following arguments:
 * `isOutputOutdated`: bool, true if the function output is outdated.
 * `validationState`: `Record<string, ValidationResult>`, available only if run inside a [workflows](../../workflows/workflows.mdx).
 * `consistencyState`: `Record<string, ConsistencyInfo>`, available only if run inside a [workflows](../../workflows/workflows.mdx).
+* `viewersHook`: the [viewers hook](#visualize-input-data) of the call, the workflow step's own when the step sets one.
+* `metaState`: the step's meta values by output, for the hook, available only if run inside a [workflow](../../workflows/workflows.mdx).
 
 Declare these as `//input:` parameters of the export function. The current call must be
 typed `funccall`. The function returns the exported file, and Compute downloads it. An export
@@ -560,10 +562,11 @@ export async function myPDFExport(funcCall) {
 
 To start from the default Excel report, call `reportFuncCallExcel` from
 `@datagrok-libraries/compute-api`, or the `Compute2:ReportFuncCallExcel` function. It returns the file and
-its ExcelJS workbook, built as the export menu builds them, so you can add sheets and save the workbook:
+its ExcelJS workbook, built as the export menu builds them, so you can add sheets and save the workbook.
+Pass on `viewersHook` and `metaState`, so that a workflow step's report uses the step's hook:
 
 ```javascript
-const [, wb] = await reportFuncCallExcel(funcCall);
+const [, wb] = await reportFuncCallExcel(funcCall, {viewersHook, metaState});
 wb.addWorksheet('Notes').addRow(['Reviewed']);
 return DG.FileInfo.fromBytes('report.xlsx', new Uint8Array(await wb.xlsx.writeBuffer()));
 ```
@@ -666,6 +669,8 @@ pick.
   when it's exported, and skipped with a warning if it isn't completed.
 
 **Browse Runs** in the **Model Hub** has **Export** too, for the runs of every model.
+
+In a workflow step's **Runs** panel, **Export** uses the step's viewers hook, as the step's own export menu does.
 
 Each run is exported as its export menu does when the run is open. The files go into one zip file named after
 the space and the date, with a folder for each subspace. Files with the same name in a folder get a number.
