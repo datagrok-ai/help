@@ -1,19 +1,20 @@
 ---
 title: "Metric alerts"
 sidebar_position: 4.5
-description: Alert when the platform's database, storage or disks grow too much, or the garbage collector falls behind.
+description: Alert when the platform's database, storage or disks grow too much, the garbage collector falls behind, or a server leaks sockets.
 keywords:
   - metric alerts
   - data growth
   - storage growth
   - database size
   - disk full
+  - open sockets
   - metricAlerts
 ---
 
 Datagrok keeps track of how its own data grows: the size and rows of each table of its database (and the
 counts of categories such as events by source or entities by type), its file storage by kind of data and
-location, each server's disk, and what the garbage collector deleted and still has to delete. A **metric alert**
+location, each server's disk and open sockets, and what the garbage collector deleted and still has to delete. A **metric alert**
 watches these numbers and raises a [problem](problems-and-alerts.md) when one is too high or grows too fast,
 with the same statuses, alerts and notifications as every other problem.
 
@@ -32,6 +33,7 @@ panel, with each value's change over 1, 7 and 30 days and its daily trend. Seein
 | `disk.used_bytes`, `disk.free_bytes`, `disk.used_pct` | `local@<server>` | hourly |
 | `gc.deleted` | what the garbage collector shrank: `events/source=debug`, `test_runs`, `shared/packages`, … | after each collection |
 | `gc.pending` | the same keys, for the steps that can be counted | daily, and after each collection |
+| `server.sockets`, `server.http_connections`, `server.db_connections` | `local@<server>`: the sockets the server process holds, the HTTP connections it accepted, its connections to the platform database | every 5 minutes |
 
 The schedule and the categories counted are settings in **Settings** > **Alerts** > **Data growth**:
 `metricsEveryMinutes` (60), `metricsBreakdownHours` (24), `metricsStorageHours` (6) and `metricsBreakdowns`.
@@ -53,6 +55,8 @@ Out of the box it holds:
 | `storage-growth` | `storage.bytes`, `shared` | the storage grew 25% in 7 days | warning |
 | `disk-full` | `disk.used_pct`, any server | a disk is over 90% full | critical |
 | `gc-backlog` | `gc.pending`, any key | the garbage collector has over 10 million rows to delete | warning |
+| `socket-growth` | `server.sockets`, any server | a server holds over 1,000 sockets **and** twice as many as a day before: a leak | warning |
+| `too-many-sockets` | `server.sockets`, any server | a server holds over 10,000 sockets | critical |
 
 Growth needs history: no growth alert holds until there is a sample old enough to compare with, so a new
 installation stays quiet for the first week. Saving your own alerts replaces the defaults, so keep the ones you
@@ -87,7 +91,7 @@ Give `above`, `growth` or both; with both, both must hold, so a size floor keeps
 a doubling.
 
 A problem ends when its alert no longer holds for two collections of its metric (two hours for the hourly
-ones), so a value hovering at the threshold is one problem, not many. Removing or disabling an alert ends its
+ones, ten minutes for the sockets), so a value hovering at the threshold is one problem, not many. Removing or disabling an alert ends its
 problems. Alerts go to everyone with the **Manage Alerts** permission.
 
 An alert that cannot be evaluated, or that holds for more than 100 keys at once, raises a `problem-rule`
@@ -113,9 +117,20 @@ Debug events waiting for the garbage collector grow by half in a week (it is off
 {"name": "gc-behind", "metric": "gc.pending", "key": "events/source=debug", "growth": {"percent": 50, "days": 7}}
 ```
 
+HTTP connections to one server pass 2,000:
+
+```json
+{"name": "http-flood", "metric": "server.http_connections", "key": "*", "above": 2000}
+```
+
 ## From the API
 
 `grok.dapi.admin.getGrowthMetrics({area, days})` returns the same numbers as the Metrics tab: one row per key
 with its value now, its change over 1, 7 and 30 days, its daily trend, what the garbage collector did to it, and
 the metric alerts that cover it. It needs **View Telemetry**; the ids of the alerts' problems also need **Manage
 Alerts**.
+
+`GET /api/admin/health` lists, after the health checks, the record `sockets` of the server that answered: its
+description reads like `412 open: 37 HTTP connections, 24 to the database; at most 1048576 open files`.
+`GET /api/admin/metrics` has the same numbers under `process`: `openSockets`, `httpConnections`, `dbConnections`
+and `openFilesLimit`. Both read them from `/proc`, so a server not on Linux has none.
