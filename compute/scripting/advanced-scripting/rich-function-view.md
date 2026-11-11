@@ -634,6 +634,30 @@ top panel. Both open the same dialog, where you can change the name of each run 
 comparisons are open, the dialog also lets you pick one or start a new [run comparison](../../run-comparison.md).
 The dialog warns about outdated outputs of the current state. Saving the state later gives it its final name.
 
+### Export runs
+
+To export the runs of a space at once, open the space in the **Runs** panel and click **Export**. In
+**My runs**, **Export** takes your runs listed there. The dialog lists each model that has runs to export,
+with the number of runs and the export to use: the first one in the model's export menu, or another one you
+pick.
+
+* **Include subspaces**, on by default, adds the runs of every subspace below the space, each run once.
+  **My runs** has no subspaces, so the dialog doesn't show it.
+* When a search or filter is on, only the runs it shows are exported, and the dialog says so.
+* **Export** is unavailable when there are no runs to export, and at the **Spaces** level.
+* Runs of a model with no exports are left out.
+* Runs that aren't completed are greyed out and left out: their outputs are outdated, or a workflow step
+  hasn't run, so their export menu offers nothing. In the **Runs** panel and the **Save run** dialog they
+  have a <i class="fal fa-hourglass-half"></i> mark. A workflow run saved before this mark existed is checked
+  when it's exported, and skipped with a warning if it isn't completed.
+
+**Browse Runs** in the **Model Hub** has **Export** too, for the runs of every model.
+
+Each run is exported as its export menu does when the run is open. The files go into one zip file named after
+the space and the date, with a folder for each subspace. Files with the same name in a folder get a number.
+Runs are exported one at a time. **Cancel** stops the export without saving the zip. Runs that couldn't be
+exported are listed in the dialog, and the zip has the rest.
+
 ## Model parameters optimization
 
 With **RichFunctionView** you can use the powerful built-in optimization functions.

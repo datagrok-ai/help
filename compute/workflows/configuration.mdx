@@ -539,6 +539,8 @@ A custom export function receives two arguments
 
 It returns the exported file as `DG.FileInfo`, and Compute downloads it. An export that makes
 several files zips them into one, for example with the `Zippable` that `reportStateExcel` returns.
+The run browser's **Export** also runs it on saved runs, without an open view, to put the file
+into its zip.
 
 Export utils contain 6 methods that could reuse standard existing
 export logic:

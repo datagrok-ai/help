@@ -99,7 +99,7 @@ outputs in another app or to check a workflow in a test. It takes the same
 arguments as `startWorkflow`:
 
 ```typescript
-import {runWorkflow, saveWorkflowRun} from '@datagrok-libraries/compute-api';
+import {loadWorkflowRun, runWorkflow, saveWorkflowRun} from '@datagrok-libraries/compute-api';
 
 const result = await runWorkflow('SomePackage:SomeWorkflow', '1.0', {
   id: 'some_workflow',
@@ -128,8 +128,7 @@ The result holds:
   steps below it.
 
 ```typescript
-const steps = 'steps' in result.state ? result.state.steps : [result.state];
-const load = steps.find((step) => step.id === 'load');
+const load = result.state.steps.find((step) => step.id === 'load');
 const table = load?.initialValues.table;
 ```
 
@@ -150,8 +149,17 @@ editor. A step that failed is saved as not run, without its error.
 const run = await saveWorkflowRun('SomePackage:SomeWorkflow', '1.0', result.state, {title: 'Batch 7'});
 ```
 
-Packages that don't use `compute-api` can call the `Compute2:RunWorkflow` and
-`Compute2:SaveWorkflowRun` functions with the same parameters.
+`loadWorkflowRun` loads a saved run by its id and returns its `state` and
+`summary`, as `runWorkflow` does. The run is loaded as the editor opens it, with
+the workflow version it was saved with, and no step runs.
+
+```typescript
+const {state} = await loadWorkflowRun(run.id);
+```
+
+Packages that don't use `compute-api` can call the `Compute2:RunWorkflow`,
+`Compute2:SaveWorkflowRun` and `Compute2:LoadWorkflowRun` functions with the
+same parameters.
 
 :::note
 
