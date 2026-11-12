@@ -54,7 +54,7 @@ take. The defaults:
 
 | Problem (`kind:key`) | Opens | Ends | Who acts |
 |---|---|---|---|
-| Service down (`health:<check>@<server>`) | 2 failed health checks in a row on that server | 3 passing checks in a row | platform |
+| Service down (`health:<check>@<server>`) | 2 failed [health checks](../../develop/server-management.md#server-health) in a row on that server, for example `health:NPM@<server>` when an npm package registry does not answer | 3 passing checks in a row | platform |
 | Error incident (`error-incident:<signature>`) | one error signature hits 3 users or 20 occurrences in 15 minutes, or occurs in 4 hours of the last day however rarely; critical at 10 times the users or occurrences | 60 minutes without it | platform |
 | User error (`user-error:<signature>`) | one error the caller made (answered 4xx) occurs in 12 hours of the last day, or for 10 users | 6 hours without it | platform |
 | Slow requests (`degraded:latency`), failing requests (`degraded:errors`, critical) | at least 20 requests in 5 minutes with p95 of 10 s or more, or 25% of them failing | 15 clean checks in a row, one a minute | platform |
