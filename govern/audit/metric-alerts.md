@@ -137,7 +137,8 @@ when you ask for them:
   `httpConnections`, `dbConnections` and `openFilesLimit`, and `isolates`: for each, the HTTP connections it
   accepted (`httpActive`, `httpIdle`) and its database pool connections (`dbInUse`, `dbAvailable`, `dbWaiting`).
   Each isolate also counts the requests it served in the last 5 minutes and the last hour (`requests5m`,
-  `requests60m`) and those in flight (`requestsInFlight`); the instance sums its isolates.
+  `requests60m`) and those in flight (`requestsInFlight`), and the most its pools may open (`dbMax`); the instance
+  sums its isolates (`dbPoolConnections`, `dbInUse`, `dbWaiting`, `dbMax`).
 * `GET /api/admin/metrics` has them under `instances`, and their sum under `process`, with `usedPct`, the busiest
   instance's share of its open files limit.
 * `GET /api/admin/health?instances=true` (**View Telemetry**) describes them all in the record `sockets`, such as
@@ -146,6 +147,24 @@ when you ask for them:
 
 The overview shows them in **Instances and isolates**: a row per instance, with its isolates a click away, and a
 bar for each one's share of the requests of the last hour, so an instance or isolate that takes most of the load
-stands out. **Observability** > **Metrics** > **Servers**, the overview's **HTTP connections** and **Open sockets**,
-and the panel's **Table** open them as a table, a row per instance and per isolate. The sockets are read from `/proc`, so a server not on Linux
+stands out. **Observability** > **Metrics** > **Servers** opens them as a table, a row per instance and per isolate.
+
+## Instances and isolates
+
+**Browse** > **Platform** > **Observability** > **Instances** shows a card for each server instance, with a row for
+each of its isolates. Each measure is a bar against its limit, green while far from it, orange close to it, red at
+it:
+
+* **Requests**: served in the last hour and the last 5 minutes, and in flight; the bar is the share of all.
+* **HTTP**: connections open now, and for an isolate, active and idle.
+* **DB pools**: connections in use (dark) and open (light), of the most the pools may open (`dbMax`). Orange at
+  80% in use, red when a request waits for a connection. The **Platform database** tile compares every connection
+  to the database with its `max_connections`, and shows when the pools together may open more than that.
+* **Sockets**: open sockets, with a mark at the threshold of each enabled `server.sockets` alert, such as
+  `socket-growth` and `too-many-sockets`; red at 80% of the open files limit.
+
+The alerts that hold for an instance show on its card; a click opens one in the context panel. **All**,
+**Requests**, **HTTP**, **Database** and **Sockets** pick what the cards show and sort them by it. The overview's
+**DB connections**, **HTTP connections** and **Open sockets** open this page with that measure picked, and its
+**Instances and isolates** opens it with **Details**. The sockets are read from `/proc`, so a server not on Linux
 has none.
