@@ -447,7 +447,7 @@ Yes. Use [Forms](../../visualize/viewers/forms.md) viewer.
 
 Datagrok supports several [color coding modes](../../visualize/viewers/grid#color-code-columns) applied at the column level, with colors automatically synchronized across viewers:
 * **Linear**: Maps numeric values to a color gradient. You can configure the color palette, min/max values, below/above min colors, and invert the scheme. Absolute Linear mode allows assigning exact colors to specific numeric values.
-* **Conditional**: Applies colors based on value ranges or rules. You can configure the rules dictionary (ranges or comparison operators) and choose whether to apply colors to text or background.
+* **Conditional**: Applies colors based on value ranges or rules. You can configure the rules dictionary (ranges or comparison operators) and choose whether to apply colors to text or background. Ranges include both ends, and the first matching rule wins, so a boundary value such as 40 in `20 - 40` / `40 - 60` gets the lower bin's color (see [conditional color coding](../../visualize/viewers/grid#conditional-color-coding)).
 * **Categorical**: Assigns colors to categorical values (strings, booleans). You can configure the category-to-color map, fallback color, and select the color scheme via UI or API.
 * **Linked**: Applies color coding based on values from another column, regardless of the data type of the target column. This allows visually correlating columns by reusing the color scheme of a reference column. By default, the first column is used as the reference; you can assign a different linked column in the color-coding settings.
 
