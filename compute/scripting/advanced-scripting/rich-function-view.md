@@ -555,8 +555,12 @@ The export function receives the following arguments:
 * `metaState`: the step's meta values by output, for the hook, available only if run inside a [workflow](../../workflows/workflows.mdx).
 
 Declare these as `//input:` parameters of the export function. The current call must be
-typed `funccall`. The function returns the exported file, and Compute downloads it. An export
-that makes several files zips them into one.
+typed `funccall`. The function returns the exported file as `DG.FileInfo`, and Compute downloads it.
+An export that makes several files zips them into one.
+
+Legacy export functions still work: they receive `startDownload`, always false, and the `Blob` they
+return is downloaded named after the run, its date or Not completed, with `.xlsx` when the Blob is
+Excel. Don't use either in a new export.
 
 ```javascript
 //name: MyPDFExport
@@ -570,13 +574,14 @@ export async function myPDFExport(funcCall) {
 
 To start from the default Excel report, call `reportFuncCallExcel` from
 `@datagrok-libraries/compute-api`, or the `Compute2:ReportFuncCallExcel` function. It returns the file and
-its ExcelJS workbook, built as the export menu builds them, so you can add sheets and save the workbook.
-Pass on `viewersHook` and `metaState`, so that a workflow step's report uses the step's hook:
+its ExcelJS workbook, built and named as the export menu builds them, so you can return the file as is, or add
+sheets and save the workbook. Pass on `viewersHook` and `metaState`, so that a workflow step's report uses the
+step's hook, and `isOutputOutdated`, so that the file is named **Not completed** for a run that isn't:
 
 ```javascript
-const [, wb] = await reportFuncCallExcel(funcCall, {viewersHook, metaState});
+const [file, wb] = await reportFuncCallExcel(funcCall, {viewersHook, metaState, isOutputOutdated});
 wb.addWorksheet('Notes').addRow(['Reviewed']);
-return DG.FileInfo.fromBytes('report.xlsx', new Uint8Array(await wb.xlsx.writeBuffer()));
+return DG.FileInfo.fromBytes(file.fileName, new Uint8Array(await wb.xlsx.writeBuffer()));
 ```
 
 Workflows also support a workflow-level `customExports` option with a different handler

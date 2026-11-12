@@ -552,11 +552,15 @@ several files zips them into one, for example with the `Zippable` that `reportSt
 The run browser's **Export** also runs it on saved runs, without an open view, to put the file
 into its zip.
 
-Export utils contain 6 methods that could reuse standard existing
-export logic:
+A third argument, `startDownload`, is always false. It is kept to match RFV export functions; don't use it.
 
-* `reportFuncCallExcel` - creates a standard xlsx blob and exceljs
-  workbook for function call, returns [Blob, ExcelJS.Workbook]. It is
+Export utils contain 6 methods that could reuse standard existing
+export logic. The files they return are named as the export menu names
+them: after the run and its date, **Not completed** for a run that isn't,
+or **edited** for a workflow with unsaved changes.
+
+* `reportFuncCallExcel` - creates a standard xlsx file and exceljs
+  workbook for function call, returns [DG.FileInfo, ExcelJS.Workbook]. It is
   the step's file of the tree export: the step's viewers hook and meta
   apply to its viewers.
 * `getFuncCallCustomExports` - returns a list of custom exports
@@ -565,12 +569,12 @@ export logic:
   based on export name. Returns the file the export made, `DG.FileInfo`.
 * `reportStateExcel` - creates a standard xlsx tree export, however
   for each call an optional callback will be called (if
-  provided). Returns [Blob, Zippable, string, ExportSummaryItem[]],
-  where 3rd is the name of a file and 4th is the summary below.
+  provided). Returns [DG.FileInfo, Zippable, ExportSummaryItem[]],
+  the zip file, its contents and the summary below.
 * `getExportSummary` - returns the summary of a workflow as
   `ExportSummaryItem[]`, see below.
 * `reportSummaryExcel` - creates the summary workbook alone, returns
-  [Blob, ExcelJS.Workbook].
+  [DG.FileInfo, ExcelJS.Workbook].
 
 The tree export also writes `000_summary.xlsx` at the root of the zip:
 one row per workflow and step, in tree order. An `ExportSummaryItem` has
