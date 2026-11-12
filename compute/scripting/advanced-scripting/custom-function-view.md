@@ -17,8 +17,8 @@ results the way you build them. The whole view is yours. Compute2 adds **Save** 
 ## Creating a view
 
 Extend `CustomFunctionView` from `@datagrok-libraries/compute-api` and pass the qualified name of the
-model function to the constructor. The view prepares a call of that function, available as `funcCall`.
-Implement two methods:
+model function to the constructor. The view prepares a call of that function with its default input
+values, available as `funcCall`. Implement two methods:
 
 * `buildIO()` returns the view content. It's called when the view opens, with `funcCall` ready.
 * `onAfterLoadRun(run)` shows a run that was opened. `funcCall` is already the opened run.
@@ -81,6 +81,25 @@ saved, and `onAfterSaveRun(run)` gets the saved run.
 To save or open from your own controls, call `saveRunWithDialog(this.funcCall!)` or
 `openRunWithDialog()`. To save without the dialog, call `saveRun(call)`, and to open a run by its id,
 `loadRun(id)`. Both run the same hooks.
+
+## Adding ribbon items
+
+The view builds its ribbon after `buildIO()` and rebuilds the panels when Compute2 adds **Save** and
+**Open a saved run**, so items added in `buildIO()` are lost. Override `buildRibbonPanels()` and
+`buildRibbonMenu()` instead, and call `super` first:
+
+```typescript
+buildRibbonPanels() {
+  const panels = [...super.buildRibbonPanels(), [ui.iconFA('eraser', () => this.result.textContent = '')]];
+  this.setRibbonPanels(panels);
+  return panels;
+}
+
+buildRibbonMenu() {
+  super.buildRibbonMenu();
+  this.ribbonMenu.group('Day').item('Clear result', () => this.result.textContent = '');
+}
+```
 
 ## Without Compute2's editor
 
