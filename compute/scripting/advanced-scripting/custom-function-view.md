@@ -82,31 +82,8 @@ To save or open from your own controls, call `saveRunWithDialog(this.funcCall!)`
 `openRunWithDialog()`. To save without the dialog, call `saveRun(call)`, and to open a run by its id,
 `loadRun(id)`. Both run the same hooks.
 
-## Exporting runs
-
-Declare exports on the view's function with `meta.customExports`, as for the
-[Rich Function View](rich-function-view.md#customize-export). The export function gets the call of the
-model function and returns the file:
-
-```typescript
-//name: Day view
-//editor: Compute2:CustomFunctionViewEditor
-//meta.customExports: [{"name": "Day report", "function": "MyPackage:DayReport"}]
-//output: object view
-export function dayView() {
-  return new DayView();
-}
-```
-
-The view's **Export** menu lists the default Excel report and these exports after the formats of
-`exportConfig`, and they run on the current call. To hide the default Excel report, for example when
-`exportConfig` has an Excel format of its own, add `//meta.features: {"export": false}` to the view's
-function. [Export runs](rich-function-view.md#export-runs) in the run browser uses the same exports for the
-runs saved from the view. The report and the export functions take the `viewersHook` of the model function,
-not of the view's function.
-
 ## Without Compute2's editor
 
-The **Save** and **Open a saved run** buttons and the `meta.customExports` exports come from Compute2's
-editor. A view opened another way has none of them, and `saveRunWithDialog` and `openRunWithDialog` do nothing. To give such a view your own
+The **Save** and **Open a saved run** buttons come from Compute2's editor. A view opened another way
+has neither, and `saveRunWithDialog` and `openRunWithDialog` do nothing. To give such a view your own
 dialogs, set its `runStorage` to an object with `saveDialog(call)` and `openDialog(func)` functions.

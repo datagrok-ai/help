@@ -580,11 +580,12 @@ export async function myPDFExport(funcCall) {
 To start from the default Excel report, call `reportFuncCallExcel` from
 `@datagrok-libraries/compute-api`, or the `Compute2:ReportFuncCallExcel` function. It returns the file and
 its ExcelJS workbook, built and named as the export menu builds them, so you can return the file as is, or add
-sheets and save the workbook. Pass on `viewersHook` and `metaState`, so that a workflow step's report uses the
-step's hook, and `isOutputOutdated`, so that the file is named **Not completed** for a run that isn't:
+sheets and save the workbook. Pass on the arguments the export gets (`CustomExportArgs`), so that a workflow
+step's report uses the step's hook and meta, and the file is named **Not completed** for a run that isn't:
 
 ```javascript
-const [file, wb] = await reportFuncCallExcel(funcCall, {viewersHook, metaState, isOutputOutdated});
+const [file, wb] = await reportFuncCallExcel(funcCall,
+  {validationState, consistencyState, isOutputOutdated, viewersHook, metaState});
 wb.addWorksheet('Notes').addRow(['Reviewed']);
 return DG.FileInfo.fromBytes(file.fileName, new Uint8Array(await wb.xlsx.writeBuffer()));
 ```
@@ -680,7 +681,7 @@ pick.
   **My runs** has no subspaces, so the dialog doesn't show it.
 * When a search or filter is on, only the runs it shows are exported, and the dialog says so.
 * **Export** is unavailable when there are no runs to export, and at the **Spaces** level.
-* Runs of a model with no exports are left out.
+* Runs of a model with no exports, such as a custom function view, are left out.
 * Runs that aren't completed are greyed out and left out: their outputs are outdated, or a workflow step
   hasn't run, so their export menu offers nothing. In the **Runs** panel and the **Save run** dialog they
   have a <i class="fal fa-hourglass-half"></i> mark. A workflow run saved before this mark existed is checked

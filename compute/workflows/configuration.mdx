@@ -560,7 +560,7 @@ them: a step's file after its function and the run date, a workflow's
 after the workflow, its title and the run date; **Not completed** for a
 run that isn't, or **edited** for a workflow with unsaved changes.
 
-* `reportFuncCallExcel(fc, uuid)` - creates a standard xlsx file and exceljs
+* `reportStepExcel(fc, uuid)` - creates a standard xlsx file and exceljs
   workbook for function call, returns [DG.FileInfo, ExcelJS.Workbook]. It is
   the step's file of the tree export: `uuid`, the step's, picks the viewers
   hook and meta that apply to its viewers, and whether it is completed.
