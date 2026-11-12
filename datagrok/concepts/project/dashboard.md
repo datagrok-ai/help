@@ -128,10 +128,11 @@ application at the place it showed when you saved. Applications that support
 it also restore their own settings. For example, Usage Analysis reopens on the
 same tab and chart with the same filters.
 
-Views that can reopen are saved by default. To keep a view out of the
-dashboard, right-click its tab and clear **Save with project**. A view
-that can't reopen from a saved state doesn't offer the option and isn't
-saved.
+When you save a new dashboard, the **Save project** dialog lists the open views
+that can reopen. Tables are included; other views are left out until you click
+**+** next to them. To include a view ahead of time, right-click its tab and
+select **Save with project**. A view that can't reopen from a saved state
+doesn't offer the option and isn't saved.
 
 A view you open while a dashboard is open doesn't join that dashboard on its
 own. To add it, drag it in the **Dashboards** panel onto the dashboard, the
