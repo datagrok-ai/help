@@ -59,12 +59,14 @@ alert is cleared and resolved.
 **Browse** > **Platform** > **Health** shows the state of the instance on one page:
 
 * **Status**: "All clear", or how many problems need attention, by severity. A problem needs attention
-  while its condition holds and nobody muted or dismissed it.
+  while its condition holds and nobody muted it, marked it fixed or not a problem, or resolved its alert. A resolved
+  alert's problem needs attention again when its condition raises a new alert.
 * **Vitals** of the last 24 hours against the day before: requests and the share answered with an error status
   (400 or above), p95 latency, errors and the users who met them, the function queue, the database size and cache
   hit rate, and blocked database connections; and the HTTP connections and open sockets of all server instances,
   with the busiest one's share of its open files limit. A tile opens **Metrics**; **Errors** opens the error events
-  in **Logs**; **HTTP connections** and **Open sockets** open a table of each instance and isolate. Growing sockets
+  in **Logs**; **Requests**, **DB connections**, **HTTP connections** and **Open sockets** open each instance and
+  isolate in **Metrics**. Growing sockets
   raise the [metric alerts](metric-alerts.md) `socket-growth` and `too-many-sockets`.
 * **Needs attention**: the most severe and latest problems. Click one to see it in the context panel; hover
   it to acknowledge or resolve its alert, mute it, or open its evidence.
