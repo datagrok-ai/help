@@ -30,7 +30,7 @@ panel, with each value's change over 1, 7 and 30 days and its daily trend. Seein
 | `db.rows` | a table | hourly, an estimate |
 | `db.count` | a category of a table: `events/source=usage`, `entities/type=Project`, `func_calls/status=Failed`, … | daily; estimated on tables over 5 million rows |
 | `storage.bytes`, `storage.objects` | `shared`, `shared/<kind>` (`packages`, `app-data`, `tables`, `user-files`, …), `shared/packages/<package>`; `local@<server>` for a server's own disk | every 6 hours |
-| `disk.used_bytes`, `disk.free_bytes`, `disk.used_pct` | `local@<server>` | hourly |
+| `disk.used_bytes`, `disk.free_bytes`, `disk.used_pct` | `disk@<device>:<size>G`, such as `disk@/dev/sda1:484G`: the disk of the servers' data folder. The pods of a node share its disk, so it is sampled once, by the first server to see it due | hourly |
 | `gc.deleted` | what the garbage collector shrank: `events/source=debug`, `test_runs`, `shared/packages`, … | after each collection |
 | `gc.pending` | the same keys, for the steps that can be counted | daily, and after each collection |
 | `server.sockets`, `server.http_connections`, `server.db_connections` | `local@<server>`: the sockets the server process holds, the HTTP connections it accepted, its connections to the platform database | every 5 minutes |
@@ -53,7 +53,8 @@ Out of the box it holds:
 | `database-growth` | `db.bytes`, `(total)` | the database grew 25% in 7 days | warning |
 | `table-growth` | `db.bytes`, any table | a table is over 1 GiB **and** doubled in a day | warning |
 | `storage-growth` | `storage.bytes`, `shared` | the storage grew 25% in 7 days | warning |
-| `disk-full` | `disk.used_pct`, any server | a disk is over 90% full | critical |
+| `disk-low` | `disk.free_bytes`, any disk | a disk has under 20 GB free | warning |
+| `disk-full` | `disk.free_bytes`, any disk | a disk has under 5 GB free | critical |
 | `gc-backlog` | `gc.pending`, any key | the garbage collector has over 10 million rows to delete | warning |
 | `socket-growth` | `server.sockets`, any server | a server holds over 1,000 sockets **and** twice as many as a day before: a leak | warning |
 | `too-many-sockets` | `server.sockets`, any server | a server holds over 10,000 sockets | critical |
@@ -83,11 +84,12 @@ want in the array.
 | `metric` | required | one of the metrics above |
 | `key` | required | a key, or a pattern: `*` stands for any characters, `?` for one (`events/source=*`, `local@*`) |
 | `above` | none | holds when the latest value is greater |
+| `below` | none | holds when the latest value is smaller, such as free space under a limit |
 | `growth` | none | `{"percent": 25, "days": 7}` or `{"by": 1000000, "days": 1}`: holds when the latest value grew by that much since the sample `days` (1–90) earlier |
 | `severity` | `warning` | `info` records the problem and never alerts; `warning`; `critical` |
-| `summary` | generated | the alert text, with placeholders `{alert}`, `{metric}`, `{key}`, `{value}`, `{previous}`, `{growth}`, `{percent}`, `{days}`, `{above}`. Sizes read like `12.3 GB` |
+| `summary` | generated | the alert text, with placeholders `{alert}`, `{metric}`, `{key}`, `{value}`, `{previous}`, `{growth}`, `{percent}`, `{days}`, `{above}`, `{below}`. Sizes read like `12.3 GB` |
 
-Give `above`, `growth` or both; with both, both must hold, so a size floor keeps small tables from alerting on
+Give `above`, `below`, `growth` or several; all that are given must hold, so a size floor keeps small tables from alerting on
 a doubling.
 
 A problem ends when its alert no longer holds for two collections of its metric (two hours for the hourly
