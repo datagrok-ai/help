@@ -130,7 +130,18 @@ with its value now, its change over 1, 7 and 30 days, its daily trend, what the 
 the metric alerts that cover it. It needs **View Telemetry**; the ids of the alerts' problems also need **Manage
 Alerts**.
 
-`GET /api/admin/health` lists, after the health checks, the record `sockets` of the server that answered: its
-description reads like `412 open: 37 HTTP connections, 24 to the database; at most 1048576 open files`.
-`GET /api/admin/metrics` has the same numbers under `process`: `openSockets`, `httpConnections`, `dbConnections`
-and `openFilesLimit`. Both read them from `/proc`, so a server not on Linux has none.
+The sockets of every server instance and of each of its isolates, the threads that serve requests, are gathered
+when you ask for them:
+
+* `GET /api/admin/connections` (**View Telemetry**): one entry per instance with its process's `openSockets`,
+  `httpConnections`, `dbConnections` and `openFilesLimit`, and `isolates`: for each, the HTTP connections it
+  accepted (`httpActive`, `httpIdle`) and its database pool connections (`dbInUse`, `dbAvailable`, `dbWaiting`).
+* `GET /api/admin/metrics` has them under `instances`, and their sum under `process`, with `usedPct`, the busiest
+  instance's share of its open files limit.
+* `GET /api/admin/health?instances=true` (**View Telemetry**) describes them all in the record `sockets`, such as
+  `3 instances, 9 isolates: 210 open sockets, 7 HTTP connections, 165 to the database; ...`, then each instance.
+  Without `instances`, as the Kubernetes probes call it, the record covers only the server that answered.
+
+**Observability** > **Metrics** > **Servers**, and the overview's **HTTP connections** and **Open sockets**, open
+them as a table, a row per instance and per isolate. The sockets are read from `/proc`, so a server not on Linux
+has none.
