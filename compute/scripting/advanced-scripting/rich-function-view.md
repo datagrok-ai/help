@@ -590,6 +590,19 @@ wb.addWorksheet('Notes').addRow(['Reviewed']);
 return DG.FileInfo.fromBytes(file.fileName, new Uint8Array(await wb.xlsx.writeBuffer()));
 ```
 
+To export a run from your own code, for example from a custom view's button, list the exports with
+`getCallExports(func)` and run one with `exportCall(funcCall, exportId, args)`, both from
+`@datagrok-libraries/compute-api` (or the `Compute2:CallExports` and `Compute2:ExportCall` functions). The list
+is the run's **Export** menu, preferred exports and the default Excel report included, and the first one is the
+default. `exportCall` runs an export as the menu does and returns its file; `args` are the arguments an export
+function gets (`CustomExportArgs`). A saved run exports the same way once it is loaded with its outputs:
+
+```javascript
+const [first] = await getCallExports(funcCall.func);
+const file = await exportCall(funcCall, first.id, {isOutputOutdated: false});
+DG.Utils.download(file.fileName, new Blob([file.data]));
+```
+
 Workflows also support a workflow-level `customExports` option with a different handler
 signature (it receives the whole pipeline state, not a single call). See the workflow
 [Custom exports reference](../../workflows/configuration.mdx) for details.
