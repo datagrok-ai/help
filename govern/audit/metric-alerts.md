@@ -136,12 +136,16 @@ when you ask for them:
 * `GET /api/admin/connections` (**View Telemetry**): one entry per instance with its process's `openSockets`,
   `httpConnections`, `dbConnections` and `openFilesLimit`, and `isolates`: for each, the HTTP connections it
   accepted (`httpActive`, `httpIdle`) and its database pool connections (`dbInUse`, `dbAvailable`, `dbWaiting`).
+  Each isolate also counts the requests it served in the last 5 minutes and the last hour (`requests5m`,
+  `requests60m`) and those in flight (`requestsInFlight`); the instance sums its isolates.
 * `GET /api/admin/metrics` has them under `instances`, and their sum under `process`, with `usedPct`, the busiest
   instance's share of its open files limit.
 * `GET /api/admin/health?instances=true` (**View Telemetry**) describes them all in the record `sockets`, such as
   `3 instances, 9 isolates: 210 open sockets, 7 HTTP connections, 165 to the database; ...`, then each instance.
   Without `instances`, as the Kubernetes probes call it, the record covers only the server that answered.
 
-**Observability** > **Metrics** > **Servers**, and the overview's **HTTP connections** and **Open sockets**, open
-them as a table, a row per instance and per isolate. The sockets are read from `/proc`, so a server not on Linux
+The overview shows them in **Instances and isolates**: a row per instance, with its isolates a click away, and a
+bar for each one's share of the requests of the last hour, so an instance or isolate that takes most of the load
+stands out. **Observability** > **Metrics** > **Servers**, the overview's **HTTP connections** and **Open sockets**,
+and the panel's **Table** open them as a table, a row per instance and per isolate. The sockets are read from `/proc`, so a server not on Linux
 has none.
