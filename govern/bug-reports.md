@@ -63,7 +63,7 @@ Some content—such as screenshots or table data—may contain sensitive informa
 4. Press **Submit** to send the report.  
 
 :::note Note
-If the **Email** checkbox is not selected, the report is stored internally and can be viewed in the **Reports** application (**Browse** > **Platform** > **Observability** > **Reports**) on your instance.
+If the **Email** checkbox is not selected, the report is stored internally and can be viewed in the **Reports** application (**Browse** > **Platform** > **Health** > **Reports**) on your instance.
 :::
 
 :::note Note
@@ -95,7 +95,7 @@ request new features, or report an issue through **Feedback**:
 You can enable the auto-reporting system to log internal errors automatically (see [Configuring error reporting system](#configuring-error-reporting-system)).  
 This helps track recurring issues, monitor system stability, and analyze errors locally within your instance.  
 
-Reports are **never sent externally** and can be viewed in the **Reports** application (**Browse** > **Platform** > **Observability** > **Reports**) on your instance.
+Reports are **never sent externally** and can be viewed in the **Reports** application (**Browse** > **Platform** > **Health** > **Reports**) on your instance.
 
 ## Configuring error reporting system
 

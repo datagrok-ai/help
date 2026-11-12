@@ -18,7 +18,7 @@ location, each server's disk and open sockets, and what the garbage collector de
 watches these numbers and raises a [problem](problems-and-alerts.md) when one is too high or grows too fast,
 with the same statuses, alerts and notifications as every other problem.
 
-You can see the numbers in **Browse** > **Platform** > **Observability** > **Metrics**: the data growth cards and the **Data growth**
+You can see the numbers in **Browse** > **Platform** > **Health** > **Metrics**: the data growth cards and the **Data growth**
 panel, with each value's change over 1, 7 and 30 days and its daily trend. Seeing them needs the
 **View Telemetry** [global permission](../access-control/access-control.md#global-permissions).
 
@@ -138,7 +138,8 @@ when you ask for them:
   accepted (`httpActive`, `httpIdle`) and its database pool connections (`dbInUse`, `dbAvailable`, `dbWaiting`).
   Each isolate also counts the requests it served in the last 5 minutes and the last hour (`requests5m`,
   `requests60m`) and those in flight (`requestsInFlight`), and the most its pools may open (`dbMax`); the instance
-  sums its isolates (`dbPoolConnections`, `dbInUse`, `dbWaiting`, `dbMax`).
+  sums its isolates (`dbPoolConnections`, `dbInUse`, `dbWaiting`, `dbMax`) and has the `df` of its data folder
+  (`disk`).
 * `GET /api/admin/metrics` has them under `instances`, and their sum under `process`, with `usedPct`, the busiest
   instance's share of its open files limit.
 * `GET /api/admin/health?instances=true` (**View Telemetry**) describes them all in the record `sockets`, such as
@@ -147,24 +148,27 @@ when you ask for them:
 
 The overview shows them in **Instances and isolates**: a row per instance, with its isolates a click away, and a
 bar for each one's share of the requests of the last hour, so an instance or isolate that takes most of the load
-stands out. **Observability** > **Metrics** > **Servers** opens them as a table, a row per instance and per isolate.
+stands out.
 
 ## Instances and isolates
 
-**Browse** > **Platform** > **Observability** > **Instances** shows a card for each server instance, with a row for
-each of its isolates. Each measure is a bar against its limit, green while far from it, orange close to it, red at
-it:
+**Browse** > **Platform** > **Health** > **Metrics** shows each server instance in **Instances and isolates**: a card
+an instance, with a row for each of its isolates. Each measure is a bar against its limit, green while far from
+it, orange close to it, red at it:
 
 * **Requests**: served in the last hour and the last 5 minutes, and in flight; the bar is the share of all.
 * **HTTP**: connections open now, and for an isolate, active and idle.
 * **DB pools**: connections in use (dark) and open (light), of the most the pools may open (`dbMax`). Orange at
-  80% in use, red when a request waits for a connection. The **Platform database** tile compares every connection
-  to the database with its `max_connections`, and shows when the pools together may open more than that.
+  80% in use, red when a request waits for a connection. The **Database** line compares every connection to the
+  database with its `max_connections`, and shows when the pools together may open more than that.
 * **Sockets**: open sockets, with a mark at the threshold of each enabled `server.sockets` alert, such as
   `socket-growth` and `too-many-sockets`; red at 80% of the open files limit.
+* **Disk**: the disk of the data folder of the instance; orange at 75% used or under 5 GB free, red at 90% or under
+  2 GB.
 
 The alerts that hold for an instance show on its card; a click opens one in the context panel. **All**,
-**Requests**, **HTTP**, **Database** and **Sockets** pick what the cards show and sort them by it. The overview's
-**DB connections**, **HTTP connections** and **Open sockets** open this page with that measure picked, and its
-**Instances and isolates** opens it with **Details**. The sockets are read from `/proc`, so a server not on Linux
-has none.
+**Requests**, **HTTP**, **Database**, **Sockets** and **Disk** pick what the cards show and sort them by it.
+**Instances and isolates, table** holds the same numbers, a row per instance and per isolate, each value colored
+good or bad, and the worst of the row in **state**. The overview's **Requests**, **DB connections**, **HTTP
+connections** and **Open sockets**, and the Metrics **Servers** and **Disk free** cards, open them with that measure
+picked (`/health/metrics?focus=db`).

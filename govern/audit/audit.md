@@ -192,7 +192,7 @@ You can access audit logs in a number of ways:
 ### Export logs
 
 Log events are sent to external destinations as they are posted, without waiting for them to be saved to the
-database. Destinations are set up in **Browse** > **Platform** > **Observability** > **Log settings**:
+database. Destinations are set up in **Browse** > **Platform** > **Health** > **Log settings**:
 
 1. Under **Endpoints**, click **+** and fill in where to send (see the table below). An endpoint only describes a
    destination; nothing is sent to it yet.
@@ -303,7 +303,7 @@ To customize which events are logged and how they are handled, you have these op
 
 ### Changing settings for default logs
 
-What is logged is set in **Browse** > **Platform** > **Observability** > **Log settings**
+What is logged is set in **Browse** > **Platform** > **Health** > **Log settings**
 (**Settings** > **Logger** opens the same page). It has three parts:
 
 * **Log groups**, read top to bottom. Each group picks records and sends them to its destinations (the Datagrok

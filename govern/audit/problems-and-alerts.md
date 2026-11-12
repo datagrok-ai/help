@@ -27,9 +27,10 @@ monitoring system as a log record, once, and stays open until the problem ends o
 Services that fail their health checks, errors that hit many users or keep recurring, errors users keep making,
 slow or failing requests, data connections and scheduled jobs that fail, containers that don't start, storage,
 identity providers and Log sync destinations that keep failing, problem reports, the database, storage or disks
-growing too much ([metric alerts](metric-alerts.md)), and the conditions of your own
+growing too much ([metric alerts](metric-alerts.md)), tables that no vacuum reached for long (`vacuum`: 10K rows or
+more, 20% of them dead, not vacuumed for 7 days), and the conditions of your own
 [problem rules](problem-rules.md), such as the default `login-failures`. When each one opens and ends, who acts
-on it, and which thresholds an administrator can change in **Observability** > **Alerts** > **Rules**:
+on it, and which thresholds an administrator can change in **Health** > **Alerts** > **Rules**:
 [What Datagrok detects](operator-guide.md#what-datagrok-detects) in the operator guide.
 
 ## Statuses
@@ -53,9 +54,9 @@ What to do with an alert:
 An alert that is open does not page again while its condition persists. When the condition ends, the
 alert is cleared and resolved.
 
-## The Observability overview
+## The Health overview
 
-**Browse** > **Platform** > **Observability** shows the state of the instance on one page:
+**Browse** > **Platform** > **Health** shows the state of the instance on one page:
 
 * **Status**: "All clear", or how many problems need attention, by severity. A problem needs attention
   while its condition holds and nobody muted or dismissed it.
@@ -73,7 +74,7 @@ alert is cleared and resolved.
 
 The page refreshes every minute.
 
-Every Observability page works the same way:
+Every Health page works the same way:
 
 * It appears at once as a skeleton; each card and block then loads on its own and refreshes in place.
 * The ribbon shows when the page was last updated; the refresh icon spins while it loads.
@@ -84,7 +85,7 @@ Every Observability page works the same way:
 
 ## Alert rules
 
-**Observability** > **Alerts** > **Rules** holds everything that raises a problem:
+**Health** > **Alerts** > **Rules** holds everything that raises a problem:
 
 * **Built-in detectors**: error incidents, user errors, degraded requests, connections, service health,
   scheduled jobs, dashboards and data growth. Each card has the detector's thresholds and says how many of its
@@ -105,7 +106,7 @@ One **Save** saves both.
 
 ## The Alerts view
 
-**Browse** > **Platform** > **Observability** > **Alerts** lists the active problems: those whose condition holds
+**Browse** > **Platform** > **Health** > **Alerts** lists the active problems: those whose condition holds
 or whose alert is not resolved yet, the failing and most severe first. Set **Show** to **All** to see the
 problems that cleared as well. A problem's row reads:
 
@@ -167,4 +168,4 @@ grok s observe problems history health:Jupyter@<server>    # everything that hap
 ```
 
 An error incident's **Diagnose** links open the errors of the last day and the platform events in
-**Observability** > **Logs**; **Top errors** on the overview opens each error's events there.
+**Health** > **Logs**; **Top errors** on the overview opens each error's events there.

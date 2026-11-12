@@ -69,6 +69,7 @@ take. The defaults:
 | Your rules (`rule-<name>:<group>`) | the rule's condition holds ([problem rules](problem-rules.md)) | `clearAfter` (5 minutes by default) after it stops holding | the rule's `owners`, unless it says `platform` |
 | Rule failing (`problem-rule:<name>`) | a problem rule is invalid, fails, or exceeds a limit | it evaluates again, or is disabled or deleted | the rule's `owners` |
 | Data growth (`growth:<alert>:<key>`) | a [metric alert](metric-alerts.md) holds: by default the database or the storage grew 25% in 7 days, a table over 1 GiB doubled in a day, a disk is 90% full (critical), or the garbage collector has 10 million rows pending | its alert stops holding for two collections of its metric, or is disabled or deleted | platform |
+| Table not vacuumed (`vacuum:<schema.table>`) | a table of 10K rows or more has 20% dead rows and was not vacuumed for 7 days, or never; checked hourly | a vacuum brings its dead rows under 20%, or it was vacuumed within 7 days | platform |
 | Metric alert failing (`problem-rule:metric-alert:<name>`) | a metric alert is invalid or holds for more than 100 keys | it evaluates again, or is disabled or deleted | platform |
 
 An error signature is the first 12 characters of the error's stack trace hash, or, for an error without a stack
@@ -77,7 +78,7 @@ trace, of its event type id.
 In **Settings** > **Alerts** an administrator can change the error incident, user error, slow and failing request
 and scheduled job thresholds, the failed health checks that open a service-down problem, the number of
 connections checked per run, and the problem rules, including `login-failures`. The rest is fixed: the 3 passing
-checks that end a service-down problem, the 2 failed checks that open a connection-down problem, and the
+checks that end a service-down problem, the vacuum thresholds, the 2 failed checks that open a connection-down problem, and the
 container, storage, identity provider, Log sync and report conditions.
 
 Silence is caught on your side: no heartbeat for 15 minutes means the instance is down, hung, or cut off.
