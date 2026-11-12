@@ -165,4 +165,5 @@ grok s observe problems status health:Jupyter@<server> --data '{"status": "fixed
 grok s observe problems history health:Jupyter@<server>    # everything that happened to it
 ```
 
-In [Usage Analysis](usage-analysis.md), the **Errors** tab shows the error incident of each error.
+An error incident's **Diagnose** links open the errors of the last day and the platform events in
+**Observability** > **Logs**; **Top errors** on the overview opens each error's events there.

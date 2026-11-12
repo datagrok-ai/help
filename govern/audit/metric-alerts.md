@@ -18,7 +18,7 @@ location, each server's disk and open sockets, and what the garbage collector de
 watches these numbers and raises a [problem](problems-and-alerts.md) when one is too high or grows too fast,
 with the same statuses, alerts and notifications as every other problem.
 
-You can see the numbers in **Usage Analysis** > **Metrics**: the data growth cards and the **Data growth**
+You can see the numbers in **Browse** > **Platform** > **Observability** > **Metrics**: the data growth cards and the **Data growth**
 panel, with each value's change over 1, 7 and 30 days and its daily trend. Seeing them needs the
 **View Telemetry** [global permission](../access-control/access-control.md#global-permissions).
 
@@ -125,7 +125,7 @@ HTTP connections to one server pass 2,000:
 
 ## From the API
 
-`grok.dapi.admin.getGrowthMetrics({area, days})` returns the same numbers as the Metrics tab: one row per key
+`grok.dapi.admin.getGrowthMetrics({area, days})` returns the same numbers as the Metrics page: one row per key
 with its value now, its change over 1, 7 and 30 days, its daily trend, what the garbage collector did to it, and
 the metric alerts that cover it. It needs **View Telemetry**; the ids of the alerts' problems also need **Manage
 Alerts**.
