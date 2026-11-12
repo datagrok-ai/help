@@ -98,10 +98,12 @@ export function dayView() {
 }
 ```
 
-The exports show in the view's **Export** menu after the formats of `exportConfig`, and run on the
-current call. [Export runs](rich-function-view.md#export-runs) in the run browser uses them, and the
-default Excel report, for the runs saved from the view. The report takes the `viewersHook` of the model
-function, not of the view's function.
+The view's **Export** menu lists the default Excel report and these exports after the formats of
+`exportConfig`, and they run on the current call. To hide the default Excel report, for example when
+`exportConfig` has an Excel format of its own, add `//meta.features: {"export": false}` to the view's
+function. [Export runs](rich-function-view.md#export-runs) in the run browser uses the same exports for the
+runs saved from the view. The report and the export functions take the `viewersHook` of the model function,
+not of the view's function.
 
 ## Without Compute2's editor
 

@@ -497,7 +497,9 @@ outputDf = inputDf.clone();
 
 You can use the one-click export feature to save the entire script run to a local file.
 To generate the export file,
-Select <i class="fas fa-arrow-to-bottom"></i> **Export** icon on the top panel.
+Select <i class="fas fa-arrow-to-bottom"></i> **Export** icon on the top panel. The icon runs the first
+export of the **Export** menu: the default Excel report, unless a [preferred export](#customize-export)
+comes first.
 Automatic export saves all input and output values with their captions,
 units, and even viewers' screenshots.
 
@@ -539,7 +541,8 @@ You can customize export using the following annotation:
 
 To make an export the default one, add `"preferred": true` to it. Preferred exports come first in the
 **Export** menu, in their order, before the default Excel report and the other exports. The first export
-of the menu is also the one the bulk export of runs picks.
+of the menu is also the one the <i class="fas fa-arrow-to-bottom"></i> icon runs and the bulk export of runs
+picks.
 
 ```javascript
 //meta.customExports: [{"name": "pdf", "function": "MyPackage:MyPDFExport", "preferred": true}]
@@ -549,18 +552,20 @@ The export function receives the following arguments:
 
 * `funcCall`: DG.FuncCall, current call.
 * `isOutputOutdated`: bool, true if the function output is outdated.
+* `runError`: string, the error of the run, if it failed.
 * `validationState`: `Record<string, ValidationResult>`, available only if run inside a [workflows](../../workflows/workflows.mdx).
 * `consistencyState`: `Record<string, ConsistencyInfo>`, available only if run inside a [workflows](../../workflows/workflows.mdx).
 * `viewersHook`: the [viewers hook](#visualize-input-data) of the call, the workflow step's own when the step sets one.
 * `metaState`: the step's meta values by output, for the hook, available only if run inside a [workflow](../../workflows/workflows.mdx).
 
 Declare these as `//input:` parameters of the export function. The current call must be
-typed `funccall`. The function returns the exported file as `DG.FileInfo`, and Compute downloads it.
+typed `funccall`. Every place that runs the export, the **Export** menu, a workflow step and the bulk export
+of runs, passes the same arguments. The function returns the exported file as `DG.FileInfo`, and Compute downloads it.
 An export that makes several files zips them into one.
 
 Legacy export functions still work: they receive `startDownload`, always false, and the `Blob` they
-return is downloaded named after the run, its date or Not completed, with `.xlsx` when the Blob is
-Excel. Don't use either in a new export.
+return is downloaded named after the function and the run date, or **Not completed**, with `.xlsx` when
+the Blob is Excel. Don't use either in a new export.
 
 ```javascript
 //name: MyPDFExport

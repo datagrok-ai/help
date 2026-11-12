@@ -556,17 +556,19 @@ A third argument, `startDownload`, is always false. It is kept to match RFV expo
 
 Export utils contain 6 methods that could reuse standard existing
 export logic. The files they return are named as the export menu names
-them: after the run and its date, **Not completed** for a run that isn't,
-or **edited** for a workflow with unsaved changes.
+them: a step's file after its function and the run date, a workflow's
+after the workflow, its title and the run date; **Not completed** for a
+run that isn't, or **edited** for a workflow with unsaved changes.
 
-* `reportFuncCallExcel` - creates a standard xlsx file and exceljs
+* `reportFuncCallExcel(fc, uuid)` - creates a standard xlsx file and exceljs
   workbook for function call, returns [DG.FileInfo, ExcelJS.Workbook]. It is
-  the step's file of the tree export: the step's viewers hook and meta
-  apply to its viewers.
-* `getFuncCallCustomExports` - returns a list of custom exports
-  defined specifically for a particular Func, returns string[].
-* `runFuncCallCustomExport` - runs a custom export defined on a Func
-  based on export name. Returns the file the export made, `DG.FileInfo`.
+  the step's file of the tree export: `uuid`, the step's, picks the viewers
+  hook and meta that apply to its viewers, and whether it is completed.
+* `getFuncCallCustomExports(fc)` - returns the names of the custom exports
+  defined on the call's Func, in the order of its export menu, string[].
+* `runFuncCallCustomExport(fc, uuid, name)` - runs a custom export defined
+  on a Func by name, with the arguments the step's own export menu passes.
+  Returns the file the export made, `DG.FileInfo`.
 * `reportStateExcel` - creates a standard xlsx tree export, however
   for each call an optional callback will be called (if
   provided). Returns [DG.FileInfo, Zippable, ExportSummaryItem[]],
@@ -610,6 +612,7 @@ fields:
 * runError?: `string`
 * validation?: `Record<string, ValidationResult>`
 * consistency?: `Record<string, ConsistencyInfo>`
+* meta: `Record<string, BehaviorSubject<any>>`, the step's meta values by output
 * description?: `Record<string, string | string[]>`
 
 This allows to reuse most of the tree export logic. Changes the callback makes
