@@ -95,6 +95,8 @@ forwarder:
 # Receives the records Datagrok pushes over OTLP (Settings > Logger > Log sync,
 # type OpenTelemetry, endpoint http://datagrok-otel.<namespace>.svc:4318/v1/logs)
 # and counts them into datagrok_*_total series: problems, heartbeats, errors, reports.
+# The same endpoint takes /v1/metrics: the server, database and storage metrics
+# Datagrok pushes every minute become datagrok_* series on port 8890.
 collector:
   enabled: true
   # A series per user and error signature. Only for an instance with tens of users.

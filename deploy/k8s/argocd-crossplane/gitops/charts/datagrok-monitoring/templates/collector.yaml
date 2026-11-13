@@ -1,3 +1,44 @@
+{{/* transform/instance statements, the same for log and metric records. */}}
+{{- define "mon.instanceStatements" -}}
+{{- $instances := .Values.instances }}
+{{- if eq (len $instances) 1 }}
+{{- $i := first $instances }}
+# The only instance of this cluster: every record is its own.
+- set(attributes["datagrok_instance"], {{ $i.name | quote }})
+- set(attributes["datagrok_url"], {{ $i.url | trimSuffix "/" | quote }})
+{{- with $i.tenant }}
+- set(attributes["tenant"], {{ . | quote }})
+{{- end }}
+{{- else }}
+{{- range $i := $instances }}
+{{- $host := include "mon.ottlHostPattern" (urlParse $i.url).host }}
+{{- $ids := list (include "mon.ottlHostPattern" $i.name) $host }}
+{{- with $i.id }}
+{{- $ids = append $ids (include "mon.ottlHostPattern" .) }}
+{{- end }}
+# {{ $i.name }}: by the namespace it runs in. Outside this cluster: by its instance id
+# (the name in the instance's configuration, the name here, or its host) or the
+# web root it reports.
+- set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["k8s.namespace.name"] == {{ $i.namespace | default (printf "datagrok-%s" $i.name) | quote }}
+- set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["datagrok.url"] != nil and IsMatch(attributes["datagrok.url"], "^https?://{{ $host }}(/.*)?$")
+- set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and IsMatch(attributes["service.instance.id"], "^({{ join "|" $ids }})$")
+- set(attributes["datagrok_url"], {{ $i.url | trimSuffix "/" | quote }}) where attributes["datagrok_instance"] == {{ $i.name | quote }}
+{{- with $i.tenant }}
+- set(attributes["tenant"], {{ . | quote }}) where attributes["datagrok_instance"] == {{ $i.name | quote }}
+{{- end }}
+{{- end }}
+# An instance that isn't listed names itself.
+- set(attributes["datagrok_instance"], attributes["service.instance.id"]) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and attributes["service.instance.id"] != ""
+- set(attributes["datagrok_instance"], "unknown") where attributes["datagrok_instance"] == nil
+- set(attributes["datagrok_url"], attributes["datagrok.url"]) where attributes["datagrok_url"] == nil and attributes["datagrok.url"] != nil
+- set(attributes["datagrok_url"], "") where attributes["datagrok_url"] == nil
+- delete_key(attributes, "k8s.namespace.name")
+- delete_key(attributes, "k8s.pod.ip")
+{{- end }}
+# As a label it would collide with datagrok_url, and the exporter drops the series.
+- delete_key(attributes, "datagrok.url")
+{{- end }}
+
 {{- define "mon.collectorConfig" -}}
 {{- $instances := .Values.instances }}
 extensions:
@@ -32,42 +73,11 @@ processors:
     log_statements:
       - context: resource
         statements:
-          {{- if eq (len $instances) 1 }}
-          {{- $i := first $instances }}
-          # The only instance of this cluster: every record is its own.
-          - set(attributes["datagrok_instance"], {{ $i.name | quote }})
-          - set(attributes["datagrok_url"], {{ $i.url | trimSuffix "/" | quote }})
-          {{- with $i.tenant }}
-          - set(attributes["tenant"], {{ . | quote }})
-          {{- end }}
-          {{- else }}
-          {{- range $i := $instances }}
-          {{- $host := include "mon.ottlHostPattern" (urlParse $i.url).host }}
-          {{- $ids := list (include "mon.ottlHostPattern" $i.name) $host }}
-          {{- with $i.id }}
-          {{- $ids = append $ids (include "mon.ottlHostPattern" .) }}
-          {{- end }}
-          # {{ $i.name }}: by the namespace it runs in. Outside this cluster: by its instance id
-          # (the name in the instance's configuration, the name here, or its host) or the
-          # web root it reports.
-          - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["k8s.namespace.name"] == {{ $i.namespace | default (printf "datagrok-%s" $i.name) | quote }}
-          - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["datagrok.url"] != nil and IsMatch(attributes["datagrok.url"], "^https?://{{ $host }}(/.*)?$")
-          - set(attributes["datagrok_instance"], {{ $i.name | quote }}) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and IsMatch(attributes["service.instance.id"], "^({{ join "|" $ids }})$")
-          - set(attributes["datagrok_url"], {{ $i.url | trimSuffix "/" | quote }}) where attributes["datagrok_instance"] == {{ $i.name | quote }}
-          {{- with $i.tenant }}
-          - set(attributes["tenant"], {{ . | quote }}) where attributes["datagrok_instance"] == {{ $i.name | quote }}
-          {{- end }}
-          {{- end }}
-          # An instance that isn't listed names itself.
-          - set(attributes["datagrok_instance"], attributes["service.instance.id"]) where attributes["datagrok_instance"] == nil and attributes["service.instance.id"] != nil and attributes["service.instance.id"] != ""
-          - set(attributes["datagrok_instance"], "unknown") where attributes["datagrok_instance"] == nil
-          - set(attributes["datagrok_url"], attributes["datagrok.url"]) where attributes["datagrok_url"] == nil and attributes["datagrok.url"] != nil
-          - set(attributes["datagrok_url"], "") where attributes["datagrok_url"] == nil
-          - delete_key(attributes, "k8s.namespace.name")
-          - delete_key(attributes, "k8s.pod.ip")
-          {{- end }}
-          # As a label it would collide with datagrok_url, and the exporter drops the series.
-          - delete_key(attributes, "datagrok.url")
+          {{- include "mon.instanceStatements" . | trim | nindent 10 }}
+    metric_statements:
+      - context: resource
+        statements:
+          {{- include "mon.instanceStatements" . | trim | nindent 10 }}
   # datagrok.signature = the record's datagrok.error_stack_trace_hash, the key
   # Usage Analysis > Errors groups by. A record without it gets the first 12 hex
   # characters of sha256 over the digit-stripped stack trace. datagrok.error = the
@@ -172,6 +182,14 @@ exporters:
     # record is sent once, and a series that expires first lets its key re-fire.
     metric_expiration: 25m
     send_timestamps: false
+  # The metric records Datagrok pushes every minute, as they are (port 8890).
+  # Three missed snapshots drop the series of a server that is gone.
+  prometheus/push:
+    endpoint: 0.0.0.0:8890
+    resource_to_telemetry_conversion:
+      enabled: true
+    metric_expiration: 3m
+    send_timestamps: false
 
 service:
   extensions: [health_check]
@@ -195,6 +213,10 @@ service:
       receivers: [count]
       processors: [delta_to_cumulative, batch]
       exporters: [prometheus]
+    metrics/push:
+      receivers: [otlp]
+      processors: [memory_limiter, {{ if gt (len $instances) 1 }}k8sattributes, {{ end }}transform/instance, batch]
+      exporters: [prometheus/push]
 {{- end }}
 {{- if and (include "mon.agent" .) .Values.collector.enabled }}
 {{- $operator := include "mon.hub" . }}
@@ -240,6 +262,22 @@ subjects:
 #   datagrok_reports_total, datagrok_auto_reports_total{datagrok_instance}
 #   datagrok_errors_total{datagrok_instance,datagrok_source,datagrok_package,datagrok_severity}
 #   datagrok_error_signature_events_total{datagrok_instance,datagrok_signature,datagrok_package,datagrok_error}
+# The metric records Datagrok pushes to /v1/metrics of the same endpoint are exported
+# as they are on port 8890 (series of a server that stops pushing go after 3 min):
+#   datagrok_server_info{datagrok_server,datagrok_version}, datagrok_server_isolates, datagrok_server_sockets,
+#   datagrok_server_open_files_limit, datagrok_server_http_connections, datagrok_server_db_connections,
+#   datagrok_server_service_up{datagrok_server,datagrok_service,datagrok_type}
+#   datagrok_isolate_http_requests_in_flight, datagrok_isolate_http_requests_5m,
+#   datagrok_isolate_db_pool_{connections,in_use,waiting,max}{datagrok_server,datagrok_isolate}
+#   datagrok_disk_{used_bytes,free_bytes,usage_percent}{datagrok_server,datagrok_device,datagrok_mount}
+#   datagrok_db_size_bytes, datagrok_db_connections{datagrok_state}, datagrok_db_connections_max,
+#   datagrok_db_lock_waits, datagrok_db_oldest_idle_transaction_seconds, datagrok_db_cache_hit_percent,
+#   datagrok_queue_messages, datagrok_queue_messages_by_state{datagrok_state}, datagrok_containers{datagrok_state},
+#   datagrok_containers_stale{datagrok_reason}, datagrok_container_images, datagrok_container_info, datagrok_spawner_*, datagrok_http_{requests_5m,errors_5m,latency_p95_5m_milliseconds},
+#   datagrok_sessions_active_5m, datagrok_alerts_open{datagrok_severity}
+#   datagrok_db_table_{size_bytes,rows}{datagrok_table}, datagrok_db_dead_tables, datagrok_db_max_dead_percent,
+#   datagrok_storage_{size_bytes,objects}{datagrok_location,datagrok_nature}, datagrok_gc_pending{datagrok_key}
+# each with datagrok_instance, datagrok_url and tenant.
 # Its own telemetry (otelcol_*) is on port 8888.
 apiVersion: v1
 kind: ConfigMap
@@ -279,6 +317,7 @@ spec:
         ports:
         - {containerPort: 4318, name: otlp-http}
         - {containerPort: 8889, name: metrics}
+        - {containerPort: 8890, name: push}
         - {containerPort: 8888, name: telemetry}
         - {containerPort: 13133, name: health}
         volumeMounts:
@@ -314,6 +353,7 @@ spec:
   ports:
   - {name: otlp-http, port: 4318, targetPort: 4318}
   - {name: metrics, port: 8889, targetPort: 8889}
+  - {name: push, port: 8890, targetPort: 8890}
   {{- if $operator }}
   - {name: telemetry, port: 8888, targetPort: 8888}
   {{- end }}
@@ -339,11 +379,29 @@ spec:
     scrapeTimeout: 10s
     # As the forwarder does (honor_labels), so the series are the same in every role.
     honorLabels: true
+  - port: push
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: true
   - port: telemetry
     interval: 60s
     scrapeTimeout: 10s
 {{- else }}
 # The forwarder scrapes one annotated port per Service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: datagrok-otel-push
+  namespace: {{ $ns }}
+  labels: {app: datagrok-otel-push}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8890"
+spec:
+  selector: {app: datagrok-otel}
+  ports:
+  - {name: push, port: 8890, targetPort: 8890}
+---
 apiVersion: v1
 kind: Service
 metadata:

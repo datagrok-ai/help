@@ -129,6 +129,11 @@ exporters:
     endpoint: 0.0.0.0:8889
     resource_to_telemetry_conversion: {enabled: true}
     metric_expiration: 15m
+  prometheus/push:
+    endpoint: 0.0.0.0:8890
+    resource_to_telemetry_conversion: {enabled: true}
+    metric_expiration: 3m
+    send_timestamps: false
   awss3:
     s3uploader: {region: us-east-1, s3_bucket: datagrok-audit-worm, s3_prefix: datagrok, compression: gzip}
     marshaler: otlp_json
@@ -143,12 +148,68 @@ service:
       receivers: [count]
       processors: [deltatocumulative, batch]
       exporters: [prometheus]
+    metrics/push:
+      receivers: [otlp]
+      processors: [resource/datagrok, batch]
+      exporters: [prometheus/push]
 ```
 
 Prometheus scrapes `:8889` and sees `datagrok_alerts_total` and `datagrok_heartbeats_total`. Drop `awss3` from the
 exporters if you don't keep a WORM copy. On another backend (Grafana Cloud, Datadog, Elastic), skip the counting:
 open an incident on `datagrok.alert.opened` and close it on `datagrok.alert.resolved` with the same
 `datagrok.alert.id`.
+
+### Server metrics
+
+When the endpoint is ticked in the **Metrics** group, Datagrok also pushes the state of its servers, database and
+storage every minute to `/v1/metrics` of the same endpoint. The `metrics/push` pipeline exports these as they are on
+`:8890`; a series of a server that stops pushing goes after `metric_expiration` (3 missed snapshots). Each series
+carries `datagrok_instance` and `datagrok_url`; per-server series also carry `datagrok_server`.
+
+| Series | Labels | Value |
+|---|---|---|
+| `datagrok_server_info` | `datagrok_version` | 1 per running server |
+| `datagrok_server_isolates`, `datagrok_server_sockets`, `datagrok_server_open_files_limit` | | per server |
+| `datagrok_server_http_connections`, `datagrok_server_db_connections` | | connections of the server process |
+| `datagrok_server_service_up` | `datagrok_service`, `datagrok_type` | 1 running, 0 failed or blocked |
+| `datagrok_isolate_http_requests_in_flight`, `datagrok_isolate_http_requests_5m` | `datagrok_isolate` | per isolate |
+| `datagrok_isolate_db_pool_connections`, `_in_use`, `_waiting`, `_max` | `datagrok_isolate` | database pool of the isolate |
+| `datagrok_disk_used_bytes`, `datagrok_disk_free_bytes`, `datagrok_disk_usage_percent` | `datagrok_device`, `datagrok_mount` | per server |
+| `datagrok_db_size_bytes`, `datagrok_db_connections_max`, `datagrok_db_lock_waits` | | database |
+| `datagrok_db_connections` | `datagrok_state` (`active`, `idle`, `idle_in_transaction`) | database |
+| `datagrok_db_oldest_idle_transaction_seconds`, `datagrok_db_cache_hit_percent` | | database |
+| `datagrok_queue_messages` | | messages in every RabbitMQ queue (its management API) |
+| `datagrok_queue_messages_by_state` | `datagrok_state` (`ready`, `unacknowledged`) | of them waiting for a worker, and taken by one |
+| `datagrok_containers` | `datagrok_state` (`running`, `starting`, `stopping`, `stopped`, `error`) | package containers |
+| `datagrok_containers_stale` | `datagrok_reason` (`package`, `image`) | containers running an old package version, or another image |
+| `datagrok_container_images` | `datagrok_state` (`ready`, `error`, `pending`) | images of the current package versions |
+| `datagrok_container_info` | `datagrok_container`, `datagrok_package`, `datagrok_version`, `datagrok_current_version`, `datagrok_state`, `datagrok_stale`, `datagrok_image` | 1 per container not stopped |
+| `datagrok_spawner_workloads`, `datagrok_spawner_orphans`, `datagrok_spawner_replicas` | `datagrok_state` (`desired`, `ready`) on replicas | what Grok Spawner runs |
+| `datagrok_http_requests_5m`, `datagrok_http_errors_5m`, `datagrok_http_latency_p95_5m_milliseconds`, `datagrok_sessions_active_5m` | | last 5 minutes |
+| `datagrok_alerts_open` | `datagrok_severity` | open alerts |
+| `datagrok_db_table_size_bytes`, `datagrok_db_table_rows` | `datagrok_table` | the 20 largest tables |
+| `datagrok_db_dead_tables`, `datagrok_db_max_dead_percent` | | dead rows |
+| `datagrok_storage_size_bytes`, `datagrok_storage_objects` | `datagrok_location`, `datagrok_nature` | file storage |
+| `datagrok_gc_pending` | `datagrok_key` | rows waiting for cleanup |
+
+Example rules:
+
+```yaml
+- alert: DatagrokDbPoolWaiting
+  expr: datagrok_isolate_db_pool_waiting > 0
+  for: 5m
+  labels: {severity: warning, audience: platform}
+  annotations:
+    summary: '{{ $labels.datagrok_instance }}: requests wait for a database connection on {{ $labels.datagrok_server }} isolate {{ $labels.datagrok_isolate }}'
+- alert: DatagrokDbConnectionsHigh
+  expr: |-
+    datagrok_db_connections{datagrok_state="active"}
+      / on (datagrok_instance) group_left datagrok_db_connections_max > 0.8
+  for: 5m
+  labels: {severity: warning, audience: platform}
+  annotations:
+    summary: '{{ $labels.datagrok_instance }}: over 80% of database connections are active'
+```
 
 ## Reference alert rules
 

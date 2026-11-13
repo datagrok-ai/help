@@ -214,7 +214,8 @@ saving to its own endpoint.
 | **Connection** | All                   | An AWS or GCP connection with write access. Leave empty to authenticate with the instance role       |
 | **Log Group**, **Stream** | Amazon CloudWatch | Destination log group and stream. Without a connection, Datagrok creates them if they don't exist. With a connection, create them first |
 | **Log Name**   | Google Cloud Logging  | Destination log                                                                                       |
-| **Endpoint**   | OpenTelemetry         | OTLP/HTTP logs endpoint, for example `http://otel-collector:4318/v1/logs`                             |
+| **Endpoint**   | OpenTelemetry         | OTLP/HTTP logs endpoint, for example `http://otel-collector:4318/v1/logs`. Metrics go to the same path ending in `/v1/metrics` |
+| **Metrics endpoint** | OpenTelemetry   | OTLP/HTTP metrics endpoint, when it isn't the logs endpoint with `/v1/logs` replaced by `/v1/metrics`. Not used with `aws-sigv4` |
 | **Auth**       | OpenTelemetry         | `none`, `bearer` (with **Token**), `aws-sigv4`, or `gcp-oauth`                                        |
 | **Headers**, **Compress**, **Max Payload** | OpenTelemetry | Extra HTTP headers, gzip compression, and the size at which a batch is split          |
 
@@ -311,6 +312,11 @@ What is logged is set in **Browse** > **Platform** > **Health** > **Log settings
   * **Records**: what users and the server log, of the ticked **Levels**, from **Who** (everyone by default),
     narrowed by debug flags, audit or usage types, and a **Filter**.
   * **Alerts**: problem and alert records, for collectors that page someone.
+  * **Metrics**: the gauges of the Health center (servers and their isolates, disk, database connections, the
+    function call queue, requests, open alerts, data growth), every minute, to endpoints only. An OpenTelemetry
+    endpoint gets them as OTLP metrics; CloudWatch, Cloud Logging, ClickHouse and WebHook endpoints get one record
+    per value. The default **Metrics** group sends nothing until you tick an endpoint. To see the values it sends
+    now, run `grok s o metrics export`.
   * **Drop**: matching records go nowhere; groups below it don't see them. Put it above the groups it silences.
 
   A group is active **Always**, **Until** a time, or **When triggered** by a record (for example, keep debug records
