@@ -180,6 +180,11 @@ carries `datagrok_instance` and `datagrok_url`; per-server series also carry `da
 | `datagrok_db_oldest_idle_transaction_seconds`, `datagrok_db_cache_hit_percent` | | database |
 | `datagrok_queue_messages` | | messages in every RabbitMQ queue (its management API) |
 | `datagrok_queue_messages_by_state` | `datagrok_state` (`ready`, `unacknowledged`) | of them waiting for a worker, and taken by one |
+| `datagrok_containers` | `datagrok_state` (`running`, `starting`, `stopping`, `stopped`, `error`) | package containers |
+| `datagrok_containers_stale` | `datagrok_reason` (`package`, `image`) | containers running an old package version, or another image |
+| `datagrok_container_images` | `datagrok_state` (`ready`, `error`, `pending`) | images of the current package versions |
+| `datagrok_container_info` | `datagrok_container`, `datagrok_package`, `datagrok_version`, `datagrok_current_version`, `datagrok_state`, `datagrok_stale`, `datagrok_image` | 1 per container not stopped |
+| `datagrok_spawner_workloads`, `datagrok_spawner_orphans`, `datagrok_spawner_replicas` | `datagrok_state` (`desired`, `ready`) on replicas | what Grok Spawner runs |
 | `datagrok_http_requests_5m`, `datagrok_http_errors_5m`, `datagrok_http_latency_p95_5m_milliseconds`, `datagrok_sessions_active_5m` | | last 5 minutes |
 | `datagrok_alerts_open` | `datagrok_severity` | open alerts |
 | `datagrok_db_table_size_bytes`, `datagrok_db_table_rows` | `datagrok_table` | the 20 largest tables |
