@@ -27,9 +27,10 @@ monitoring system as a log record, once, and stays open until the problem ends o
 Services that fail their health checks, errors that hit many users or keep recurring, errors users keep making,
 slow or failing requests, data connections and scheduled jobs that fail, containers that don't start, storage,
 identity providers and Log sync destinations that keep failing, problem reports, the database, storage or disks
-growing too much ([metric alerts](metric-alerts.md)), and the conditions of your own
+growing too much ([metric alerts](metric-alerts.md)), tables that no vacuum reached for long (`vacuum`: 10K rows or
+more, 20% of them dead, not vacuumed for 7 days), and the conditions of your own
 [problem rules](problem-rules.md), such as the default `login-failures`. When each one opens and ends, who acts
-on it, and which thresholds an administrator can change in **Settings** > **Alerts**:
+on it, and which thresholds an administrator can change in **Health** > **Alerts** > **Rules**:
 [What Datagrok detects](operator-guide.md#what-datagrok-detects) in the operator guide.
 
 ## Statuses
@@ -48,31 +49,66 @@ What to do with an alert:
 * **Resolve** it when you have seen it. The problem stays active: if the condition still holds, a new alert opens on the next check.
 * **Mute** the problem to stop its alerts. Muting resolves the open alert, and is the way to stop alerts about a problem.
 * Mark the problem **fixed** to hear about it only if it comes back.
+* Each action has its undo: **Unacknowledge**, **Reopen** a resolved alert, **Unmute**, **Undo not a problem**, **Undo fixed**.
 
 An alert that is open does not page again while its condition persists. When the condition ends, the
 alert is cleared and resolved.
 
-## The Observability overview
+## The Health overview
 
-**Browse** > **Platform** > **Observability** shows the state of the instance on one page:
+**Browse** > **Platform** > **Health** shows the state of the instance on one page:
 
 * **Status**: "All clear", or how many problems need attention, by severity. A problem needs attention
-  while its condition holds and nobody muted or dismissed it.
-* **Vitals** of the last 24 hours against the day before: requests and the share that failed, p95 latency,
-  errors and the users who met them, the function queue, the database size and cache hit rate, and blocked
-  database connections. A tile opens **Metrics** or **Errors**.
+  while its condition holds and nobody muted it, marked it fixed or not a problem, or resolved its alert. A resolved
+  alert's problem needs attention again when its condition raises a new alert.
+* **Vitals** of the last 24 hours against the day before: requests and the share answered with an error status
+  (400 or above), p95 latency, errors and the users who met them, the function queue, the database size and cache
+  hit rate, and blocked database connections; and the HTTP connections and open sockets of all server instances,
+  with the busiest one's share of its open files limit. A tile opens **Metrics**; **Errors** opens the error events
+  in **Logs**; **Requests**, **DB connections**, **HTTP connections** and **Open sockets** open each instance and
+  isolate in **Metrics**. Growing sockets
+  raise the [metric alerts](metric-alerts.md) `socket-growth` and `too-many-sockets`.
 * **Needs attention**: the most severe and latest problems. Click one to see it in the context panel; hover
   it to acknowledge or resolve its alert, mute it, or open its evidence.
-* **Top errors** of the last 24 hours.
-* **Services**: every health check, the failing ones first.
-* **Monitoring setup**: the problem rules, the detection thresholds, where logs and alerts are sent, and how
-  long they are kept.
+* **Top errors** of the last 24 hours. Click one to see its events in **Logs**.
+* **Services**: every health check, the failing ones first. Click a service to open its logs.
+* **Monitoring setup**: the alert rules, the log settings, and how long records are kept.
 
 The page refreshes every minute.
 
+Every Health page works the same way:
+
+* It appears at once as a skeleton; each card and block then loads on its own and refreshes in place.
+* The ribbon shows when the page was last updated; the refresh icon spins while it loads.
+* Hover a card, a column header or a field to read what it is, which values are good and which are a concern.
+* Click a card to drill down to what is behind the number.
+* **Export as dashboard** (the archive icon) saves every table of the page as a zip. Drop the file into Datagrok
+  to open it as a dashboard, for example to send the state of an instance to support.
+
+## Alert rules
+
+**Health** > **Alerts** > **Rules** holds everything that raises a problem:
+
+* **Built-in detectors**: error incidents, user errors, degraded requests, connections, service health,
+  scheduled jobs, dashboards and data growth. Each card has the detector's thresholds and says how many of its
+  problems are failing now.
+* **Custom rules**: your own conditions on logged events.
+
+One **Save** saves both.
+
+## Metrics, logs and log settings
+
+* **Metrics**: the database, connections, the function queue, storage and disks, errors, latency and sessions
+  for the chosen window; data growth; the slowest queries; the largest and the least healthy tables; and the
+  HTTP routes. Click a failed share of a route to see the failed requests and their log.
+* **Logs**: one explorer for the platform's events and the logs of its services. Service logs are read from
+  what the services pushed into Datagrok; switch to **Live** to follow a container as it writes. On AWS
+  deployments the explorer also reads CloudWatch and the log archive.
+* **Log settings**: the log groups, where records are sent, and the in-memory buffer.
+
 ## The Alerts view
 
-**Browse** > **Platform** > **Observability** > **Alerts** lists the active problems: those whose condition holds
+**Browse** > **Platform** > **Health** > **Alerts** lists the active problems: those whose condition holds
 or whose alert is not resolved yet, the failing and most severe first. Set **Show** to **All** to see the
 problems that cleared as well. A problem's row reads:
 
@@ -85,8 +121,9 @@ problems that cleared as well. A problem's row reads:
 
 The icons in **Actions** acknowledge or resolve the alert, mute the problem, and open its evidence. The
 **Actions** section of a problem's context panel also marks it fixed or not a problem, or watches it again.
-The **Diagnose** section links to where to look next: the rule that raised the problem, the logs of its service,
-the errors of the last day, or the request and database metrics.
+The **Diagnose** section links to where to look next: the rule or the detector that raised the problem, the
+logs of its service, the errors of the last day, or the request and database metrics. Hover a column header
+to read what the column means.
 
 ## Where alerts go
 
@@ -132,4 +169,5 @@ grok s observe problems status health:Jupyter@<server> --data '{"status": "fixed
 grok s observe problems history health:Jupyter@<server>    # everything that happened to it
 ```
 
-In [Usage Analysis](usage-analysis.md), the **Errors** tab shows the error incident of each error.
+An error incident's **Diagnose** links open the errors of the last day and the platform events in
+**Health** > **Logs**; **Top errors** on the overview opens each error's events there.

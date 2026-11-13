@@ -148,7 +148,8 @@ grok s healthcheck --output json               # machine-readable
 The server runs its health checks every 60 seconds: **Core** (the database
 and the server isolates), **Grok Connect**, **Jupyter**, **Credentials
 Server**, **Garbage Collector**, **Message Queue** (when the call queue is
-enabled), and **Grok Spawner**. You can see the same results on the **Health** page of the setup wizard,
+enabled), **Grok Spawner**, and **NPM** (a ping of the registry of each npm
+package repository, through `npmProxyUrl` when it is set). You can see the same results on the **Health** page of the setup wizard,
 which stays available at `/settings/initial/health`.
 Two endpoints expose them, both under the API root (for example,
 `https://datagrok.example.com/api`):

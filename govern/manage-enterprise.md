@@ -51,7 +51,7 @@ After the deployment, sign in as `admin` and complete the setup:
    users need.
 1. Review the **Health** step of the setup wizard (`/settings/initial/health`).
    It lists the checks the server runs continuously (Core, Grok Connect,
-   Jupyter, Credentials Server, Grok Spawner, and others). Fix anything that
+   Jupyter, Credentials Server, Grok Spawner, NPM, and others). Fix anything that
    isn't ready before you invite users.
 1. Set [defaults for everyone](access-control/managed-settings.md), such as
    formats, colors, and hidden menu sections, and lock the ones users
