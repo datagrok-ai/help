@@ -221,7 +221,11 @@ _Optional_
 An array of items, with `id`, `friendlyName` and `handler`, used to
 define custom exports for workflow data. Handler here is an async
 function that receives `PipelineState` and `ExportUtils`
-arguments. More information is available [here](#custom-exports)
+arguments and returns the exported file. More information is available [here](#custom-exports)
+
+Set `preferred: true` on an item to list it before the default export and the other exports. The first
+item of the **Export** menu is the default one, also in the bulk export of runs. Several preferred items
+keep their order.
 
 #### `disableDefaultExport`
 
@@ -424,6 +428,12 @@ The hook fires once per `(ioName, viewer type)` combination when the viewer
 appears, and again on every metadata update. Keep it side-effect-free aside
 from mutating the supplied viewer.
 
+A step without a `viewersHook` uses the hook of its script, set with the
+script's [`viewersHook` annotation](../scripting/advanced-scripting/rich-function-view.md#visualize-input-data). A step's own
+hook replaces the script's; the two are not combined. If the script's hook
+can't be made, because its function is missing or fails, a warning says so, and
+the step's viewers and exports go on without it.
+
 #### `enableHistory` (Script node)
 
 _Optional_
@@ -537,23 +547,36 @@ A custom export function receives two arguments
 * `treeState` of type `PipelineState`
 * `utils` of type `ExportUtils`
 
-Export utils contain 6 methods that could reuse standard existing
-export logic:
+It returns the exported file as `DG.FileInfo`, and Compute downloads it. An export that makes
+several files zips them into one, for example with the `Zippable` that `reportStateExcel` returns.
+The run browser's **Export** also runs it on saved runs, without an open view, to put the file
+into its zip.
 
-* `reportFuncCallExcel` - creates a standard xlsx blob and exceljs
-  workbook for function call, returns [Blob, ExcelJS.Workbook].
-* `getFuncCallCustomExports` - returns a list of custom exports
-  defined specifically for a particular Func, returns string[].
-* `runFuncCallCustomExport` - runs a custom export defined on a Func
-  based on export name. Returns whatever a custom export returned.
+A third argument, `startDownload`, is always false. It is kept to match RFV export functions; don't use it.
+
+Export utils contain 6 methods that could reuse standard existing
+export logic. The files they return are named as the export menu names
+them: a step's file after its function and the run date, a workflow's
+after the workflow, its title and the run date; **Not completed** for a
+run that isn't, or **edited** for a workflow with unsaved changes.
+
+* `reportStepExcel(fc, uuid)` - creates a standard xlsx file and exceljs
+  workbook for function call, returns [DG.FileInfo, ExcelJS.Workbook]. It is
+  the step's file of the tree export: `uuid`, the step's, picks the viewers
+  hook and meta that apply to its viewers, and whether it is completed.
+* `getFuncCallCustomExports(fc)` - returns the names of the custom exports
+  defined on the call's Func, in the order of its export menu, string[].
+* `runFuncCallCustomExport(fc, uuid, name)` - runs a custom export defined
+  on a Func by name, with the arguments the step's own export menu passes.
+  Returns the file the export made, `DG.FileInfo`.
 * `reportStateExcel` - creates a standard xlsx tree export, however
   for each call an optional callback will be called (if
-  provided). Returns [Blob, Zippable, string, ExportSummaryItem[]],
-  where 3rd is the name of a file and 4th is the summary below.
+  provided). Returns [DG.FileInfo, Zippable, ExportSummaryItem[]],
+  the zip file, its contents and the summary below.
 * `getExportSummary` - returns the summary of a workflow as
   `ExportSummaryItem[]`, see below.
 * `reportSummaryExcel` - creates the summary workbook alone, returns
-  [Blob, ExcelJS.Workbook].
+  [DG.FileInfo, ExcelJS.Workbook].
 
 The tree export also writes `000_summary.xlsx` at the root of the zip:
 one row per workflow and step, in tree order. An `ExportSummaryItem` has
@@ -589,11 +612,12 @@ fields:
 * runError?: `string`
 * validation?: `Record<string, ValidationResult>`
 * consistency?: `Record<string, ConsistencyInfo>`
+* meta: `Record<string, BehaviorSubject<any>>`, the step's meta values by output
 * description?: `Record<string, string | string[]>`
 
-This allows to reuse most of the tree export logic, however individual
-exceljs workbooks could be customized or replaced/augmented with a
-different file.
+This allows to reuse most of the tree export logic. Changes the callback makes
+to `wb` are written to the step's file in the zip. To replace the file instead,
+set `archive[[...path, fileName].join('/')]`, or delete it to leave the step out.
 
 ## Constraints and review checklist
 

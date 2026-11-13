@@ -1,0 +1,155 @@
+{{- $role := include "mon.role" . }}
+{{- $hub := include "mon.hub" . }}
+{{- $s := .Values.stack }}
+{{- if and $hub $s.install }}
+{{- $storageClass := ternary "datagrok-gp3" $s.storageClassName $s.gp3StorageClass }}
+{{- $volume := dict "accessModes" (list "ReadWriteOnce") }}
+{{- with $storageClass }}
+{{- $_ := set $volume "storageClassName" . }}
+{{- end }}
+{{- /* Alertmanager replaces the list as a whole, so the stack's own rules are repeated first. */}}
+{{- $inhibit := list
+  (dict "source_matchers" (list "severity = critical") "target_matchers" (list "severity =~ warning|info") "equal" (list "namespace" "alertname"))
+  (dict "source_matchers" (list "severity = warning") "target_matchers" (list "severity = info") "equal" (list "namespace" "alertname"))
+  (dict "source_matchers" (list "alertname = InfoInhibitor") "target_matchers" (list "severity = info") "equal" (list "namespace"))
+  (dict "target_matchers" (list "alertname = InfoInhibitor"))
+  (dict
+    "source_matchers" (list "alertname =~ \"DatagrokHeartbeatMissing|DatagrokHealthEndpointDown\"")
+    "target_matchers" (list "alertname =~ \"DatagrokProblem|DatagrokServiceDown|DatagrokAuxServiceDown|DatagrokPartiallyDegraded|DatagrokSlowResponse|DatagrokVerySlowResponse|DatagrokLogin.*|DatagrokAutoReportBurst|DatagrokErrorBurst\"")
+    "equal" (list "cluster" "datagrok_instance"))
+  (dict
+    "source_matchers" (list "alertname = DatagrokHealthEndpointDown")
+    "target_matchers" (list "alertname = DatagrokHeartbeatMissing")
+    "equal" (list "cluster" "datagrok_instance"))
+  (dict
+    "source_matchers" (list "alertname = DatagrokOtelCollectorDown")
+    "target_matchers" (list "alertname =~ \"DatagrokHeartbeatMissing|DatagrokProblem|DatagrokOtelRecordsRefused\"")
+    "equal" (list "cluster"))
+  (dict
+    "source_matchers" (list "alertname = DatagrokAuxServiceDown" "service = GrokConnect")
+    "target_matchers" (list "alertname = DatagrokProblem" "datagrok_alert_kind =~ \"connection|dependency\"")
+    "equal" (list "cluster" "datagrok_instance")) }}
+{{- $stack := dict
+  "crds" (dict "enabled" true)
+  "kubeControllerManager" (dict "enabled" false)
+  "kubeScheduler" (dict "enabled" false)
+  "kubeEtcd" (dict "enabled" false)
+  "kubeProxy" (dict "enabled" false)
+  "alertmanager" (dict
+    "config" (dict "inhibit_rules" $inhibit)
+    "alertmanagerSpec" (dict "storage" (dict "volumeClaimTemplate" (dict "spec" (merge
+      (dict "resources" (dict "requests" (dict "storage" "2Gi"))) $volume)))))
+  "grafana" (dict
+    "testFramework" (dict "enabled" false)
+    "admin" (dict "existingSecret" "grafana-admin" "userKey" "admin-user" "passwordKey" "admin-password"))
+  "prometheus" (dict "prometheusSpec" (dict
+    "scrapeInterval" (printf "%ds" (int .Values.scrapeIntervalSeconds))
+    "retention" $s.retention
+    "externalLabels" (dict "cluster" .Values.cluster)
+    "enableRemoteWriteReceiver" (or $s.receiver .Values.ingest.enabled (eq $role "hub"))
+    "ruleSelectorNilUsesHelmValues" false
+    "serviceMonitorSelectorNilUsesHelmValues" false
+    "podMonitorSelectorNilUsesHelmValues" false
+    "probeSelectorNilUsesHelmValues" false
+    "scrapeConfigSelectorNilUsesHelmValues" false
+    "storageSpec" (dict "volumeClaimTemplate" (dict "spec" (merge
+      (dict "resources" (dict "requests" (dict "storage" $s.storageSize))) $volume))))) }}
+{{- with $s.grafana.hostname }}
+{{- $ingress := dict "enabled" true "ingressClassName" $s.grafana.ingressClassName "hosts" (list .) }}
+{{- if eq $s.grafana.ingressClassName "alb" }}
+{{- $annotations := dict
+      "alb.ingress.kubernetes.io/scheme" "internet-facing"
+      "alb.ingress.kubernetes.io/target-type" "ip"
+      "alb.ingress.kubernetes.io/listen-ports" "[{\"HTTP\":80},{\"HTTPS\":443}]"
+      "alb.ingress.kubernetes.io/ssl-redirect" "443"
+      "alb.ingress.kubernetes.io/ssl-policy" "ELBSecurityPolicy-TLS13-1-2-2021-06" }}
+{{- with $s.grafana.certificateArn }}
+{{- $_ := set $annotations "alb.ingress.kubernetes.io/certificate-arn" . }}
+{{- end }}
+{{- $_ := set $ingress "annotations" $annotations }}
+{{- end }}
+{{- $_ := set $stack.grafana "ingress" $ingress }}
+{{- $_ := set $stack.grafana "grafana.ini" (dict "server" (dict "root_url" (printf "https://%s" .))) }}
+{{- end }}
+# Prometheus, Alertmanager and Grafana (kube-prometheus-stack).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: {{ .Values.versions.kubePrometheusStack }}
+    helm:
+      releaseName: monitoring
+      valuesObject:
+        {{- toYaml (mustMergeOverwrite $stack (deepCopy $s.values)) | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.namespace }}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ include "mon.retry" . }}
+    # The operator CRDs are too large for client-side apply.
+    syncOptions: [ServerSideApply=true]
+{{- else if eq $role "agent" }}
+{{- $f := .Values.forwarder }}
+{{- $remoteWrite := dict
+      "url" (required "role agent needs forwarder.url: the hub's remote_write endpoint" $f.url)
+      "write_relabel_configs" (list
+        (dict "source_labels" (list "dimension_DBInstanceIdentifier") "regex" "(.+)" "target_label" "dbinstance_identifier")
+        (dict "action" "labeldrop" "regex" "dimension_DBInstanceIdentifier")) }}
+{{- with $f.username }}
+{{- $_ := set $remoteWrite "basic_auth" (dict "username" . "password_file" "/etc/remote-write/password") }}
+{{- end }}
+{{- $forwarder := dict
+  "server" (dict
+    "retention" "2h"
+    "persistentVolume" (dict "enabled" false)
+    "global" (dict
+      "scrape_interval" (printf "%ds" (int .Values.scrapeIntervalSeconds))
+      "external_labels" (dict "cluster" .Values.cluster))
+    "remoteWrite" (list $remoteWrite)
+    "resources" (dict
+      "requests" (dict "cpu" "100m" "memory" "512Mi")
+      "limits" (dict "cpu" "1" "memory" "3Gi")))
+  "alertmanager" (dict "enabled" false)
+  "prometheus-pushgateway" (dict "enabled" false)
+  "kube-state-metrics" (dict "enabled" true)
+  "prometheus-node-exporter" (dict "enabled" true) }}
+{{- if $f.username }}
+{{- $_ := set $forwarder.server "extraSecretMounts" (list (dict
+      "name" "remote-write" "secretName" "prometheus-remote-write" "mountPath" "/etc/remote-write" "readOnly" true)) }}
+{{- end }}
+# A forwarder that scrapes this cluster and sends everything to the hub (the
+# prometheus chart: no operator, keeps 2 hours in memory).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus
+    targetRevision: {{ .Values.versions.prometheus }}
+    helm:
+      releaseName: prometheus
+      valuesObject:
+        {{- toYaml (mustMergeOverwrite $forwarder (deepCopy $f.values)) | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.namespace }}
+  syncPolicy:
+    automated: {prune: true, selfHeal: true}
+    retry: {{ include "mon.retry" . }}
+    syncOptions: [ServerSideApply=true]
+{{- end }}

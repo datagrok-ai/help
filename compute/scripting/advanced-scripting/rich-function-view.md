@@ -162,8 +162,12 @@ function MyScriptViewersHookMaker() {
 
 When used inside a [workflow](../../workflows/workflows.mdx), the hook also receives a `meta`
 argument and is re-invoked whenever metadata published by
-[`meta` links](../../workflows/link-types.mdx) changes. See the workflow-side
+[`meta` links](../../workflows/link-types.mdx) changes. A workflow step can set its own `viewersHook`
+instead, which replaces the script's hook for that step. See the workflow-side
 [`viewersHook` reference](../../workflows/configuration.mdx) for the full signature.
+
+If the hook can't be made, because the function is missing or fails, a warning says so, and the viewers
+and exports go on without it.
 
 RichFunctionView supports the `dockSpawnConfig` option to control the
 viewer's width. By default, any viewer occupies all available
@@ -493,7 +497,9 @@ outputDf = inputDf.clone();
 
 You can use the one-click export feature to save the entire script run to a local file.
 To generate the export file,
-Select <i class="fas fa-arrow-to-bottom"></i> **Export** icon on the top panel.
+Select <i class="fas fa-arrow-to-bottom"></i> **Export** icon on the top panel. The icon runs the first
+export of the **Export** menu: the default Excel report, unless a [preferred export](#customize-export)
+comes first.
 Automatic export saves all input and output values with their captions,
 units, and even viewers' screenshots.
 
@@ -533,25 +539,68 @@ You can customize export using the following annotation:
 //meta.customExports: [{"name": "pdf", "function": "MyPackage:MyPDFExport"}]
 ```
 
-The export function will receive the following arguments:
+To make an export the default one, add `"preferred": true` to it. Preferred exports come first in the
+**Export** menu, in their order, before the default Excel report and the other exports. The first export
+of the menu is also the one the <i class="fas fa-arrow-to-bottom"></i> icon runs and the bulk export of runs
+picks.
+
+```javascript
+//meta.customExports: [{"name": "pdf", "function": "MyPackage:MyPDFExport", "preferred": true}]
+```
+
+The export function receives the following arguments:
 
 * `funcCall`: DG.FuncCall, current call.
-* `startDownload`: bool, true if the function should start a file download or just return results.
 * `isOutputOutdated`: bool, true if the function output is outdated.
+* `runError`: string, the error of the run, if it failed.
 * `validationState`: `Record<string, ValidationResult>`, available only if run inside a [workflows](../../workflows/workflows.mdx).
 * `consistencyState`: `Record<string, ConsistencyInfo>`, available only if run inside a [workflows](../../workflows/workflows.mdx).
+* `viewersHook`: the [viewers hook](#visualize-input-data) of the call, the workflow step's own when the step sets one.
+* `metaState`: the step's meta values by output, for the hook, available only if run inside a [workflow](../../workflows/workflows.mdx).
 
 Declare these as `//input:` parameters of the export function. The current call must be
-typed `funccall`:
+typed `funccall`. Every place that runs the export, the **Export** menu, a workflow step and the bulk export
+of runs, passes the same arguments. The function returns the exported file as `DG.FileInfo`, and Compute downloads it.
+An export that makes several files zips them into one.
+
+Legacy export functions still work: they receive `startDownload`, always false, and the `Blob` they
+return is downloaded named after the function and the run date, or **Not completed**, with `.xlsx` when
+the Blob is Excel. Don't use either in a new export.
 
 ```javascript
 //name: MyPDFExport
 //input: funccall funcCall
-//input: bool startDownload
-//output: object result
-export function myPDFExport(funcCall, startDownload) {
-  // build the report for funcCall; download it when startDownload is true
+//output: file result
+export async function myPDFExport(funcCall) {
+  const bytes = await buildPdf(funcCall);
+  return DG.FileInfo.fromBytes(`${funcCall.func.friendlyName}.pdf`, bytes);
 }
+```
+
+To start from the default Excel report, call `reportFuncCallExcel` from
+`@datagrok-libraries/compute-api`, or the `Compute2:ReportFuncCallExcel` function. It returns the file and
+its ExcelJS workbook, built and named as the export menu builds them, so you can return the file as is, or add
+sheets and save the workbook. Pass on the arguments the export gets (`CustomExportArgs`), so that a workflow
+step's report uses the step's hook and meta, and the file is named **Not completed** for a run that isn't:
+
+```javascript
+const [file, wb] = await reportFuncCallExcel(funcCall,
+  {validationState, consistencyState, isOutputOutdated, viewersHook, metaState});
+wb.addWorksheet('Notes').addRow(['Reviewed']);
+return DG.FileInfo.fromBytes(file.fileName, new Uint8Array(await wb.xlsx.writeBuffer()));
+```
+
+To export a run from your own code, for example from a custom view's button, list the exports with
+`getCallExports(func)` and run one with `exportCall(funcCall, exportId, args)`, both from
+`@datagrok-libraries/compute-api` (or the `Compute2:CallExports` and `Compute2:ExportCall` functions). The list
+is the run's **Export** menu, preferred exports and the default Excel report included, and the first one is the
+default. `exportCall` runs an export as the menu does and returns its file; `args` are the arguments an export
+function gets (`CustomExportArgs`). A saved run exports the same way once it is loaded with its outputs:
+
+```javascript
+const [first] = await getCallExports(funcCall.func);
+const file = await exportCall(funcCall, first.id, {isOutputOutdated: false});
+DG.Utils.download(file.fileName, new Blob([file.data]));
 ```
 
 Workflows also support a workflow-level `customExports` option with a different handler
@@ -633,6 +682,33 @@ unsaved state instead, click <i class="fas fa-exchange"></i> **Add the current s
 top panel. Both open the same dialog, where you can change the name of each run for this comparison. When other
 comparisons are open, the dialog also lets you pick one or start a new [run comparison](../../run-comparison.md).
 The dialog warns about outdated outputs of the current state. Saving the state later gives it its final name.
+
+### Export runs
+
+To export the runs of a space at once, open the space in the **Runs** panel and click **Export**. In
+**My runs**, **Export** takes your runs listed there. The dialog lists each model that has runs to export,
+with the number of runs and the export to use: the first one in the model's export menu, or another one you
+pick.
+
+* **Include subspaces**, on by default, adds the runs of every subspace below the space, each run once.
+  **My runs** has no subspaces, so the dialog doesn't show it.
+* When a search or filter is on, only the runs it shows are exported, and the dialog says so.
+* **Export** is unavailable when there are no runs to export, and at the **Spaces** level.
+* Runs of a model with no exports, such as a custom function view, are left out.
+* Runs that aren't completed are greyed out and left out: their outputs are outdated, or a workflow step
+  hasn't run, so their export menu offers nothing. In the **Runs** panel and the **Save run** dialog they
+  have a <i class="fal fa-hourglass-half"></i> mark. A workflow run saved before this mark existed is checked
+  when it's exported, and skipped with a warning if it isn't completed.
+
+**Browse Runs** in the **Model Hub** has **Export** too, for the runs of the chosen model or of all models.
+The dialog title names the place and the model filter, for example **Export runs of My runs · All models**.
+
+In a workflow step's **Runs** panel, **Export** uses the step's viewers hook, as the step's own export menu does.
+
+Each run is exported as its export menu does when the run is open. The files go into one zip file named after
+the space and the date, with a folder for each subspace. Files with the same name in a folder get a number.
+Runs are exported one at a time. **Cancel** stops the export without saving the zip. Runs that couldn't be
+exported are listed in the dialog, and the zip has the rest.
 
 ## Model parameters optimization
 

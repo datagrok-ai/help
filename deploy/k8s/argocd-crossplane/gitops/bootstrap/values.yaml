@@ -17,6 +17,7 @@ aws:
   crossplaneRoleArn: ""
   lbControllerRoleArn: ""
   externalSecretsRoleArn: ""
+  cloudwatchExporterRoleArn: ""
 
 datagrok:
   # Version of the datagrok-env chart and the crossplane-aws package. Set it in
@@ -32,6 +33,24 @@ datagrok:
 # Set by Terraform (install_lb_controller): false when the cluster already runs one.
 controllers:
   awsLoadBalancerController: true
+
+# Optional monitoring: the datagrok-monitoring chart. Terraform sets the role
+# (monitoring_role), because the role decides the IAM role and the EBS driver.
+# Every other key of this block is a value of that chart
+# (gitops/charts/datagrok-monitoring/values.yaml) and is set in gitops/envs/<env>.yaml.
+# The cluster label (datagrok-<env>), the instance to watch, the RDS exporter and
+# the storage class are filled in from the cluster.
+monitoring:
+  # none: nothing is installed.
+  # standalone: Prometheus, Alertmanager and Grafana in this cluster, with the
+  #   Datagrok rules and dashboards. Only on a cluster that runs no other Prometheus operator.
+  # agent: a forwarder scrapes this cluster and remote-writes everything to a hub,
+  #   which holds the data, the rules and the dashboards. Needs forwarder.url.
+  # hub: the stack that agents report to; watches no Datagrok of its own.
+  role: none
+  # A published datagrok-monitoring chart version. Empty: the chart in
+  # gitops/charts/datagrok-monitoring of this repo.
+  chartVersion: ""
 
 versions:
   crossplane: 2.3.3

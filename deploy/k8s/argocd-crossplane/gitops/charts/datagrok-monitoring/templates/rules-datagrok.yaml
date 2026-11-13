@@ -1,0 +1,16 @@
+{{- if include "mon.hub" . }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: datagrok
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  {{- with include "mon.objectLabels" . }}
+  labels:
+    {{- . | nindent 4 }}
+  {{- end }}
+spec:
+  groups:
+  {{- (.Files.Get "files/rules/datagrok.yaml" | fromYaml).groups | toYaml | nindent 2 }}
+{{- end }}

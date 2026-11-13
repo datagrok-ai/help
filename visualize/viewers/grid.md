@@ -694,6 +694,33 @@ To color the text instead, set **Apply to** to `text`. To color only the area be
 
 To apply the same color-coding settings to other columns, use Pick Up / Apply Coloring from the column's Color Coding menu.
 
+#### Conditional color coding
+
+Conditional color coding is a list of rules. Each rule is a condition with a color. Datagrok checks
+the rules from top to bottom, and a value gets the color of the **first** rule it matches. Values that
+match no rule stay uncolored.
+
+| Rule          | Matches                                 |
+|---------------|-----------------------------------------|
+| `20 - 40`     | `20 <= x <= 40` (both ends included)    |
+| `> 40`, `>= 40` | Values above 40, values 40 and above  |
+| `< 40`, `<= 40` | Values below 40, values 40 and below  |
+| `= 40`, `!= 40` | Exactly 40, anything but 40           |
+| `in (1, 2, 3)`  | Any of the listed values              |
+| `is null`       | Empty cells                           |
+
+Because both ends of a range are included, a boundary value matches two neighboring ranges, and
+the rule listed first wins. With the default rules created by **Bin...** (equal-width bins ordered
+from low to high, such as `0 - 20`, `20 - 40`, `40 - 60`), a boundary value goes to the **lower** bin.
+For example, 40 is colored as `20 - 40`, not `40 - 60`. The bins are effectively `[0, 20]`,
+`(20, 40]`, `(40, 60]`.
+
+To put boundary values in the upper bin (`[A, B)` intervals), do one of the following:
+
+* Reverse the order of the rules so the higher range comes first.
+* Use comparison operators instead of ranges, ordered from high to low: `>= 60`, `>= 40`, `>= 20`,
+  `>= 0`.
+
 ![Color coding](img/grid-color-coding.gif)
 
 ### Show, hide, or reorder columns

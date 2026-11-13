@@ -1,0 +1,4 @@
+apiVersion: v2
+name: datagrok-monitoring
+description: Monitoring for Datagrok - a Prometheus stack or a forwarder to one, the Datagrok records collector and probe, RDS metrics, alert rules, dashboards
+version: 0.2.0

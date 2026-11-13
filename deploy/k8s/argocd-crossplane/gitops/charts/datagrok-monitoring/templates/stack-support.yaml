@@ -1,0 +1,61 @@
+{{- if and (include "mon.hub" .) .Values.stack.install }}
+{{- if .Values.stack.gp3StorageClass }}
+# Volumes of Prometheus and Alertmanager (EBS CSI driver).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: datagrok-gp3
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+---
+{{- end }}
+{{- if .Values.stack.grafana.generateAdminSecret }}
+# Grafana admin password: generated once in the cluster, never in Git.
+# kubectl -n {{ .Values.namespace }} get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d
+apiVersion: generators.external-secrets.io/v1alpha1
+kind: Password
+metadata:
+  name: grafana-admin
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  length: 24
+  digits: 6
+  symbols: 0
+  noUpper: false
+  allowRepeat: true
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: grafana-admin
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false,SkipDryRunOnMissingResource=true
+spec:
+  refreshPolicy: CreatedOnce
+  target:
+    name: grafana-admin
+    creationPolicy: Orphan
+    template:
+      metadata:
+        annotations:
+          argocd.argoproj.io/sync-options: Prune=false
+          argocd.argoproj.io/compare-options: IgnoreExtraneous
+      data:
+        admin-user: admin
+        admin-password: "{{ "{{" }} .password {{ "}}" }}"
+  dataFrom:
+  - sourceRef:
+      generatorRef:
+        apiVersion: generators.external-secrets.io/v1alpha1
+        kind: Password
+        name: grafana-admin
+{{- end }}
+{{- end }}
