@@ -82,6 +82,22 @@ To save or open from your own controls, call `saveRunWithDialog(this.funcCall!)`
 `openRunWithDialog()`. To save without the dialog, call `saveRun(call)`, and to open a run by its id,
 `loadRun(id)`. Both run the same hooks.
 
+## Exporting runs
+
+To let users download the current run, set `exports` to a list of named exports. Each export returns
+the file as a `DG.FileInfo`, which is downloaded under its own name. The
+<i class="fas fa-arrow-to-bottom"></i> **Export** icon runs the first export, and **Model** > **Export**
+lists them all.
+
+```typescript
+exports = [
+  {name: 'Result as CSV', export: async () => DG.FileInfo.fromString('result.csv', this.resultCsv())},
+];
+```
+
+When the current run can't be exported yet, for example before it ran, set `exportEnabled` to `false`.
+This greys out the icon and the menu items until you set it back to `true`.
+
 ## Adding ribbon items
 
 The view builds its ribbon after `buildIO()` and rebuilds the panels when Compute2 adds **Save** and
@@ -103,6 +119,7 @@ buildRibbonMenu() {
 
 ## Without Compute2's editor
 
-The **Save** and **Open a saved run** buttons come from Compute2's editor. A view opened another way
-has neither, and `saveRunWithDialog` and `openRunWithDialog` do nothing. To give such a view your own
+The **Save** and **Open a saved run** buttons come from Compute2's editor, and so does opening the run
+from a link to it. A view opened another way has no buttons, ignores the link, and `saveRunWithDialog`
+and `openRunWithDialog` do nothing. To give such a view your own
 dialogs, set its `runStorage` to an object with `saveDialog(call)` and `openDialog(func)` functions.
