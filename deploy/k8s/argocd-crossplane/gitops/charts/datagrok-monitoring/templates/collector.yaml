@@ -272,7 +272,7 @@ subjects:
 #   datagrok_disk_{used_bytes,free_bytes,usage_percent}{datagrok_server,datagrok_device,datagrok_mount}
 #   datagrok_db_size_bytes, datagrok_db_connections{datagrok_state}, datagrok_db_connections_max,
 #   datagrok_db_lock_waits, datagrok_db_oldest_idle_transaction_seconds, datagrok_db_cache_hit_percent,
-#   datagrok_queue_calls{datagrok_status}, datagrok_http_{requests_5m,errors_5m,latency_p95_5m_milliseconds},
+#   datagrok_queue_messages, datagrok_queue_messages_by_state{datagrok_state}, datagrok_http_{requests_5m,errors_5m,latency_p95_5m_milliseconds},
 #   datagrok_sessions_active_5m, datagrok_alerts_open{datagrok_severity}
 #   datagrok_db_table_{size_bytes,rows}{datagrok_table}, datagrok_db_dead_tables, datagrok_db_max_dead_percent,
 #   datagrok_storage_{size_bytes,objects}{datagrok_location,datagrok_nature}, datagrok_gc_pending{datagrok_key}

@@ -178,7 +178,8 @@ carries `datagrok_instance` and `datagrok_url`; per-server series also carry `da
 | `datagrok_db_size_bytes`, `datagrok_db_connections_max`, `datagrok_db_lock_waits` | | database |
 | `datagrok_db_connections` | `datagrok_state` (`active`, `idle`, `idle_in_transaction`) | database |
 | `datagrok_db_oldest_idle_transaction_seconds`, `datagrok_db_cache_hit_percent` | | database |
-| `datagrok_queue_calls` | `datagrok_status` (`queued`, `running`, `stale`) | function calls |
+| `datagrok_queue_messages` | | messages in every RabbitMQ queue (its management API) |
+| `datagrok_queue_messages_by_state` | `datagrok_state` (`ready`, `unacknowledged`) | of them waiting for a worker, and taken by one |
 | `datagrok_http_requests_5m`, `datagrok_http_errors_5m`, `datagrok_http_latency_p95_5m_milliseconds`, `datagrok_sessions_active_5m` | | last 5 minutes |
 | `datagrok_alerts_open` | `datagrok_severity` | open alerts |
 | `datagrok_db_table_size_bytes`, `datagrok_db_table_rows` | `datagrok_table` | the 20 largest tables |
