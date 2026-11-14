@@ -49,14 +49,16 @@ Datagrok uses the [Nelder-Mead](https://en.wikipedia.org/wiki/Nelder%E2%80%93Mea
 
 :::note developers
 
-To enable parameter optimization for a function, add the following metadata in the [RichFunctionView](https://datagrok.ai/help/compute/scripting/advanced-scripting/) editor: `meta.features: {"fitting": true}`:
+To enable parameter optimization for a function, add `meta.features: {"fitting": true}` to its
+annotation. The fitting icon then shows both in the function view and in the
+[Rich function view](scripting/advanced-scripting/rich-function-view.md); it needs the Compute2 package.
+When you accept a fit, the fitted inputs go into the form.
 
 ```javascript
 //name: Test
 //language: javascript
 //input: double x
 //output: double y
-//editor: Compute:RichFunctionViewEditor
 //meta.features: {"fitting": true}
 
 let y = x * x;
@@ -94,14 +96,15 @@ To view the details for any result, click a table row with the required inputs a
 
 :::note developers
 
-To enable parameter optimization for a function, add the following metadata in the [RichFunctionView](https://datagrok.ai/help/compute/scripting/advanced-scripting/) editor: `meta.features: {"sens-analysis": true}`:
+To enable sensitivity analysis for a function, add `meta.features: {"sens-analysis": true}` to its
+annotation. The sensitivity analysis icon then shows both in the function view and in the
+[Rich function view](scripting/advanced-scripting/rich-function-view.md); it needs the Compute2 package.
 
 ```javascript
 //name: Test
 //language: javascript
 //input: double x
 //output: double y
-//editor: Compute:RichFunctionViewEditor
 //meta.features: {"sens-analysis": true}
 
 let y = x + 3;
