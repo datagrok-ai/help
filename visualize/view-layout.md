@@ -24,7 +24,8 @@ You can save layouts for:
 A **Table View** layout defines the arrangement of viewers in a **Table View** and their properties. 
 The layout also includes the state of the **Filter Panel**, so a saved layout
 or dashboard reopens with the same filters applied. Named filter presets are
-not part of the layout: they are stored in your browser. See
+not part of the layout: they are shareable entities that apply to any table with
+their columns. See
 [Saving a filter configuration](viewers/filters.md#saving-a-filter-configuration).
 
 To save a **Table View** layout and apply it to a different dataset:

@@ -275,11 +275,28 @@ The current state of the **Filter Panel** is saved with the
 sets for one table, save them as named presets:
 
 1. In the **Filter Panel** context menu, select **Save or Apply > Save…**
-2. Enter a name for the saved configuration.
+2. Enter a name and, optionally, a description. To share the preset right away,
+   select **Share after saving**.
 
-Restore this configuration through **Save or apply** in the context menu.
-Presets are stored in your browser, not on the server, so they don't travel
-with the dashboard or to other users.
+To apply a preset, select it under **Save or Apply** in the context menu. The
+menu lists the presets that fit the table: those whose filters are all on
+columns the table has, with the same types (a
+[domain table](../../govern/catalog/domains.md) lists its own presets). Each
+row shows who saved the preset and when.
+The menu shows the first 20 presets. To see more, scroll to the end of the
+list. To find any preset, type in the menu's search box.
+To change the order, use **Sort by**: **Updated**, **Used by me**, or
+**Shared with me**.
+
+Saving under the name of one of your presets updates it.
+
+Presets are stored on the server and shared like any other Datagrok entity.
+Presets saved in your browser by earlier versions move to the server the first
+time you open a filter panel.
+To share a preset later, hover over it in the menu and click the share icon,
+or click **Share...** in the notification that appears after saving. To delete
+a preset, click the trash icon. It deletes the preset for everyone it's shared
+with. The icons show only for presets you're allowed to share or delete.
 
 ![Saving a filter preset](img/filters-save-preset.gif)
 

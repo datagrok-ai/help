@@ -466,7 +466,7 @@ Color coding remains consistent across the [grid](../../visualize/viewers/grid.m
 
 ##### <b>Q: Are my filters saved with the dashboard?</b>
 
-The filter panel's state is part of the layout, so a saved dashboard reopens with it. To keep several filter sets for one table, save them by name in the filter panel's context menu under **Save or Apply**. These presets are stored in your browser only and don't travel with the dashboard or to other users. See [Saving a filter configuration](../../visualize/viewers/filters.md#saving-a-filter-configuration).
+The filter panel's state is part of the layout, so a saved dashboard reopens with it. To keep several filter sets for one table, save them by name in the filter panel's context menu under **Save or Apply**. Presets are stored on the server, apply to any table that has their columns, and can be shared with other users and groups. See [Saving a filter configuration](../../visualize/viewers/filters.md#saving-a-filter-configuration).
 
 ##### **Q: How can I search and filter data quickly and intuitively?**
 
