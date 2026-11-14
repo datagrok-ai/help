@@ -90,6 +90,17 @@ page reads as the form, the table it received, and what came out of it:
 
 If you close a viewer in the results, press <kbd>Ctrl+Z</kbd> to bring it back to the same place.
 
+## Export the results
+
+After a run, the <i class="fas fa-arrow-to-bottom"></i> icon on the ribbon downloads the run as an Excel
+workbook: an **Inputs** and an **Outputs** sheet with the names, values and units, then a sheet per
+table, with the viewers of each result table placed as you arranged them.
+
+A function adds its own exports with `meta.customExports` and hides the Excel one with
+`meta.features: {"export": false}`, as in the
+[Rich function view](../advanced-scripting/rich-function-view.md#customize-export); the icon then offers
+them in a menu, preferred ones first. The export function gets the run as `funcCall`.
+
 The function view keeps the viewers as you arranged them: when you run the function again, a
 viewer you added, moved or closed stays that way, and the declared `viewer:` list is used only for
 the first run, or when the new result has different columns. Once you change an input, the results
