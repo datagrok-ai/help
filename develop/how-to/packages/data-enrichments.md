@@ -68,6 +68,9 @@ Each file defines one enrichment:
 | `fields`     | Columns to retrieve (`schema.table.column`) |
 | `joins`      | Table join definitions                      |
 
+The connection can be one that the plugin ships or any existing connection that the user who publishes the plugin can see.
+If Datagrok can't find it, the publish fails.
+
 ### Joins
 
 Each join specifies how tables are connected:

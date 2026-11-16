@@ -68,7 +68,7 @@ design.
 * **Data augmentation and utilities**
   * Calculated columns using [500+ functions](../../../concepts/functions/functions.md) (or create your own)
   * [Chemical scripts](#chemical-scripts) and [custom plugins](#customizing-and-extending-the-platform)
-  * [Calculators](#calculators), [curation](#curation), [mutation](#mutation), [virtual synthesis](#virtual-synthesis)
+  * [Calculators](#calculators), [curation](#curation), [mutation](#mutation), [reactions](#reactions), [virtual synthesis](#virtual-synthesis)
 
 To get started, install the required [packages](../../../plugins.md#chem) 
 (see [instructions](../../../../deploy/complete-setup/install-packages.md)).
@@ -1400,6 +1400,34 @@ To perform chemical structure mutation:
 1. Navigate to **Menu Ribbon** > **Chem** > **Transform** > **Mutate...**
 1. In the **Mutate** dialog, draw or paste the desired structure and set other parameters, including the number of mutated molecules. Each mutation step can have randomized mutation mechanisms and places (select the **Randomize** checkbox).
 1. Click **OK** to execute. A new table with mutated structures opens.
+
+</details>
+
+### Reactions
+
+The **Reaction Sketcher** app draws, edits, and exports chemical reactions and multi-step routes. To open it, go to **Browse** > **Apps** > **Chem** > **Reactions** > **Reaction Sketcher**. For a column of reactions, click a cell to see the reaction drawn in the **Reaction** pane of the **Context Panel**.
+
+![Reaction Sketcher](img/reactions-app.png "Reaction Sketcher")
+
+<details>
+<summary>How to use</summary>
+
+To draw a reaction:
+
+1. Open **Browse** > **Apps** > **Chem** > **Reactions** > **Reaction Sketcher**. The app opens on an example route. To start from another one, use **Examples** in the **Menu Ribbon**.
+1. Draw the reactants, the arrow, and the products in the sketcher. The **Text** box under the sketcher holds the same reaction as reaction SMILES or SMARTS. When you edit one, the other follows.
+1. The drawing on the right colors the reaction center from the atom mapping: green for a bond made, red for a bond broken, and blue for a bond whose order changed. To show the map numbers, turn on **Map numbers** above that drawing.
+1. To export the scheme for a document, click **Export...** in the **Menu Ribbon**. Select a style (**ACS Document 1996** or **Screen**), a width (a single or double journal column, or free), and a format (SVG, PNG, or CDXML), then click **Save**.
+
+The app keeps your reaction in the browser and opens on it next time. **Reset to example** brings back the example route.
+
+To work with a reaction column:
+
+* Click a cell to see it in the **Reaction** pane: the reaction drawn large, the steps of a route, and the atom mapping.
+* Double-click a cell, or right-click it and select **Edit reaction...**, to edit the reaction. **OK** writes it back in the column's notation. Before you click OK, the dialog names anything that notation can't keep, such as a reagent drawn as a label.
+* To export a cell's reaction, right-click the cell and select **Export reaction...**.
+
+The **Reaction** pane needs the Chem package's **Chemical Engine** setting to be **Crux** (the default). The app, the cell editor, and **Export reaction...** work with either setting.
 
 </details>
 
