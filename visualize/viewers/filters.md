@@ -288,7 +288,9 @@ list. To find any preset, type in the menu's search box.
 To change the order, use **Sort by**: **Updated**, **Used by me**, or
 **Shared with me**.
 
-Saving under the name of one of your presets updates it.
+After you apply a preset, **Save...** proposes its name, so you can save your
+changes back into it. Saving under the name of a preset you're allowed to edit
+replaces its filters, after you confirm.
 
 Presets are stored on the server and shared like any other Datagrok entity.
 Presets saved in your browser by earlier versions move to the server the first
@@ -296,7 +298,8 @@ time you open a filter panel.
 To share a preset later, hover over it in the menu and click the share icon,
 or click **Share...** in the notification that appears after saving. To delete
 a preset, click the trash icon. It deletes the preset for everyone it's shared
-with. The icons show only for presets you're allowed to share or delete.
+with. To rename a preset, click the pencil icon. The icons show only for
+presets you're allowed to rename, share, or delete.
 
 ![Saving a filter preset](img/filters-save-preset.gif)
 
