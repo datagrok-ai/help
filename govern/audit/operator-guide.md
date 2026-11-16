@@ -172,6 +172,7 @@ carries `datagrok_instance` and `datagrok_url`; per-server series also carry `da
 | `datagrok_server_isolates`, `datagrok_server_sockets`, `datagrok_server_open_files_limit` | | per server |
 | `datagrok_server_http_connections`, `datagrok_server_db_connections` | | connections of the server process |
 | `datagrok_server_service_up` | `datagrok_service`, `datagrok_type` | 1 running, 0 failed or blocked |
+| `datagrok_isolate_up` | `datagrok_isolate` | 1 per worker isolate that answered, 0 for one that did not |
 | `datagrok_isolate_http_requests_in_flight`, `datagrok_isolate_http_requests_5m` | `datagrok_isolate` | per isolate |
 | `datagrok_isolate_db_pool_connections`, `_in_use`, `_waiting`, `_max` | `datagrok_isolate` | database pool of the isolate |
 | `datagrok_disk_used_bytes`, `datagrok_disk_free_bytes`, `datagrok_disk_usage_percent` | `datagrok_device`, `datagrok_mount` | per server |
@@ -195,6 +196,12 @@ carries `datagrok_instance` and `datagrok_url`; per-server series also carry `da
 Example rules:
 
 ```yaml
+- alert: DatagrokIsolateDown
+  expr: datagrok_isolate_up == 0
+  for: 5m
+  labels: {severity: critical, audience: platform}
+  annotations:
+    summary: '{{ $labels.datagrok_instance }}: isolate {{ $labels.datagrok_isolate }} of {{ $labels.datagrok_server }} does not answer'
 - alert: DatagrokDbPoolWaiting
   expr: datagrok_isolate_db_pool_waiting > 0
   for: 5m
