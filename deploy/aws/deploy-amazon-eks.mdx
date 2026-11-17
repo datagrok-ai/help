@@ -95,6 +95,10 @@ We prepared a specific template for every need of our customers. Answer the simp
 
 Datagrok stand will be put in an existing VPC you choose upon creation.
 
+On EKS, every pod, including each package container, takes an IP address from the VPC.
+Plan for about 1,150 addresses per environment: a `/22` private subnet in each zone.
+See [Network sizing](../k8s/deploy-argocd-crossplane.md#network-sizing).
+
 #### Do you use Route53 as your DNS provider? (existing VPC)
 
 <Tabs groupId="dns" queryString>
