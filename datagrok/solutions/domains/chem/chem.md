@@ -228,6 +228,11 @@ The following info panes are shown by default for the current molecular column:
   * Highlight the scaffold (**Highlight from column**).
   * Force regeneration for atom coordinates, even if the molecule is defined as a MOLBLOCK (**Regenerate coords**).
   * Type of the filter for that column (sketcher or categorical)(**Filter type**).
+  * Color of highlighted substructures that have no color of their own, such as the substructure filter's matches (**Highlight color**).
+  * Draw unspecified stereocenters with a wavy bond and unspecified double bonds as crossed bonds (**Mark unspecified stereo**).
+  * Label a molecule once ("AND enantiomer", "OR enantiomer") when all its stereocenters are in one enhanced stereo group (**Simplified stereo label**).
+
+  The last three options default to Chem's settings (**Browse** > **Platform** > **Plugins** > **Chem** > **Settings** > **Rendering**).
 
 <details>
 <summary>Info pane options</summary>

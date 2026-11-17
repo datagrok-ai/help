@@ -536,13 +536,20 @@ file:
 "properties": [
 {
 "name": "Property name",
+"friendlyName": "Property",           // Optional caption of the input
+"description": "What it does",        // Optional tooltip of the input
+"category": "Group",                  // Optional header the input is listed under
 "propertyType": "string", // `DG.TYPES_SCALAR` are supported
+"inputType": "Color",                 // Optional input to edit the value with, such as a color picker for a string
 "choices": ["value #1", "value #2"], // Optional field with values of the property type
 "defaultValue": "value #2", // Optional field with a default value (it should be in choices, if they are given)
 "nullable": false                     // Optional field determining whether the property value can be null
 }
 ]
 ```
+
+When the properties have categories, the settings editor lists them under a header per category, in the order
+the categories first appear in `package.json`.
 
 To retrieve the state of package settings in code, use the `getProperties` method of `DG.Package`:
 
