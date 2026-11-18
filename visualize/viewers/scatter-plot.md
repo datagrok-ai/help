@@ -260,6 +260,9 @@ the properties panel:
 
 To quickly adjust settings for labels, right-click on the label.
 
+In a [trellis plot](trellis-plot.md#labels) cell, a scatter plot labels only the selected rows it shows, up to 20,
+in a smaller font.
+
 ![](img/scatter-plot-labels.gif)
 
 ## Jitter

@@ -178,15 +178,36 @@ columns and distribution for categorical columns.
 You can change this default information or disable the tooltip altogether. 
 
 To access the tooltip options:
-* **For rows**: In the **Top Menu**, select **View** > **Tooltip**. This opens
-  the **Tooltip** dialog, where you can select the columns to show or design a
+* **For rows**: In the **Top Menu**, select **View** > **Edit Tooltip...**. This opens
+  the **Edit Tooltip** dialog, where you can select the columns to show or design a
   custom tooltip using a [form viewer](viewers/form.md).
 * **For columns**: Right click the column's header and select the desired option
   under **Tooltip > Current Column**.
-* **For viewers**: Click the **Hamburger icon** in the viewer's header and select **Tooltip** > **Edit...** This opens the same **Tooltip** dialog as described above.
+* **For viewers**: Right click the viewer and select **Tooltip** > **Edit...**. This opens the same **Edit Tooltip** dialog.
 
-By default, tooltips display values from all columns in tables with fewer than 21
-columns. Tooltips don't show any column values for tables with 21 or more columns.
+A row tooltip comes from one of two column lists. In the dialog, **Use tooltip** picks the list you edit:
+
+| Use tooltip | What it edits | Where it's saved | Columns shown |
+|---|---|---|---|
+| **Table (shared)** | The table's tooltip. Every viewer whose **Show Tooltip** property is *inherit from table* shows it | With the table, its layouts, and its projects | The first seven checked |
+| **Scatter plot only** (named after the viewer) | The viewer's own tooltip. Other viewers keep theirs | With the viewer, in layouts and projects | The first 20 checked |
+
+Only viewers that have their own tooltip (such as the scatter plot, box plot, line chart, and grid) offer the choice.
+For other viewers, the dialog edits the table's tooltip.
+
+The line under the column list counts the checked columns. It warns when the tooltip shows fewer columns than
+checked or none at all. Columns are shown top to bottom, so to move a column into the tooltip, drag its row up. A scatter plot
+also adds its X and Y columns, as its **Data Values** property says.
+
+**Show column names** sets whether the tooltip names each value. **Auto** names them only where values could be mixed
+up, such as two numbers. A viewer's own **Show Column Names** property, unless set to **Auto**, overrides the table's
+setting for that viewer.
+
+Until you pick columns, the table's tooltip shows its first seven columns, skipping long text columns.
+
+To hide a tooltip, right click a viewer and select **Tooltip** > **Hide**. For a viewer that inherits the table's
+tooltip, this hides the table's tooltip in every viewer that inherits it. To bring it back, select **Tooltip** >
+**Show Custom**.
 
 :::note developers
 

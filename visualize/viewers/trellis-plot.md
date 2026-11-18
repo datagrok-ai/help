@@ -42,6 +42,14 @@ chemical structures after performing [R-Group Analysis](../../datagrok/solutions
 
 ![R-Group Analysis](../../uploads/chem/r-group-analysis.png "R-Group Analysis")
 
+## Labels
+
+When the inner viewer is a [scatter plot](scatter-plot.md#labels) with **Label Columns** set, each cell labels the
+rows you select, up to 20 per cell, in a smaller font. **Show Labels For** starts as **FilteredSelected** and doesn't
+apply in cells, and **Display Labels** set to **Never** hides the labels. To see every label, open the cell full screen: it labels its rows as a
+standalone scatter plot does. A click on empty space in a cell, or in a cell opened full screen, keeps the
+selection.
+
 ## Axes
 
 Each inner viewer can have independent axis bounds. Use the **Global Scale** option to synchronize axes across all inner viewers:
