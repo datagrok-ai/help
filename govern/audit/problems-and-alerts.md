@@ -98,9 +98,13 @@ One **Save** saves both.
 
 ## Metrics, logs and log settings
 
-* **Metrics**: the database, connections, the function queue, storage and disks, errors, latency and sessions
-  for the chosen window; data growth; the slowest queries; the largest and the least healthy tables; and the
-  HTTP routes. Click a failed share of a route to see the failed requests and their log.
+* **Metrics**: the database, storage and disks, the servers, containers, connections and the function queue,
+  and the errors, latency and sessions of the chosen window against the one before it, as three compact
+  tables: **Storage**, **Runtime** and **Traffic**. The line above them names what is not fine. Hover a row
+  for what it means and what is good or bad. Below are the instances and the data growth.
+* Under **Metrics** in the tree, each with its own URL: **Queries** (the slowest, the most called and those
+  with the worst cache hit), **Largest tables**, **Table health** and **HTTP routes**. On **HTTP routes**,
+  click a failed share of a route to see the failed requests and their log.
 * **Logs**: one explorer for the platform's events and the logs of its services. Service logs are read from
   what the services pushed into Datagrok; switch to **Live** to follow a container as it writes. On AWS
   deployments the explorer also reads CloudWatch and the log archive.
