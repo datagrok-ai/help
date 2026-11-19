@@ -21,17 +21,20 @@ A level, such as debug, is matched only when the logger saves that level.
 
 ## Where rules live
 
-The rules are one setting, **Problem rules**, on **Settings** > **Alerts**: a JSON array of rules.
-Saving checks every rule and refuses the save with the first error. Changing it needs the
-**Edit Plugins Settings** [global permission](../access-control/access-control.md#global-permissions)
-and is recorded as a `settings-changed` audit event.
+Edit the rules in **Browse** > **Platform** > **Health** > **Alerts** > **Rules**, as cards or as one JSON array.
+Saving checks every rule and refuses the save with the first error. A save is recorded as a
+`settings-changed` audit event.
+
+The page needs the **Manage Alerts** and **Edit Plugins Settings**
+[global permissions](../access-control/access-control.md#global-permissions). Without both, **Browse** does not
+show **Rules**, and its link opens a page that names the missing permissions.
 
 Out of the box the array holds one rule, `login-failures`: 5 failed sign-ins of one login within 15 minutes.
 Saving your own rules replaces it, so keep it in the array if you want it.
 
 | Where | |
 |---|---|
-| **Settings** > **Alerts** | edit **Problem rules**, then **Test rules** |
+| **Health** > **Alerts** > **Rules** | edit the rules, save, then test them with the vial icon |
 | `grok s observe rules` | `get`, `put --json rules.json`, `test` ([grok CLI](https://github.com/datagrok-ai/public/blob/master/tools/GROK_S.md)) |
 | `GROK_PARAMETERS` | `settings.alerts.problemRules`, applied at every start ([below](#rules-the-deployment-defines)) |
 
@@ -93,7 +96,7 @@ Without a summary, Datagrok writes one from the condition.
 
 ## Test
 
-**Test rules** on **Settings** > **Alerts**, or `grok s observe rules test`, evaluates the saved
+**Test the saved rules** (the vial icon) on **Health** > **Alerts** > **Rules**, or `grok s observe rules test`, evaluates the saved
 rules once, now, without raising anything: for each rule, how many events it matched in its window
 and the groups it holds for. It needs the **Manage Alerts** and **View Telemetry** permissions.
 
