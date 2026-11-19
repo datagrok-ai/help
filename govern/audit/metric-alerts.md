@@ -35,14 +35,14 @@ panel, with each value's change over 1, 7 and 30 days and its daily trend. Seein
 | `gc.pending` | the same keys, for the steps that can be counted | daily, and after each collection |
 | `server.sockets`, `server.http_connections`, `server.db_connections` | `local@<server>`: the sockets the server process holds, the HTTP connections it accepted, its connections to the platform database | every 5 minutes |
 
-The schedule and the categories counted are settings in **Settings** > **Alerts** > **Data growth**:
+The schedule and the categories counted are settings in **Health** > **Alerts** > **Rules** > **Data growth**:
 `metricsEveryMinutes` (60), `metricsBreakdownHours` (24), `metricsStorageHours` (6) and `metricsBreakdowns`.
 The samples are kept for 400 days, the hourly ones for 14 (`metricSamplesRetention` in the garbage collector
 settings).
 
 ## Where alerts live
 
-The alerts are one setting, **Metric alerts** (`metricAlerts`), in **Settings** > **Alerts** > **Data growth**:
+The alerts are one setting, **Metric alerts** (`metricAlerts`), in **Health** > **Alerts** > **Rules** > **Data growth**:
 a JSON array, at most 30 alerts. Saving checks every alert and refuses the save with the first error. Changing it
 needs the **Edit Plugins Settings** global permission.
 

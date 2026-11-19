@@ -75,7 +75,7 @@ take. The defaults:
 An error signature is the first 12 characters of the error's stack trace hash, or, for an error without a stack
 trace, of its event type id.
 
-In **Settings** > **Alerts** an administrator can change the error incident, user error, slow and failing request
+In **Browse** > **Platform** > **Health** > **Alerts** > **Rules** an administrator can change the error incident, user error, slow and failing request
 and scheduled job thresholds, the failed health checks that open a service-down problem, the number of
 connections checked per run, and the problem rules, including `login-failures`. The rest is fixed: the 3 passing
 checks that end a service-down problem, the vacuum thresholds, the 2 failed checks that open a connection-down problem, and the

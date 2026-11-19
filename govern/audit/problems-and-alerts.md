@@ -106,6 +106,20 @@ One **Save** saves both.
   deployments the explorer also reads CloudWatch and the log archive.
 * **Log settings**: the log groups, where records are sent, and the in-memory buffer.
 
+## Who sees what
+
+**Browse** shows a **Health** page only to those who can open it:
+
+| Page | [Global permissions](../access-control/access-control.md#global-permissions) |
+|---|---|
+| **Health** (the overview) | **Manage Alerts** or **View Telemetry** |
+| **Alerts** | **Manage Alerts** |
+| **Alerts** > **Rules**, **Log settings** | **Manage Alerts** and **Edit Plugins Settings** |
+| **Metrics**, **Logs** | **View Telemetry** |
+
+A link to a page you cannot open shows a warning that names the permissions it needs. Ask your administrator
+for them.
+
 ## The Alerts view
 
 **Browse** > **Platform** > **Health** > **Alerts** lists the active problems: those whose condition holds
