@@ -102,7 +102,7 @@ One **Save** saves both.
   and the errors, latency and sessions of the chosen window against the one before it, as three compact
   tables: **Storage**, **Runtime** and **Traffic**. The line above them names what is not fine. Hover a row
   for what it means and what is good or bad. Below are the instances and the data growth.
-* Under **Metrics** in the tree, each with its own URL: **Queries** (the slowest, the most called and those
+* Under **Metrics** in the tree, as table views, each with its own URL: **Queries** (the slowest, the most called and those
   with the worst cache hit), **Largest tables**, **Table health** and **HTTP routes**. On **HTTP routes**,
   click a failed share of a route to see the failed requests and their log.
 * **Logs**: one explorer for the platform's events and the logs of its services. Service logs are read from
