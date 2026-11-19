@@ -64,14 +64,14 @@ alert is cleared and resolved.
 * **Vitals** of the last 24 hours against the day before: requests and the share answered with an error status
   (400 or above), p95 latency, errors and the users who met them, the function queue, the database size and cache
   hit rate, and blocked database connections; and the HTTP connections and open sockets of all server instances,
-  with the busiest one's share of its open files limit. A tile opens **Metrics**; **Errors** opens the error events
-  in **Logs**; **Requests**, **DB connections**, **HTTP connections** and **Open sockets** open each instance and
-  isolate in **Metrics**. Growing sockets
+  with the busiest one's share of its open files limit. Click a tile to see that vital in the context panel: its
+  numbers, what they mean, and its parts by instance, route or error message. **View all metrics** there opens
+  **Metrics**. Growing sockets
   raise the [metric alerts](metric-alerts.md) `socket-growth` and `too-many-sockets`.
 * **Needs attention**: the most severe and latest problems. Click one to see it in the context panel; hover
   it to acknowledge or resolve its alert, mute it, or open its evidence.
 * **Top errors** of the last 24 hours. Click one to see its events in **Logs**.
-* **Services**: every health check, the failing ones first. Click a service to open its logs.
+* **Services**: every health check, the failing ones first. Hover a service to see its status; **Logs** opens the logs.
 * **Monitoring setup**: the alert rules, the log settings, and how long records are kept.
 
 The page refreshes every minute.
