@@ -46,6 +46,7 @@ Datagrok supports several deployment schemas which can be configured using `GROK
 | queueSettings            | Optional     | See [Queue Settings](#queue-settings)           | Configuration for [Scripting and Computations](../develop/under-the-hood/infrastructure.md#4-scripting-and-computation)                                     |
 | dockerSettings           | Optional     | See [Docker Settings](#docker-settings)         | Configuration for [Plugins Docker Management](../develop/under-the-hood/infrastructure.md#5-plugin--docker-container-management)                            |
 | connectorsSettings       | Optional     | See [Connectors Settings](#connectors-settings) | List of Grok Connect endpoints for [External Database Connectivity](../develop/under-the-hood/infrastructure.md#3-external-database-connectivity) |
+| publicRepository         | Optional     | See [Public repository](#public-repository)     | Registry, scope, and credentials of the `DatagrokPublic` package repository                                                                                 |
 
 Server-wide options at the root of `GROK_PARAMETERS` (on Kubernetes, `datagrok.grokParametersExtra.<option>` in the Helm values):
 
@@ -142,6 +143,30 @@ into a `connectorsSettings` entry:
 | localFileSystemAccess     | false        | Enables local file system access                                |
 | windowsSharesProxy        |              | Proxy for Windows shares                                        |
 
+### Public repository
+
+`publicRepository` object. It configures `DatagrokPublic`, the package repository Datagrok installs
+public plugins from. Use it to point Datagrok at an npm mirror or a private registry.
+
+| Option   | Default                     | Description                                                      |
+|----------|-----------------------------|------------------------------------------------------------------|
+| registry | https://registry.npmjs.org/ | URL of the npm registry                                          |
+| npmScope | datagrok                    | npm scope of the packages, without `@`                           |
+| token    |                             | Value of the `Authorization` header, such as `Bearer <token>`    |
+| login    |                             | Login for basic authentication. Used when `token` isn't set      |
+| password |                             | Password for basic authentication                                |
+
+Datagrok applies these options on every start, so they replace the values edited in the repository
+dialog. An option you leave out keeps its current value. Removing the credentials options doesn't
+delete credentials that are already saved.
+
+```json
+"publicRepository": {
+  "registry": "https://npm.example.com/",
+  "token": "Bearer <token>"
+}
+```
+
 
 ## Overriding Datlas Configuration with Environment Variables
 
@@ -170,6 +195,9 @@ The environment variable name is derived from the configuration key by applying 
 | `connectorsSettings[1].grokConnectPort` | `GROK_PARAMETERS_CONNECTORS_SETTINGS__1__GROK_CONNECT_PORT` |
 | `dockerSettings.proxyRequestTimeout`   | `GROK_PARAMETERS_DOCKER_SETTINGS__PROXY_REQUEST_TIMEOUT`    |
 | `sambaSpaceEscape`                     | `GROK_PARAMETERS_SAMBA_SPACE_ESCAPE`                        |
+| `publicRepository.registry`            | `GROK_PARAMETERS_PUBLIC_REPOSITORY__REGISTRY`               |
+| `publicRepository.npmScope`            | `GROK_PARAMETERS_PUBLIC_REPOSITORY__NPM_SCOPE`              |
+| `publicRepository.token`               | `GROK_PARAMETERS_PUBLIC_REPOSITORY__TOKEN`                  |
 
 To address a `connectorsSettings` entry other than the first, add its zero-based index after
 `CONNECTORS_SETTINGS__`. Without an index, the override applies to the first entry. The legacy
