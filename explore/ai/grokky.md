@@ -131,7 +131,7 @@ the **AI Usage** tab. To see a request's prompt, answer, and tool calls, click i
 <details>
 <summary>What Datagrok logs</summary>
 
-By default, Datagrok saves the text of each prompt and tells users about it in the AI panel. It
+By default, Datagrok saves the text of each prompt. It
 doesn't save answers or tool calls. To change this for a group, open the Grokky plugin's
 settings in the **Context Panel** and set:
 
