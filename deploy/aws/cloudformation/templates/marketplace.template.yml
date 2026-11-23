@@ -20,9 +20,6 @@ Mappings:
     GrokRegistryProxy:
       domain: "709825985650.dkr.ecr.us-east-1.amazonaws.com"
       repo: "datagrok/grok_registry_proxy"
-    JKG:
-      domain: "709825985650.dkr.ecr.us-east-1.amazonaws.com"
-      repo: "datagrok/jupyter_kernel_gateway"
     Searchdomain:
       domain: "709825985650.dkr.ecr.us-east-1.amazonaws.com"
       repo: "datagrok/ecs-searchdomain-sidecar"

@@ -64,9 +64,6 @@ Mappings:
     GrokSpawner:
       domain: 709825985650.dkr.ecr.us-east-1.amazonaws.com
       repo: datagrok/grok_spawner
-    JKG:
-      domain: 709825985650.dkr.ecr.us-east-1.amazonaws.com
-      repo: datagrok/jupyter_kernel_gateway
     Rabbitmq:
       domain: 709825985650.dkr.ecr.us-east-1.amazonaws.com
       repo: datagrok/rabbitmq
@@ -129,7 +126,6 @@ Metadata:
       - RabbitmqVersion
       - GrokSpawnerVersion
       - GrokRegistryProxyVersion
-      - JKGVersion
     - Label:
         default: Advanced
       Parameters:
@@ -187,8 +183,6 @@ Metadata:
         default: 'InternetSubnetAllow2: Allow connect from additional CIDR (Optional)'
       InternetSubnetAllow3:
         default: 'InternetSubnetAllow3: Allow connect from additional CIDR (Optional)'
-      JKGVersion:
-        default: Jupyter Kernel Gateway Version
       RabbitmqVersion:
         default: RabbitMQ Version
   cfn-lint:
@@ -385,11 +379,6 @@ Parameters:
     Default: ''
     Description: Additional subnet for access to Datagrok endpoint. You can omit this
       parameter is already specified InternetSubnetAllow.
-    Type: String
-  JKGVersion:
-    AllowedPattern: ([0-9]+\.[0-9]+\.[0-9]+)|latest|bleeding-edge
-    Default: 1.34.1
-    Description: Enter Datagrok Jupyter Kernel Gateway docker image version.
     Type: String
   Postfix:
     Description: URL postfix for backward compatibility. Leave blank for new installations
@@ -922,7 +911,7 @@ Resources:
           Ref: DatagrokSecurityGroup
         ToPort: 5432
       - Description:
-          Fn::Sub: ${AWS::StackName} Allow connection from JKG server
+          Fn::Sub: ${AWS::StackName} Allow connection from CVM containers
         FromPort: 5432
         IpProtocol: TCP
         SourceSecurityGroupId:
@@ -1059,150 +1048,6 @@ Resources:
       RetentionInDays: 7
     Type: AWS::Logs::LogGroup
     UpdateReplacePolicy: Delete
-  DatagrokJupyterKernelGatewayService:
-    Properties:
-      Cluster:
-        Fn::GetAtt:
-        - CvmCluster
-        - Arn
-      DeploymentConfiguration:
-        MaximumPercent: 200
-        MinimumHealthyPercent: 100
-      DeploymentController:
-        Type: ECS
-      DesiredCount: 1
-      LaunchType: FARGATE
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: DISABLED
-          SecurityGroups:
-          - Ref: CvmSecurityGroup
-          Subnets:
-          - Ref: DatagrokPrivateSubnet1
-          - Ref: DatagrokPrivateSubnet2
-      PlatformVersion: 1.4.0
-      PropagateTags: SERVICE
-      SchedulingStrategy: REPLICA
-      Tags:
-      - Key: datagrok.component
-        Value: cvm
-      - Key: datagrok.service
-        Value: jupyter_kernel_gateway
-      TaskDefinition:
-        Ref: DatagrokJupyterKernelGatewayTaskDefinition
-    Type: AWS::ECS::Service
-  DatagrokJupyterKernelGatewayTaskDefinition:
-    Properties:
-      ContainerDefinitions:
-      - Command:
-        - Fn::Sub: ${AWS::Region}.compute.internal
-        - Fn::Sub: ${AWS::StackName}.datagrok.${AWS::Region}.lb.internal
-        - Fn::Sub: ${AWS::StackName}.datagrok.${AWS::Region}.cm.internal
-        Essential: false
-        Image:
-          Fn::Sub:
-          - ${domain}/${repo}:${tag}
-          - domain:
-              Fn::FindInMap:
-              - Images
-              - Searchdomain
-              - domain
-            repo:
-              Fn::FindInMap:
-              - Images
-              - Searchdomain
-              - repo
-            tag:
-              Fn::FindInMap:
-              - Images
-              - Searchdomain
-              - version
-        LogConfiguration:
-          LogDriver: awslogs
-          Options:
-            awslogs-group:
-              Ref: DatagrokLogGroup
-            awslogs-region:
-              Ref: AWS::Region
-            awslogs-stream-prefix: jkg
-        MemoryReservation: 100
-        Name: ResolvConf
-        ReadonlyRootFilesystem: true
-      - DependsOn:
-        - Condition: SUCCESS
-          ContainerName: ResolvConf
-        Environment:
-        - Name: GROK_PARAMETERS
-          Value:
-            Fn::Sub:
-            - '{ "queueSettings":{ "amqpHost":"${amqpHost}", "amqpPort": 5672, "amqpUser":"guest",
-              "amqpPassword":"${amqpPassword}", "pipeHost":"${pipeHost}", "pipeKey":"${grokPipeApiKey}"
-              }}'
-            - amqpHost:
-                Fn::Sub: rabbit.${AWS::StackName}.datagrok.${AWS::Region}.lb.internal
-              amqpPassword:
-                Fn::Sub:
-                - '{{resolve:secretsmanager:${secret}:SecretString:password}}'
-                - secret:
-                    Ref: RabbitMQPassword
-              grokPipeApiKey:
-                Fn::Sub:
-                - '{{resolve:secretsmanager:${secret}:SecretString:apikey}}'
-                - secret:
-                    Ref: GrokPipeApiKeySecret
-              pipeHost:
-                Fn::Sub: pipe.${AWS::StackName}.datagrok.${AWS::Region}.lb.internal
-        Essential: true
-        Image:
-          Fn::Sub:
-          - ${domain}/${repo}:${tag}
-          - domain:
-              Fn::FindInMap:
-              - Images
-              - JKG
-              - domain
-            repo:
-              Fn::FindInMap:
-              - Images
-              - JKG
-              - repo
-            tag:
-              Ref: JKGVersion
-        LinuxParameters: {}
-        LogConfiguration:
-          LogDriver: awslogs
-          Options:
-            awslogs-group:
-              Ref: DatagrokLogGroup
-            awslogs-region:
-              Ref: AWS::Region
-            awslogs-stream-prefix: jkg
-        MemoryReservation: 2048
-        Name: jupyter_kernel_gateway
-        PortMappings:
-        - ContainerPort: 5005
-          HostPort: 5005
-          Protocol: tcp
-        - ContainerPort: 8888
-          HostPort: 8888
-          Protocol: tcp
-      Cpu: '1024'
-      EphemeralStorage:
-        SizeInGiB: 50
-      ExecutionRoleArn:
-        Fn::GetAtt:
-        - DatagrokTaskExecutionRole
-        - Arn
-      Family:
-        Fn::Sub:
-        - ${AWS::StackName}${postfix}-cvm-jupyter_kernel_gateway
-        - postfix:
-            Ref: Postfix
-      Memory: '3072'
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-      - FARGATE
-    Type: AWS::ECS::TaskDefinition
   DatagrokLoadBalancer:
     Properties:
       LoadBalancerAttributes:
