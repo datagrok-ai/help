@@ -70,7 +70,7 @@ advanced check. For instance, the following example makes use of column statisti
 class ViewersPackageDetectors extends DG.Package {
 
   //meta.role: semTypeDetector
-  //input: column col
+  //input: column col {type: numerical}
   //output: string semType
   detectMagnitude(col) {
     if ((col.type === DG.TYPE.FLOAT || col.type === DG.TYPE.INT) &&
@@ -82,6 +82,12 @@ class ViewersPackageDetectors extends DG.Package {
   }
 }
 ```
+
+When a detector only matches columns of some types, declare them on its input, as `{type: numerical}` above
+(`string`, `int`, `double`, `numerical`, `categorical`, `datetime`, and so on). Datagrok then doesn't call the
+detector for columns of other types, which saves a call per column when a table with many columns opens. Declare
+only the types the detector's own check accepts, and nothing on a detector that matches by column name alone. A
+detector without the declaration is called for every column.
 
 Apart from `col.min` and `col.max`, there are other
 [descriptive statistics](https://public.datagrok.ai/js/samples/data-frame/stats)
