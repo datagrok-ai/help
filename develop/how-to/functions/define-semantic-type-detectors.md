@@ -52,6 +52,9 @@ To get a template for a detector function, run this command from your package di
 grok add detector <semantic-type-name>
 ```
 
+A detector must be synchronous: it returns the semantic type or `null` right away. A detector that returns a
+promise is deactivated.
+
 A column can have only one semantic type. In cases when several detectors match a column, its semantic type depends on
 the order in which the detectors were triggered. Standard platform detectors do not necessarily get a preference.
 
