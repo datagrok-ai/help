@@ -80,9 +80,6 @@ Mappings:
     GrokSpawner:
       domain: 709825985650.dkr.ecr.us-east-1.amazonaws.com
       repo: datagrok/grok_spawner
-    JKG:
-      domain: 709825985650.dkr.ecr.us-east-1.amazonaws.com
-      repo: datagrok/jupyter_kernel_gateway
     Rabbitmq:
       domain: 709825985650.dkr.ecr.us-east-1.amazonaws.com
       repo: datagrok/rabbitmq
@@ -150,7 +147,6 @@ Metadata:
       - RabbitmqVersion
       - GrokSpawnerVersion
       - GrokRegistryProxyVersion
-      - JKGVersion
     - Label:
         default: Advanced
       Parameters:
@@ -194,8 +190,6 @@ Metadata:
         default: 'InternetSubnetAllow2: Allow connect from additional CIDR (Optional)'
       InternetSubnetAllow3:
         default: 'InternetSubnetAllow3: Allow connect from additional CIDR (Optional)'
-      JKGVersion:
-        default: Jupyter Kernel Gateway Version
       KubernetesVersion:
         default: Kubernetes version
       NodeDiskSize:
@@ -411,11 +405,6 @@ Parameters:
     Default: ''
     Description: Additional subnet for access to Datagrok endpoint. You can omit this
       parameter is already specified InternetSubnetAllow.
-    Type: String
-  JKGVersion:
-    AllowedPattern: ([0-9]+\.[0-9]+\.[0-9]+)|latest|bleeding-edge
-    Default: 1.34.1
-    Description: Enter Datagrok Jupyter Kernel Gateway docker image version.
     Type: String
   KubernetesVersion:
     AllowedValues:
@@ -1083,21 +1072,6 @@ Resources:
       GrokSpawnerVersion:
         Ref: GrokSpawnerVersion
       InstallerRevision: '2'
-      JKGImage:
-        Fn::Sub:
-        - ${domain}/${repo}
-        - domain:
-            Fn::FindInMap:
-            - Images
-            - JKG
-            - domain
-          repo:
-            Fn::FindInMap:
-            - Images
-            - JKG
-            - repo
-      JKGVersion:
-        Ref: JKGVersion
       LoadBalancerControllerRoleArn:
         Fn::GetAtt:
         - LoadBalancerControllerRole
@@ -2290,9 +2264,8 @@ Resources:
           \     --arg rabbitmq \"$RabbitmqImage\" --arg rabbitmq_tag \"$RabbitmqVersion\"\
           \ \\\n          --arg spawner \"$GrokSpawnerImage\" --arg spawner_tag \"\
           $GrokSpawnerVersion\" \\\n          --arg registry_proxy \"$GrokRegistryProxyImage\"\
-          \ --arg registry_proxy_tag \"$GrokRegistryProxyVersion\" \\\n          --arg\
-          \ jkg \"$JKGImage\" --arg jkg_tag \"$JKGVersion\" \\\n          '{\n   \
-          \         datagrok: {image: {repository: $datagrok, tag: $datagrok_tag},\
+          \ --arg registry_proxy_tag \"$GrokRegistryProxyVersion\" \\\n          '{\n\
+          \            datagrok: {image: {repository: $datagrok, tag: $datagrok_tag},\
           \ grokMode: \"auto\",\n              adminPassword: $admin_password, grokParametersExtra:\
           \ {adminDevKey: $dev_key}},\n            postgres: {internal: false, external:\
           \ {host: $db_host, port: ($db_port | tonumber), ssl: true},\n          \
@@ -2306,20 +2279,20 @@ Resources:
           \            spawner: {image: {repository: $spawner, tag: $spawner_tag},\
           \ apiKey: $spawner_key},\n            grokConnect: {image: {repository:\
           \ $grok_connect, tag: $grok_connect_tag}},\n            grokConnectAdbc:\
-          \ {enabled: false},\n            jkg: {image: {repository: $jkg, tag: $jkg_tag}},\n\
-          \            registry: (if $registry == \"true\"\n              then {type:\
-          \ \"proxy\", proxy: {image: {repository: $registry_proxy, tag: $registry_proxy_tag},\
-          \ backendUrl: $ecr}}\n              else {type: \"none\"} end),\n      \
-          \      ingress: {enabled: false},\n            serviceAccount: {create:\
-          \ true, annotations: {\"eks.amazonaws.com/role-arn\": $sa_role}}\n     \
-          \     }' > /tmp/values.json\n\n        helm upgrade --install datagrok oci://registry-1.docker.io/datagrok/datagrok\
-          \ \\\n          --version \"$ChartVersion-helm\" -n \"$Namespace\" --create-namespace\
-          \ -f /tmp/values.json\n        if [ \"$RegistryProxyEnabled\" = true ];\
-          \ then\n          kubectl -n \"$Namespace\" set env deploy/datagrok-registry-proxy\
-          \ ECR_MODE=true AWS_REGION=\"$AWS_REGION\"\n          kubectl -n \"$Namespace\"\
-          \ patch deploy datagrok-registry-proxy \\\n            -p '{\"spec\":{\"\
-          template\":{\"spec\":{\"serviceAccountName\":\"datagrok\"}}}}'\n       \
-          \ fi\n        kubectl -n \"$Namespace\" rollout status deploy/datagrok --timeout=40m\n\
+          \ {enabled: false},\n            registry: (if $registry == \"true\"\n \
+          \             then {type: \"proxy\", proxy: {image: {repository: $registry_proxy,\
+          \ tag: $registry_proxy_tag}, backendUrl: $ecr}}\n              else {type:\
+          \ \"none\"} end),\n            ingress: {enabled: false},\n            serviceAccount:\
+          \ {create: true, annotations: {\"eks.amazonaws.com/role-arn\": $sa_role}}\n\
+          \          }' > /tmp/values.json\n\n        helm upgrade --install datagrok\
+          \ oci://registry-1.docker.io/datagrok/datagrok \\\n          --version \"\
+          $ChartVersion-helm\" -n \"$Namespace\" --create-namespace -f /tmp/values.json\n\
+          \        if [ \"$RegistryProxyEnabled\" = true ]; then\n          kubectl\
+          \ -n \"$Namespace\" set env deploy/datagrok-registry-proxy ECR_MODE=true\
+          \ AWS_REGION=\"$AWS_REGION\"\n          kubectl -n \"$Namespace\" patch\
+          \ deploy datagrok-registry-proxy \\\n            -p '{\"spec\":{\"template\"\
+          :{\"spec\":{\"serviceAccountName\":\"datagrok\"}}}}'\n        fi\n     \
+          \   kubectl -n \"$Namespace\" rollout status deploy/datagrok --timeout=40m\n\
           \n        # The binding takes the target group over, so it is applied only\
           \ once Datagrok is ready.\n        bind() {\n          printf '{\"apiVersion\"\
           :\"elbv2.k8s.aws/v1beta1\",\"kind\":\"TargetGroupBinding\",\"metadata\"\

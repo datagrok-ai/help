@@ -756,7 +756,6 @@ Resources:
                     --arg rabbitmq "$RabbitmqImage" --arg rabbitmq_tag "$RabbitmqVersion" \
                     --arg spawner "$GrokSpawnerImage" --arg spawner_tag "$GrokSpawnerVersion" \
                     --arg registry_proxy "$GrokRegistryProxyImage" --arg registry_proxy_tag "$GrokRegistryProxyVersion" \
-                    --arg jkg "$JKGImage" --arg jkg_tag "$JKGVersion" \
                     '{
                       datagrok: {image: {repository: $datagrok, tag: $datagrok_tag}, grokMode: "auto",
                         adminPassword: $admin_password, grokParametersExtra: {adminDevKey: $dev_key}},
@@ -770,7 +769,6 @@ Resources:
                       spawner: {image: {repository: $spawner, tag: $spawner_tag}, apiKey: $spawner_key},
                       grokConnect: {image: {repository: $grok_connect, tag: $grok_connect_tag}},
                       grokConnectAdbc: {enabled: false},
-                      jkg: {image: {repository: $jkg, tag: $jkg_tag}},
                       registry: (if $registry == "true"
                         then {type: "proxy", proxy: {image: {repository: $registry_proxy, tag: $registry_proxy_tag}, backendUrl: $ecr}}
                         else {type: "none"} end),
@@ -1054,15 +1052,6 @@ Resources:
               Fn::FindInMap: [ Images, GrokRegistryProxy, repo ]
       GrokRegistryProxyVersion:
         Ref: GrokRegistryProxyVersion
-      JKGImage:
-        Fn::Sub:
-          - "${domain}/${repo}"
-          - domain:
-              Fn::FindInMap: [ Images, JKG, domain ]
-            repo:
-              Fn::FindInMap: [ Images, JKG, repo ]
-      JKGVersion:
-        Ref: JKGVersion
 
 Outputs:
   DatagrokClusterName:

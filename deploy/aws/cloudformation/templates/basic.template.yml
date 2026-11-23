@@ -20,9 +20,6 @@ Mappings:
     GrokRegistryProxy:
       domain: "docker.io"
       repo: "datagrok/grok_registry_proxy"
-    JKG:
-      domain: "docker.io"
-      repo: "datagrok/jupyter_kernel_gateway"
     Searchdomain:
       domain: "docker.io"
       repo: "docker/ecs-searchdomain-sidecar"
