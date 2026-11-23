@@ -17,7 +17,7 @@ keywords:
 
 | Service                                                                   | Docker Image                                                                                      |
 |---------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
-| [Datagrok](../../develop/under-the-hood/infrastructure.md#1-core-components) | [datagrok/datagrok:1.27.13](https://hub.docker.com/r/datagrok/datagrok)                            |
+| [Datagrok](../../develop/under-the-hood/infrastructure.md#1-core-components) | [datagrok/datagrok:1.28.0](https://hub.docker.com/r/datagrok/datagrok)                            |
 | [Grok Connect](../../develop/under-the-hood/infrastructure.md#3-external-database-connectivity) | [datagrok/grok_connect:2.8.11](https://hub.docker.com/r/datagrok/grok_connect)                    |
 | Grok Spawner                                                              | [datagrok/grok_spawner:2.26.0](https://hub.docker.com/r/datagrok/grok_spawner)                     |
 | [Jupyter Kernel Gateway](../../compute/scripting/scripting.mdx)           | [datagrok/jupyter_kernel_gateway:1.34.1](https://hub.docker.com/r/datagrok/jupyter_kernel_gateway) |
