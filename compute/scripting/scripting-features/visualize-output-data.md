@@ -92,14 +92,16 @@ If you close a viewer in the results, press <kbd>Ctrl+Z</kbd> to bring it back t
 
 ## Export the results
 
-After a run, the <i class="fas fa-arrow-to-bottom"></i> icon on the ribbon downloads the run as an Excel
-workbook: an **Inputs** and an **Outputs** sheet with the names, values and units, then a sheet per
-table, with the viewers of each result table placed as you arranged them.
+After a run, the <i class="fas fa-arrow-to-bottom"></i> icon on the ribbon downloads the run:
 
-A function adds its own exports with `meta.customExports` and hides the Excel one with
+* **Excel**: an **Inputs** and an **Outputs** sheet with the names, values and units, then a sheet per
+  table, with the viewers of each result table placed as you arranged them.
+* **PowerPoint**: a slide per result table, with its grid and viewers placed as you arranged them.
+
+A function adds its own exports after these with `meta.customExports` and hides the built-in ones with
 `meta.features: {"export": false}`, as in the
-[Rich function view](../advanced-scripting/rich-function-view.md#customize-export); the icon then offers
-them in a menu, preferred ones first. The export function gets the run as `funcCall`.
+[Rich function view](../advanced-scripting/rich-function-view.md#customize-export). The export
+function gets the run as `funcCall`.
 
 The function view keeps the viewers as you arranged them: when you run the function again, a
 viewer you added, moved or closed stays that way, and the declared `viewer:` list is used only for
