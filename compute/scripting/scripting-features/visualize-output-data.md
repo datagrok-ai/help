@@ -113,8 +113,9 @@ function reruns on every input change (`runOnInput`).
 
 Every run you make in the function view is recorded on the server: who ran it, when, with which
 inputs, and its scalar results. The result header shows the run's number (`Run #12`), and the
-**history** icon on the ribbon opens the run history: the function's runs, newest first, with a
-search over titles, inputs and authors, and filters for your own and starred runs.
+**history** icon on the ribbon opens the run history, a panel above the context panel: the function's
+runs, newest first, each showing what changed against the run before it, with a search over titles,
+inputs and authors, and filters for your own, starred and failed runs.
 
 * Click a run to bring its inputs back into the form and its results below, at the run's own
   address (`/func/Name/runs/N`, see
@@ -123,11 +124,9 @@ search over titles, inputs and authors, and filters for your own and starred run
   with its tables for anyone, from the history or from its link. An unstarred run keeps its inputs
   and scalar outputs; opening it offers **RUN** to recompute the tables.
 * The pencil next to the run number, or **Edit...** in the run's context menu, gives it a title,
-  description and tags; this keeps the run's tables as well.
-* Check two or more runs and press **Compare** for a table with one row per run: number, time,
-  author, inputs and scalar outputs.
+  description and tags; this keeps the run's tables as well. The title names the run in Browse too.
 * **Save to space** (the <i class="fas fa-brackets-curly"></i> icon next to the run, or the context menu) keeps
-  the run and links it into a space you pick.
+  the run and links it into a space you pick, or into your own projects when you pick none.
 * You can delete your own runs from the context menu. Runs never expire otherwise.
 
 A function that reruns on every input change (`runOnInput`) records a run once the inputs rest for three
