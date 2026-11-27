@@ -3,7 +3,7 @@
 env: main
 hostname: datagrok.example.com
 datagrok:
-  # A Datagrok release, e.g. 1.28.0. It selects the datagrok-env chart and the
+  # A Datagrok release, e.g. 1.28.1. It selects the datagrok-env chart and the
   # crossplane-aws package, which deploy the Datagrok chart and image of that release.
   version: 0.0.3-bleeding-edge
 db:

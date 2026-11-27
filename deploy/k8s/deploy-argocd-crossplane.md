@@ -66,7 +66,7 @@ version:
 | `oci://registry-1.docker.io/datagrok/datagrok-env`, tag `<version>` | The environment chart. From an environment file it creates the AWS resources, the secrets, and an ArgoCD Application that deploys the Datagrok chart of the same version |
 | `registry-1.docker.io/datagrok/crossplane-aws`, tag `<version>` | A Crossplane package with the `DatagrokEnvironment` API and the composition that turns it into AWS resources |
 
-The environment file names one version, for example `1.28.0`, and that selects all three.
+The environment file names one version, for example `1.28.1`, and that selects all three.
 
 :::note
 
@@ -215,7 +215,7 @@ one line:
 env: main
 hostname: datagrok.example.com
 datagrok:
-  version: 1.28.0
+  version: 1.28.1
 db:
   host: datagrok-main.abcdefghijkl.us-east-1.rds.amazonaws.com
 ```
@@ -362,7 +362,7 @@ A smaller, cheaper environment, for example for evaluation:
 env: eval
 hostname: datagrok-eval.example.com
 datagrok:
-  version: 1.28.0
+  version: 1.28.1
 db:
   instanceClass: db.t4g.medium
   multiAz: false
@@ -405,7 +405,7 @@ with a tag or a `sha256:` digest:
 
 ```yaml title="gitops/envs/main.yaml (excerpt)"
 datagrok:
-  version: 1.28.0
+  version: 1.28.1
 images:
   datagrok: 1.28.1
   grokConnect: 2.8.7
@@ -459,10 +459,10 @@ where they work.
 
    ```yaml title="gitops/envs/main.yaml (excerpt)"
    datagrok:
-     version: 1.28.0
+     version: 1.28.1
      # Deploy the environment chart from this repo instead of the published one
      envChartPath: gitops/charts/datagrok-env
-     chartVersion: 1.28.0-helm   # a chart from Git has no release default
+     chartVersion: 1.28.1-helm   # a chart from Git has no release default
      # Don't install the crossplane-aws package
      crossplanePackage: false
    ```
