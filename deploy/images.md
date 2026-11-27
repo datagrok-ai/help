@@ -49,7 +49,7 @@ disjoint — so for Datagrok `1.27.7` use chart tag `1.27.7-helm`.
 Image tags are only half of a version. The configuration that starts a service is the
 other half, and the two are released together — a Compose file, a Helm chart, or a
 CloudFormation template written for one release can be invalid for another. Between
-1.27.x and 1.28.0, for example, `connectorsSettings` in `GROK_PARAMETERS` changed from a
+1.27.x and 1.28.1, for example, `connectorsSettings` in `GROK_PARAMETERS` changed from a
 single object to an array of endpoints; a 1.27.x server given the array form exits at
 startup with `Invalid argument(s): useGrokConnect`.
 
