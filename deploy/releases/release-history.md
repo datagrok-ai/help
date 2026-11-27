@@ -18,9 +18,9 @@ keywords:
 | Service                                                                   | Docker Image                                                                                      |
 |---------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
 | [Datagrok](../../develop/under-the-hood/infrastructure.md#1-core-components) | [datagrok/datagrok:1.28.0](https://hub.docker.com/r/datagrok/datagrok)                            |
-| [Grok Connect](../../develop/under-the-hood/infrastructure.md#3-external-database-connectivity) | [datagrok/grok_connect:2.8.11](https://hub.docker.com/r/datagrok/grok_connect)                    |
+| [Grok Connect](../../develop/under-the-hood/infrastructure.md#3-external-database-connectivity) | [datagrok/grok_connect:2.8.12](https://hub.docker.com/r/datagrok/grok_connect)                    |
 | Grok Spawner                                                              | [datagrok/grok_spawner:2.26.0](https://hub.docker.com/r/datagrok/grok_spawner)                     |
-| Grok Pipe | [datagrok/grok_pipe:1.22.3](https://hub.docker.com/r/datagrok/grok_pipe) |
+| Grok Pipe | [datagrok/grok_pipe:1.22.4](https://hub.docker.com/r/datagrok/grok_pipe) |
 | Grok Registry Proxy | [datagrok/grok_registry_proxy:1.31.1](https://hub.docker.com/r/datagrok/grok_registry_proxy) |
 
 
@@ -28,7 +28,7 @@ keywords:
 
 On these versions every Amazon Athena connection fails, including **Test**, with
 `NoClassDefFoundError: software/amazon/awssdk/services/athenastreaming/AthenaStreamingAsyncClient`.
-Upgrade to `datagrok/grok_connect:2.8.11` or later; it also fixes Athena date parameters and patterns.
+Upgrade to `datagrok/grok_connect:2.8.12` or later; it also fixes Athena date parameters and patterns.
 Only the Grok Connect image changes; no other service needs an upgrade.
 
 :::

@@ -395,12 +395,12 @@ Parameters:
     Type: String
   GrokConnectVersion:
     AllowedPattern: ([0-9]+\.[0-9]+\.[0-9]+)|latest|bleeding-edge
-    Default: 2.8.11
+    Default: 2.8.12
     Description: Enter Grok Connect docker image version.
     Type: String
   GrokPipeVersion:
     AllowedPattern: ([0-9]+\.[0-9]+\.[0-9]+)|latest|bleeding-edge
-    Default: 1.22.3
+    Default: 1.22.4
     Description: Enter Grok Pipe docker image version.
     Type: String
   GrokRegistryProxyVersion:
