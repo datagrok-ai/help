@@ -37,7 +37,7 @@ See also:
 - [Versioning policy](../../develop/dev-process/versioning-policy.md)
 - [Docker-Compose](../../deploy/docker-compose/docker-compose.mdx)
 
-## 2026-11-21 Datagrok 1.28.0 release
+## 2026-11-27 Datagrok 1.28.0 release
 
 The Datagrok 1.28.0 release introduces a new AI assistant, a visual pipeline editor, Domains for managing business data, writable databases, and enhanced security, observability, and access control. It also brings significant updates to visualization, statistics, and cheminformatics, along with usability improvements across the platform and packages.
 
