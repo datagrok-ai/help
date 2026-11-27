@@ -37,6 +37,443 @@ See also:
 - [Versioning policy](../../develop/dev-process/versioning-policy.md)
 - [Docker-Compose](../../deploy/docker-compose/docker-compose.mdx)
 
+## 2026-11-21 Datagrok 1.28.0 release
+
+The Datagrok 1.28.0 release introduces a new AI assistant, a visual pipeline editor, Domains for managing business data, writable databases, and enhanced security, observability, and access control. It also brings significant updates to visualization, statistics, and cheminformatics, along with usability improvements across the platform and packages.
+
+### Breaking changes
+
+* The database migration is not backward compatible: once you upgrade to 1.28.0, you cannot run 1.27.13 or earlier on the same database. To roll back, manually revert the changes or restore a pre-upgrade backup
+* Google, GitHub and Facebook login options were removed; Google sign-in now works through OpenID and must be reconfigured
+* The developer key is deprecated in favor of keypair authentication (`grok login`) and will be removed in 1.29.0. Update `datagrok-tools` to the latest version: older versions do not work with 1.28.0. Scripts and CI jobs that call `/users/login/dev/{key}` or `/packages/dev/{key}/...` must send the key in the `Authorization` header instead. For details, see [Keypair authentication](../../govern/access-control/keypair-authentication.md)
+* Creating or retargeting a query requires the connection's Query permission
+* The all-languages JKG image was retired; the JS kernel moved to Node 22 (ijavascript was dropped)
+* The Python scripting environment was upgraded from Python 3.8 to 3.11, with newer versions of pandas (1.5 → 3.x), NumPy (1.23 → 1.26) and SciPy. Scripts that use APIs removed in these versions need to be updated. Scripts that declare their own #environment are affected only through the newer Python versions
+
+### Main updates
+
+* **Grokky AI assistant** understands your current view and works with your choice of model provider: Anthropic, OpenAI, OpenRouter, Azure, AWS Bedrock, Databricks, or a custom endpoint. For details, see [Grokky](../../explore/ai/grokky.md)
+* Introducing the **Flow** app, a new visual editor for building and running data pipelines by connecting platform functions, queries, files, and viewers on a canvas (**Browse** > **Apps** > **Flow**). For details, see [Flow](https://github.com/datagrok-ai/public/tree/master/packages/Flow#readme)
+* **Crux chemistry engine** powers substructure and similarity search, molecule rendering, and chemical reactions across Chem, Bio, and MolTrack. It also provides the new default molecule sketcher.
+* **Domains** (Beta) let you store and manage structured business data, such as plates, studies, compounds, and inventory, directly in Datagrok without a separate database. Browse, search, filter, edit, and share domain data with fine-grained permissions, track changes, and audit activity. For details, see [Domains](../../govern/catalog/domains.md) and, for developers, [Domain schemas](../../develop/how-to/db/domain-schemas.md).
+* **Writable databases** let you create tables, modify schemas, and load data into external databases directly from the database browser, with access controlled by fine-grained connection privileges.
+* **Observability and Health center** (**Browse** > **Platform** > **Health**) help administrators monitor platform health with alerts, problem detection, metrics, logs, and an audit trail of system activity. For details, see [Problems and alerts](../../govern/audit/problems-and-alerts.md) and [Monitor the platform](../../govern/manage-enterprise.md#monitor-the-platform).
+
+### Platform
+
+* Projects
+  * You can now select a space directly in the **Save project** dialog to save your project there
+  * [#3543](https://github.com/datagrok-ai/public/issues/3543): Introduced URL aliases: administrators can create stable, readable links and redirect them to newer dashboard versions. For details, see [URL aliases](../../develop/advanced/url-parameters.md#url-aliases)
+  * Spaces: you can now save function runs to spaces, where each run gets a unique number and a shareable link
+  * Projects now save and restore view docking layouts, allowing you to arrange different views, not just viewers, side by side or as floating panels
+  * Improved opening: you can now open projects despite non-critical errors and locate and edit the failing line in the creation script
+  * Introduced confirmation dialog: closing a view with unsaved changes can now show what is unsaved and offer to save the project first. The confirmation is off by default; turn on **Ask To Save On Close** in **Settings** > **General**
+  * Creation script: you can now open a project's creation script as a Flow diagram, not only as text
+  * Data sync: projects can now use scripts and functions that return several outputs
+* Functions
+  * [#3944](https://github.com/datagrok-ai/public/issues/3944): Introduced running functions by URL: you can open a function or script by a URL with its arguments, and it runs right away (`?run=true`)
+  * Function view: now keeps a run history, lets you compare runs, and has ribbon commands to save results to a space or as a project, export to Excel and run analyses
+  * Enabled functions to return several outputs
+  * Function inputs: you can now validate input values with a regular expression
+* Calculated columns and formulas
+  * Calculated columns now compute common formulas for the whole column at once, so large layouts apply much faster
+  * Introduced [error handling for calculated columns](../../transform/add-new-column.md#rows-that-fail): you can choose what happens when the formula fails on a row, leave the cell empty (default) or fill it with a value, and optionally add a column with each row's error message
+* Data
+  * [#4287](https://github.com/datagrok-ai/public/issues/4287): [Find and Replace](../../transform/find-and-replace.md) now lets you select columns by name or condition and shows how many values were replaced
+  * [Batch Edit](../../transform/batch-edit.md) now offers a dropdown of allowed values for columns with predefined choices
+  * [#3838](https://github.com/datagrok-ai/public/issues/3838): [Join tables](../../transform/join-tables.md) now supports 1-to-N joins when the right table has duplicate keys
+  * Improved [Change type](../../transform/change-column-type.md): you can now change the types of multiple columns at once and undo the conversion
+  * [Undo and redo](../../datagrok/navigation/undo.md) now work for more actions, including adding and removing rows and columns, editing cells, Find and Replace and Normalize
+  * **Context Panel**: tables now have a **Rows** section with quick links to all, selected, filtered and excluded rows
+  * CSV import: large files are now read as a stream and use less memory
+  * Progress bar: You can now cancel file loading, for example, when loading large XLSX files
+* Usability/UI
+  * [#2084](https://github.com/datagrok-ai/public/issues/2084): Improved layouts: you can now name and tag them, search them in the gallery and download them from the context menu
+  * The **Browse** tree keeps its place when you come back to it after opening a table from a database catalog
+  * **Top Menu**: click the current object at its right end to open a dropdown with the object's **Context Panel** sections, without opening the panel. For details, see [Current object in the Top Menu](../../datagrok/navigation/navigation.md#current-object-in-the-top-menu)
+  * **Top Menu**: right-click it to hide or restore its menus and icon panels; administrators can set the defaults for a group. For details, see [Show and hide Top Menu sections](../../datagrok/navigation/navigation.md#show-and-hide-top-menu-sections)
+  * Improved chats: you can now mention people, reply to messages and refer to other entities
+  * **Queries** view: you can now sort queries by creation date
+* Scripting
+  * Each scripting language now runs in its own container that starts on demand, replacing the single large shared scripting image
+  * Python scripts: start faster thanks to pre-warmed kernels with common libraries already loaded
+  * Node.js scripts can now use the Datagrok JS API and accept file inputs, and report errors clearly
+  * Package Docker containers: now use the package credentials of the user who calls them
+  * Code editor: now supports line-editing shortcuts, in-editor search, 2-space indentation and improved JavaScript syntax highlighting
+* Monitoring and administration
+  * Introduced the **Health** center under **Browse** > **Platform** for administrators. For details, see [Problems and alerts](../../govern/audit/problems-and-alerts.md)
+    * The overview shows the platform status, services, active problems and alerts, with health checks of instances, disks and NPM
+    * **Alerts**: Datagrok detects problems and sends alerts with escalation to owners; when a dependency is down, you get one alert instead of a storm. **Rules** define what raises a problem
+    * **Metrics**: request statistics for every server endpoint, latency, errors, the database, the queue, storage and data growth
+    * **Logs**: platform events and service logs, stored and live
+    * **Log settings**: you can export Health metrics to OTLP, CloudWatch, Google Cloud Logging or a WebHook
+  * Logging
+    * Introduced log groups with triggers and per-group log levels, an audit group, ClickHouse and WebHook destinations, and collection of service and container output
+    * [#3764](https://github.com/datagrok-ai/public/issues/3764): Logging now lets you get detailed logs for a single request, temporarily change a group's log level without a restart, and write logs as JSON
+  * Audit and error reports
+    * Introduced a system activity audit trail (logins, admin actions, settings changes) with a **System Activity** tab in **Usage Analysis**
+    * Error reports now include the current object, viewer and view and an optional screenshot, and a report can be opened from its `.json` file
+  * Settings and administration
+    * Introduced managed settings: administrators define default settings for a group or for everyone and can lock them. For details, see [Managed settings](../../govern/access-control/managed-settings.md)
+    * Settings: server, email and authentication settings are read-only when managed centrally, with a link to the admin console
+    * Introduced cluster administration for Docker containers: view workloads, nodes and resources, and restart a container
+* grok CLI
+  * Sync entities between instances: `grok s pull`, `diff`, `push` and `migrate` move dashboards, spaces, queries, connections and other content between instances as a bundle you can review and commit to Git, with a run history that shows what each sync changed. For details, see [Move content between instances](../../develop/server-management.md#move-content-between-instances) and [Promote content between instances](../../govern/promote-content.md)
+  * Implemented `grok s` server management: users and groups, files, tables, functions, shares, batch commands, status, healthcheck and observe
+  * Introduced `grok s packages` to install, update, uninstall and share server plugins
+  * Introduced `grok s users invite` to create a login link without sending an email
+  * Introduced `grok run` and `grok src`
+  * Extended `grok api` with JSDoc for `package-api.ts` and typed transaction helpers
+* Access control
+  * Gated admin features on specific global permissions, and hardened authorization of entity writes
+  * Hid entity context-menu commands and disabled user and group creation buttons when the user lacks the required permissions
+  * Introduced a bulk **Share...** action for several selected entities
+  * **Share** dialog: you can now configure whether **Send notifications** is checked by default (**Settings** > **General**)
+  * Membership requests: you can now approve or decline them directly, and users get email notifications about updates
+  * Groups: deleting a group removes its memberships and permissions, and a new group gets its creator as a member
+  * Improved offboarding of departed users: **Disable...** can transfer the user's entities to another user
+* Authentication
+  * Introduced keypair authentication for the CLI and CI, replacing the developer key. For details, see [Keypair authentication](../../govern/access-control/keypair-authentication.md)
+  * Improved sign-in security: accounts are locked after repeated failed attempts, including SAML logins, and administrators are notified. Passwords are now hashed using PBKDF2, and login audit records include the client IP
+  * Improved session security by storing session tokens in HttpOnly cookies, applying session revocations immediately, and introducing scoped tokens
+  * Improved single sign-on (SSO): added Google login via OpenID, support for OpenID access tokens as Bearer credentials, and `private_key_jwt` client authentication for Keycloak
+  * Improved identity provider group synchronization with scheduled runs and regex filters. Existing memberships are now preserved when they are not reported by the provider
+* Security
+  * Administrators can now rotate server keys and service tokens, and store keys securely in AWS Secrets Manager or GCP Secret Manager. For details, see [Server keys](../../govern/access-control/server-keys.md)
+  * Improved security by addressing SSRF and SQL injection vulnerabilities and fixing critical and high-severity vulnerabilities in service images
+* Infrastructure
+  * Moved the platform to Dart 3.13, with performance on par with or better than before
+  * File storage: server files can now be stored on any S3-compatible storage with a custom endpoint, not only AWS S3
+  * Updated the scripting images to Python 3.11 and Node 22 with known vulnerabilities fixed, about 6.5 GB smaller
+  * Introduced `includePackages` / `excludePackages` URL parameters to choose which packages load at startup
+* Fixed:
+  * [#3752](https://github.com/datagrok-ai/public/issues/3752): A project with saved layouts can be deleted without errors
+  * [#4068](https://github.com/datagrok-ai/public/issues/4068): Append tables keeps the formulas of calculated columns
+  * [#3570](https://github.com/datagrok-ai/public/issues/3570): Calculated columns with text values are created without the "String has to be casted to string" error
+  * [#3792](https://github.com/datagrok-ai/public/issues/3792): **Add New Column**: a column with JSON content no longer breaks adding further columns
+  * [#3286](https://github.com/datagrok-ai/public/issues/3286): CSV import: doubled quotes inside a quoted field are parsed correctly
+  * [#3683](https://github.com/datagrok-ai/public/issues/3683): Download CSV saves the file only once
+  * [#3819](https://github.com/datagrok-ai/public/issues/3819): The query parameter search box accepts spaces and arrow keys
+  * [#3172](https://github.com/datagrok-ai/public/issues/3172): The **Help** panel renders formatting correctly, including line breaks, tabs and embedded components
+  * Projects: dependent tables keep working after a table is renamed and the project is saved again
+  * Projects: a local file joined into a project table is kept after saving and reopening
+  * Refreshing a project's data keeps calculated columns in its viewers
+  * Debug-publishing a package no longer breaks dashboards that use its entities
+  * **Download** > **As XLSX** and **As Presentation** work when viewers are docked on top of each other
+  * Scheduled runs: a failed run shows its error and stack trace
+  * **Context Panel** widgets use the full panel width instead of being limited to 800 px
+  * The drag-and-drop overlay closes on Esc
+
+#### Data Access
+
+* Writable databases: You can create tables using **New Table...** on a connection or schema, modify or drop existing tables from their context menu, and upload open tables using **File** > **Upload to Database...**. Write access is controlled by connection privileges
+* Files: `grok connect-folder` adds a local folder as a Files connection
+* Databricks: connections now have an optional Schema field, and sign-in uses federated identity tokens
+* ADBC connectors: Apache Arrow connectors load large query results faster, starting with ClickHouse
+* The connections tree shows an error state when a schema fails to load
+* Fixed:
+  * Dependent choice parameters work in the **Source** pane
+
+#### Browse
+
+* Improved Favorites: favorites are now pinned to the top of their section in the **Browse** tree, and you can now add database catalogs, groups and roles to favorites. For details, see [Add to favorites](../../datagrok/navigation/basic-tasks/basic-tasks.md#add-to-favorites)
+* Default sorting: you can now set the default sorting for spaces and entity lists globally, for specific users or groups, or for each space
+
+### [JS API](https://datagrok.ai/help/develop/packages/js-api)
+
+* Views and UI
+  * [#3222](https://github.com/datagrok-ai/public/issues/3222): Ribbon buttons and filters now act on the active view inside a multi-view (`DG.MultiView`)
+  * Exposed `JsView` with `afterPersist`, `ObjectHandler.renderPreview()`, and moved `isPinned` / `pin()` to `ViewBase`
+  * Exposed `ScriptView.tabs` and `DataQueryView.tabs`
+  * Extended docking with `IDockOptions.killOnClose`, `DockManager.onPanelShown` / `onPanelHidden` and `grok.shell.windows.onPanelVisibilityChanged`
+  * Introduced `grok.shell.windows.autoShowToolbox` (default `true`): set it to `false` to keep the toolbox from opening automatically when a view opens
+  * Introduced `Viewer.immediateRendering` and the `grok.events.onContextMenuShown` event
+  * `TableView.viewers` returns `Viewer[]`
+  * Extended `DG.Widget` so tools and AI agents can inspect and drive widgets: `getWidgetStatus()`, status providers, `onEvent()`, `getFunctions()`, `aiDescription` and `Widget.registerCleanup()`
+  * Introduced rich drag-and-drop callbacks with `DG.DragDropArgs` in `ui.makeDroppable`, and `FileInfo.save()`
+  * Exposed `TreeViewGroup.addNode(node, index)`; `TreeViewNode.remove(kill)` takes an optional `kill` argument
+  * Introduced an options object for `ui.tabControl` / `TabControl.create` (`{vertical, key}`)
+  * Exposed `GridColumn.setWidthType()` and `Grid.setColumnsWidthType()`
+  * Enabled sending emails with attachments and inline images from JS
+  * Introduced `grok.dapi.chats` and `DG.ChatWidget`
+* Inputs
+  * Introduced a folder path input and exposed the input type and caption of inputs to JS
+  * Introduced `DG.MultiChoiceInput` items, `InputBase.validity` and the `skipLogic` option of `InputForm.forFuncCall`
+  * Extended the molecule sketcher: `DG.chem.ISketcherOptions`, `Sketcher.onSketcherReady`, `SketcherBase.onRendered`; explicit hydrogens in the substructure filter sketcher
+  * Introduced the `numerical_no_datetime` column type filter
+* Data
+  * Extended `ColumnList.addNewQnum` to build a qualified-number column from qualifier and value columns
+  * Exposed `DataFrame.resetFilter()` and `DG.BitArray`
+  * Enabled registering JS functions with multiple outputs through the signature (`({int x, int y}) foo(string bar)`)
+  * Exposed function `optional` and `tags`, the `FuncCall.status` setter, and `ResolveTableFunc` / `ResolveColumnFunc`
+  * Introduced `grok.dapi.notifications.markAsRead(id)` / `markAllAsRead()`
+  * Introduced `grok.dapi.impersonationToken` and `grok.userSettings.flush()`
+  * Introduced `getCurrentUserGroups` to list the current user's groups and a call to request group membership
+  * Extended the public REST API with d42 binary table upload, a batch endpoint, results of multi-output functions, and DELETE for files
+* Other
+  * Introduced `grok.shell.autostartsCompleted`
+  * Introduced the cancelable `d4-ai-before-user-prompt` / `d4-ai-after-user-prompt` events and `grok.ai.processPrompt()`
+  * Events such as `onColumnsRemoved` now pass typed arguments that describe what changed
+  * Introduced `onActiveChanged`, so JS filters can react when they are turned off in the filter panel
+  * Exposed the `datagrok-api/datagrok` package subpath
+  * With the move to Dart 3, the platform checks arguments more strictly: passing `null` or `undefined` to a required JS API parameter may now raise an error instead of being silently ignored
+* Changed and removed
+  * Removed `Viewer.wordCloud()` and `TableView.wordCloud()` (use `addViewer('Word cloud')`), the empty `DG.x` namespace and the `GRID_COLUMN_TAGS` enum
+  * `HttpDataSource` verbs (`filter`, `order`, `by`, `page`, `nextPage`, `include`, `allPackageVersions`) now return a new data source instead of modifying the current one
+  * Renamed `grok.dapi.docker.dockerImages.rebuild()` to `revalidate()`
+  * `DG.Widget` now extends `DG.U2.Control`: subclasses that declare `name` as a plain field no longer compile
+  * Removed the `saveProjectWithViewLayout` setting
+* Deprecated (removal planned for 1.29–1.30): the boolean form of `TabControl.create`, `grok.shell.getTableView`, `tableByName`, `windows.showProperties`, `grok.log.log`, `TYPE.SEM_VALUE`
+
+### Viewers
+
+* [#3924](https://github.com/datagrok-ai/public/issues/3924): Introduced custom category order in viewers: you can order categories (for example, by value) without changing the column's own order
+* [#3460](https://github.com/datagrok-ai/public/issues/3460): Viewers: you can now set a formula instead of a column in viewer properties, such as Axes, Size or Color. For details, see [Column selectors](../../visualize/viewers/column-selectors.md#using-a-formula-instead-of-a-column)
+* [#3177](https://github.com/datagrok-ai/public/issues/3177): Formula lines can refer to the axis columns as `X` and `Y`, for example `Y = X`
+* [#3670](https://github.com/datagrok-ai/public/issues/3670): Formula lines and annotation regions can now be set for a column group, so they stay when the axis switches between similar columns
+* Formula lines, bands and annotation regions are now available in bar chart, histogram, box plot and density plot
+* Annotation, formula line and regression settings are grouped in the **Annotations** and **SPC** sections of viewer properties
+* [#3711](https://github.com/datagrok-ai/public/issues/3711): The **Show Selected Rows** option is now available across the main viewers, allowing you to toggle selection highlighting and better see the underlying color coding
+* [#3751](https://github.com/datagrok-ai/public/issues/3751): Viewer tooltips look the same across viewers: left-aligned, more compact and color-coded
+* [#3666](https://github.com/datagrok-ai/public/issues/3666): Axes adjust the density of tick marks to the available space
+* [#3781](https://github.com/datagrok-ai/public/issues/3781): [Form](../../visualize/viewers/form.md): introduced a font size setting
+* Layouts: viewers docked on top of each other as tabs reopen with the same tab active
+* Introduced viewer minimization: a minimized viewer stays on the ribbon, and hovering it shows an interactive preview. For details, see [Minimized viewers](../../visualize/table-view-1.md#minimized-viewers)
+* The color legend of a numerical color column now shows only the range of the filtered rows, in scatter plot, 3D scatter plot, box plot and PC plot
+* Color picker: you can now adjust color transparency
+* Viewer settings that do not apply are grayed out, both in the context menu and in the **Context Panel**: for example, marker size when markers are sized by a column
+* [3D scatter plot](../../visualize/viewers/3d-scatter-plot.md): removed the 200k row limit; introduced axis and color selectors, axis font settings and the standard legend
+* [Pie chart](../../visualize/viewers/pie-chart.md): introduced donut mode (**Mode** > **Donut**) with a label in the center (**Center Label**), which shows the category column name by default
+* Fixed:
+  * [#3444](https://github.com/datagrok-ai/public/issues/3444): Font settings: a font size picked from the dropdown is applied on the first click
+  * [#3212](https://github.com/datagrok-ai/public/issues/3212): [PC plot](../../visualize/viewers/pc-plot.md): resetting filters no longer resets the selection when the PC plot has a transformation
+
+#### [Grid](../../visualize/viewers/grid.md)
+
+* [#3811](https://github.com/datagrok-ai/public/issues/3811): Introduced Ctrl+Shift+C to copy a cell, such as a rendered structure, as an image
+* Heat map: introduced the **Columns** property to choose which columns are shown
+* Color coding: introduced **Text background** as a target, alongside text and background
+* Improved automatic column widths for tables with long headers and short values
+* **Order or Hide Columns** dialog: the grid follows the column as you reorder it
+* Introduced horizontal scrolling with Shift+Mouse Wheel
+* Fixed:
+  * [#3787](https://github.com/datagrok-ai/public/issues/3787): The column menu icon and the grid properties icon no longer overlap
+  * [#3856](https://github.com/datagrok-ai/public/issues/3856): Conditional color coding no longer conflicts with the header color
+  * [#3452](https://github.com/datagrok-ai/public/issues/3452): Pinned columns render molecules correctly
+  * Rows selected with Ctrl+A or by dragging over row numbers can be copied and pasted
+
+#### [Filter Panel](../../visualize/viewers/filters.md)
+
+* [#3481](https://github.com/datagrok-ai/public/issues/3481): Improved saved filter presets: you can now name, rename, and share them with other users
+* Multi-value filter now has a search box
+* Single-value categorical filters are now shown as compact rows
+* Fixed:
+  * [#3771](https://github.com/datagrok-ai/public/issues/3771): Text column filters always offer free-text search, and filters can be added in query debug mode
+  * [#3907](https://github.com/datagrok-ai/public/issues/3907): Showing a column group keeps hidden columns hidden
+  * [#2501](https://github.com/datagrok-ai/public/issues/2501): The filter panel keeps a usable width when you add viewers or resize the page
+
+#### [Scatterplot](../../visualize/viewers/scatter-plot.md)
+
+* [#3844](https://github.com/datagrok-ai/public/issues/3844): Introduced moving average lines, with an optional standard deviation band. For details, see [Moving average](../../visualize/viewers/scatter-plot.md#moving-average)
+* Introduced **Zero Intercept** to force the regression line through the origin. For details, see [Regression line](../../visualize/viewers/scatter-plot.md#regression-line)
+* [#3843](https://github.com/datagrok-ai/public/issues/3843): Rows with an empty Size value are shown with the default marker size instead of being hidden when **Show Markers With Empty Size** is enabled (disabled by default)
+* [#3465](https://github.com/datagrok-ai/public/issues/3465): Whiskers: columns are recognized by name and filled in automatically
+* Fixed:
+  * [#3169](https://github.com/datagrok-ai/public/issues/3169): Labels are drawn above formula and regression lines
+  * [#3695](https://github.com/datagrok-ai/public/issues/3695): **Regression per category** is disabled, with an explanation, when the color legend has more than 20 categories
+  * [#3204](https://github.com/datagrok-ai/public/issues/3204): Formula lines can be edited without errors
+  * [#3202](https://github.com/datagrok-ai/public/issues/3202): The legend shows the actual colors of a categorical column colored by a "starts with" rule
+  * Axis labels, including molecule labels, can now be enlarged
+
+#### [Histogram](../../visualize/viewers/histogram.md)
+
+* Introduced logarithmic X and Y axes
+* Added configurable Y-axis Min and Y-axis Max settings to histograms, allowing you to set a fixed Y-axis range and compare multiple histograms on the same scale
+
+#### [Line chart](../../visualize/viewers/line-chart.md)
+
+* [#3844](https://github.com/datagrok-ai/public/issues/3844), [#3669](https://github.com/datagrok-ai/public/issues/3669): Introduced trend lines: moving average lines with an optional standard deviation band, and regression lines. For details, see [Trend lines](../../visualize/viewers/line-chart.md#trend-lines)
+* [#4130](https://github.com/datagrok-ai/public/issues/4130): Regression metrics can be shown without the regression equation; introduced **Show Determination Coefficient** (r²)
+* Introduced **Zero Intercept** to force the regression line through the origin
+* [#3697](https://github.com/datagrok-ai/public/issues/3697): Introduced a **Size** setting to size markers by a column
+* [#3701](https://github.com/datagrok-ai/public/issues/3701): Logarithmic axes now handle zero and negative values and show a warning next to an axis with invalid values
+* [#3709](https://github.com/datagrok-ai/public/issues/3709): Introduced the **Show Mouse Over Row Group** option to control whether points and lines are highlighted when hovering over a row group in another viewer
+* Stacked bar charts now show tooltips, respond to clicks and keep their chart type after a data refresh
+* Fixed:
+  * [#1561](https://github.com/datagrok-ai/public/issues/1561): Coloring scales to the visible range of data
+  * [#4013](https://github.com/datagrok-ai/public/issues/4013): The Y-axis average value label no longer overlaps other labels
+
+#### [Bar chart](../../visualize/viewers/bar-chart.md)
+
+* [#4096](https://github.com/datagrok-ai/public/issues/4096): Introduced error bars (±StDev, ±StError) around aggregated values
+* [#4289](https://github.com/datagrok-ai/public/issues/4289): Added **Show Stack Value** to display percentages or values on stacked segments, with configurable formatting via **Stack Value Format**
+* [#3665](https://github.com/datagrok-ai/public/issues/3665): Improved color coding: you can now edit the color scheme when coloring by a numeric column
+
+#### [Trellis plot](../../visualize/viewers/trellis-plot.md)
+
+* [#3745](https://github.com/datagrok-ai/public/issues/3745): Inner bar charts now show separator lines between categories and draw values on top of bars
+* Introduced Ctrl+Click to select or filter by several trellis cells at once
+* Introduced **Reset View**, which clears the trellis scrolling and sliders
+* Inner scatter plots and line charts now support annotation regions, formula lines and regression lines
+* Multi-curve viewer: introduced the **Use in Trellis** option
+* Fixed:
+  * [#3617](https://github.com/datagrok-ai/public/issues/3617): **Include Nulls** works for inner bar charts
+  * [#3616](https://github.com/datagrok-ai/public/issues/3616): **Show Empty Bars** works correctly for inner bar charts
+
+#### [Box plot](../../visualize/viewers/box-plot.md)
+
+* [#3773](https://github.com/datagrok-ai/public/issues/3773): Box plot statistics now follow the column format, and you can set the number of digits
+* Introduced group comparison statistics: t-tests, ANOVA, Dunnett comparisons with a control, Shapiro-Wilk normality with Q-Q plots and variance checks, with significance stars and a results pane. For details, see [Group comparison](../../explore/group-comparison.md)
+* Introduced covariate adjustment (Ratio, Regress-out, ANCOVA), matched controls and a Simpson's paradox warning
+* Introduced coloring by category, transparent fills and colored points in violin plots
+* Fixed:
+  * [#3693](https://github.com/datagrok-ai/public/issues/3693): Statistics are aligned with their box plots
+
+#### [Tile viewer](../../visualize/viewers/tile-viewer.md)
+
+* [#3791](https://github.com/datagrok-ai/public/issues/3791): Introduced **Show Empty Lanes**: disable it to hide lanes that have no tiles, for example, when their category is filtered out
+* Lane headers now render molecules and other cell types the same way as the grid
+* Fixed:
+  * [#3855](https://github.com/datagrok-ai/public/issues/3855): Tiles follow column renames, calculated columns, and number and date formats
+
+#### [Forms](../../visualize/viewers/forms.md)
+
+* [#3781](https://github.com/datagrok-ai/public/issues/3781): Introduced a font size setting
+* [#3765](https://github.com/datagrok-ai/public/issues/3765): You can now pin a row to keep a record visible while scrolling. For details, see [Pinning rows](../../visualize/viewers/forms.md#pinning-rows)
+* Fixed:
+  * [#3950](https://github.com/datagrok-ai/public/issues/3950): Save as PNG renders molecules in high quality
+  * [#4647](https://github.com/datagrok-ai/public/issues/4647): Color-coded fields no longer keep dark text on a dark background
+  * Numbers are formatted the same way as in the grid
+  * Hidden (`~`) columns are not shown
+
+### Packages
+
+#### [Bio](https://github.com/datagrok-ai/public/tree/master/packages/Bio/CHANGELOG.md)
+
+* Atomic-level conversion, Molecules to HELM and MSA now use the Crux engine
+* Extended RNA support: non-canonical and complex RNA, duplexes and multi-linkers
+* Introduced Immunum antibody numbering, a sequence scroller and a sequence difference function
+* Introduced a Sequence column input with region cutting
+
+#### [Charts](https://github.com/datagrok-ai/public/tree/master/packages/Charts/CHANGELOG.md)
+
+* [#3677](https://github.com/datagrok-ai/public/issues/3677): Radar now has a legend and absolute normalization with min/max per axis
+* [#4548](https://github.com/datagrok-ai/public/issues/4548): Limited the Sankey viewer to small datasets so large tables no longer freeze the platform
+
+#### [Chem](https://github.com/datagrok-ai/public/tree/master/packages/Chem/CHANGELOG.md)
+
+* MPO
+  * [#4403](https://github.com/datagrok-ai/public/issues/4403): Introduced a Coverage Score option
+  * [#4291](https://github.com/datagrok-ai/public/issues/4291): Desirability profiles now support qualified numbers, log scale, inverted scoring, weights taken from a column, histograms and typing values in the plot
+  * Profiles are stored on the server with versioning and in-place editing
+* [#3811](https://github.com/datagrok-ai/public/issues/3811): Introduced copying and exporting molecule cells as images, including SVG
+* [#3877](https://github.com/datagrok-ai/public/issues/3877): MMP now runs on filtered data
+* [#3700](https://github.com/datagrok-ai/public/issues/3700): Improved Scaffold Tree: you can now reorder nodes, filtering takes superstructures into account, and the tree loads faster
+* [#3708](https://github.com/datagrok-ai/public/issues/3708): Chemical Space now adds tags to the embedding columns it creates
+* Made the Chem properties menus consistent and removed the duplicated Biochemical Properties item
+* A running R-group analysis can now be cancelled
+* Introduced **Search As You Sketch** in the Similarity Search viewer: results update while you draw the target molecule in the sketcher
+* [#3958](https://github.com/datagrok-ai/public/issues/3958): Introduced the **Filter as you draw** option for the substructure filter: turn it off to filter only after you confirm the structure in the sketcher
+* Introduced stereo-agnostic substructure search
+* Introduced the Crux chemistry engine (substructure search, InChI, partial charges, MCES, activity cliffs) and the Crux sketcher with reaction support
+* Crux is now the default molecule sketcher; a sketcher you have already chosen in your settings is kept
+* Redesigned the Reaction Enumerator with step-by-step setup and per-step subsets of reactions and building blocks
+* Introduced a chemical reaction detector (including RXN files) and a multi-step reaction renderer
+* Introduced SAR Matrix, Pharmacophore feature highlighting, a PROTAC dataset generator and a similarity matrix function
+* Removed the OCL renderer option, so structures always appear in viewer labels
+* Fixed:
+  * [#4288](https://github.com/datagrok-ai/public/issues/4288): Similarity Search viewer follows the Row Source setting
+  * Highlighting of the sketched scaffold in scaffold alignment can be turned off
+
+#### [Curves](https://github.com/datagrok-ai/public/tree/master/packages/Curves/CHANGELOG.md)
+
+* [#2101](https://github.com/datagrok-ai/public/issues/2101), [#2103](https://github.com/datagrok-ai/public/issues/2103): Improved curves: you can now add several droplines, show aggregated statistics and set custom labels
+* Introduced a PZFX (GraphPad Prism) file viewer
+
+#### [Diff Studio](https://github.com/datagrok-ai/public/tree/master/packages/DiffStudio/CHANGELOG.md)
+
+* Introduced the Model Hub, one place to find and run Diff Studio models
+* Outputs of models with loops and updates can now contain expressions
+
+#### [Docking](https://github.com/datagrok-ai/public/tree/master/packages/Docking/CHANGELOG.md)
+
+* Docking results now include ProLIF interactions, and the docking viewer can be saved in layouts
+
+#### [EDA](https://github.com/datagrok-ai/public/tree/master/packages/EDA/CHANGELOG.md)
+
+* Introduced group comparison tests: t-test, Welch's ANOVA and comparisons with a control
+* Introduced the SVM method; updated XGBoost to 3.3, with faster training and prediction
+* PLS now shows the importance of each variable; multivariate analysis now shows the model formula
+
+#### [Flow](https://github.com/datagrok-ai/public/tree/master/packages/Flow/CHANGELOG.md)
+
+* Introduced Flow, a visual editor for building data pipelines from platform functions, queries, files and viewers
+* Introduced autorun that re-runs only the steps affected by a change, plus breakpoints and validation
+* Introduced inline and docked previews of node outputs
+* Flow nodes use standard Datagrok inputs, suggest connections and offer a searchable function catalog
+* Flows can be saved on the server, as scripts or with projects
+* Introduced tutorials, demos and templates
+
+#### [Grokky](https://github.com/datagrok-ai/public/tree/master/packages/Grokky/CHANGELOG.md)
+
+* Extended the AI providers with OpenAI, OpenRouter, AWS Bedrock/Foundry, Databricks and custom endpoints, with per-group model credentials
+* Redesigned the AI chat panel: one panel per view, curated prompt suggestions, skill autocomplete, prompt history, chat history and abort without losing the conversation
+* The assistant is context-aware: it works with the current view and viewers and suggests next actions
+* Grounded answers in the help docs, the knowledge graph and installed packages
+* Introduced image and file attachments and drag-and-drop of entities into the chat; answers show entities as cards
+* Custom agents: you can create your own agents and scripts, stored in **My Files**
+* Introduced on-device AI with Gemma, running on Chrome's built-in AI
+* Introduced admin controls: per-group quotas, per-turn cost limits and logging of prompts, tokens and cost
+
+#### [Helm](https://github.com/datagrok-ai/public/tree/master/packages/Helm/CHANGELOG.md)
+
+* Introduced new HELM editor tabs, a faster monomer palette and better structure layout
+
+#### [HitTriage](https://github.com/datagrok-ai/public/tree/master/packages/HitTriage/CHANGELOG.md)
+
+* Introduced the PepTriage app; enabled re-running and auto-merging on campaign open
+* Fixed:
+  * [#4303](https://github.com/datagrok-ai/public/issues/4303): Hit Design keeps `.choices` tags and calculated columns after a campaign is saved and reopened
+
+#### [Peptides](https://github.com/datagrok-ai/public/tree/master/packages/Peptides/CHANGELOG.md)
+
+* Introduced a Generations viewer, a multi-position statistics viewer and SAR with region extraction
+
+#### [PowerGrid](https://github.com/datagrok-ai/public/tree/master/packages/PowerGrid/CHANGELOG.md)
+
+* Introduced an SVG cell renderer
+* [#438](https://github.com/datagrok-ai/public/issues/438): Introduced the **Binary Image** cell type for pictures stored in a table
+
+#### [PowerPack](https://github.com/datagrok-ai/public/tree/master/packages/PowerPack/CHANGELOG.md)
+
+* Introduced the **Workspaces** tab in Spotlight, one place to pin spaces, projects, files, apps and queries, with group favorites
+* The **Add Viewer** dialog now grays out viewers that do not fit the table, such as the multi-curve viewer without curves
+* Enrichments can now bring in columns from tables linked through several foreign keys, and DB Explorer works with database catalogs
+* Extended Power Search with more categories and an AI button (Ctrl+I)
+
+#### [Proteomics](https://github.com/datagrok-ai/public/tree/master/packages/Proteomics/CHANGELOG.md)
+
+* Introduced the Proteomics package: end-to-end analysis with enrichment, volcano plots and project-based sharing
+
+#### [SequenceTranslator](https://github.com/datagrok-ai/public/tree/master/packages/SequenceTranslator/CHANGELOG.md)
+
+* Redesigned the Markush enumerator: copy R-group lists, remove duplicates, name the result table and set defaults in package settings
+* Introduced a new oligo renderer with overhangs, Watson-Crick pairs and duplex auto-alignment
+* Introduced a HELM editor in the Oligo Translator and chemical enumeration in PolyTool
+
+#### [Tutorials](https://github.com/datagrok-ai/public/tree/master/packages/Tutorials/CHANGELOG.md)
+
+* [#4252](https://github.com/datagrok-ai/public/issues/4252): Redesigned the running tutorial as a top bar with a progress ring, skippable steps and shareable URLs
+* [#4437](https://github.com/datagrok-ai/public/issues/4437): Step instructions now show both Windows and Mac shortcuts
+* Fixed:
+  * [#4438](https://github.com/datagrok-ai/public/issues/4438), [#4444](https://github.com/datagrok-ai/public/issues/4444), [#4436](https://github.com/datagrok-ai/public/issues/4436), [#4334](https://github.com/datagrok-ai/public/issues/4334): The Filters, Dashboards, Viewers and Embedded viewers tutorials no longer get stuck on their steps
+
+#### [UsageAnalysis](https://github.com/datagrok-ai/public/tree/master/packages/UsageAnalysis/CHANGELOG.md)
+
+* [#4123](https://github.com/datagrok-ai/public/issues/4123): The results of each tab can now be exported as a CSV report
+* Metrics, Reports, Service Logs and Cloud Logs moved to **Browse** > **Platform** > **Health**
+* Usage Analysis is now available only to administrators
+
 ## 2026-07-02 Datagrok 1.27.7 release
 
 ### Improvements:
